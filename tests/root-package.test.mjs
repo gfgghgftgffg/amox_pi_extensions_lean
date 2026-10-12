@@ -107,6 +107,9 @@ test("npm pack contains the three entrypoints, LICENSEs, and maintenance records
   const files = JSON.parse(pack.stdout)[0].files.map((file) => file.path);
   const required = [
     "README.md",
+    "LICENSE",
+    "docs/actions-setup.md",
+    "docs/maintenance.md",
     "maintenance/manifest.json",
     "maintenance/tool-contracts.json",
     ...manifest.packages.flatMap((entry) => [

@@ -1,11 +1,17 @@
 #!/usr/bin/env node
 /**
- * Fresh production-install verification (phase 1 phase-2-ready entrypoint).
+ * Fresh production-install verification.
  *
  * Reproduces what Pi 1.1.0 does for a Git package
  * (`npm install --omit=dev --legacy-peer-deps`), plus `--ignore-scripts` for
  * test safety, then loads all three monorepo entrypoints through the real Pi
  * host loader from that production tree.
+ *
+ * The Pi host module is resolved from THIS checkout's dev dependencies before
+ * the production tree is created and is passed explicitly to each worker. The
+ * production tree intentionally does not contain host peers, and the check is
+ * self-contained on a clean machine that has no managed `~/.pi` installation
+ * (e.g. a fresh GitHub-hosted runner).
  *
  * Usage: node scripts/verify-production-install.mjs [--keep]
  */
@@ -14,11 +20,16 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const keep = process.argv.includes("--keep");
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance", "manifest.json"), "utf8"));
+// Resolve the host from the dev checkout BEFORE copying/omitting dependencies,
+// so the worker never depends on a managed ~/.pi installation.
+const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
+console.log(`Host module (from dev checkout): ${hostModulePath}`);
 
 const failures = [];
 function check(condition, message) {
@@ -41,7 +52,7 @@ try {
       const rel = relative(repoRoot, source);
       if (rel === "") return true;
       const top = rel.split(/[\\/]/)[0];
-      return top !== "node_modules" && top !== ".git" && top !== ".tmp" && !top.endsWith(".tgz");
+      return top !== "node_modules" && top !== ".git" && top !== ".tmp" && top !== ".maintenance-candidate" && !top.endsWith(".tgz");
     },
   });
 
@@ -93,9 +104,9 @@ try {
     const entryPath = join(target, entry.path, entry.entry);
     const inputPath = join(workDir, `${entry.id}.input.json`);
     const resultPath = join(workDir, `${entry.id}.result.json`);
-    // No hostModulePath: the worker resolves the managed Pi installation because
-    // this production tree has no local dev dependency.
-    writeFileSync(inputPath, `${JSON.stringify({ id: entry.id, extensionPath: entryPath, resultPath }, null, 2)}\n`);
+    // Explicit host module path: the production tree has no dev dependency and
+    // the runner may not have a managed Pi installation at all.
+    writeFileSync(inputPath, `${JSON.stringify({ id: entry.id, extensionPath: entryPath, resultPath, hostModulePath }, null, 2)}\n`);
     const worker = spawnSync(process.execPath, [join(target, "scripts", "lib", "capture-worker.mjs"), inputPath], {
       cwd: target,
       encoding: "utf8",

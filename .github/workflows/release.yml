@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag vX.Y.Z (must match root package.json version)"
+        required: true
+        type: string
+
+# Default read-only. Only the final job gets contents: write, scoped to the
+# protected `release` environment, and it never installs or runs dependencies.
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify immutable SHA (read-only)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout immutable run SHA (no persisted credentials)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+
+      - name: Validate release tag against root version and run SHA
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          EXPECTED_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/create-release.mjs --verify-only
+
+      - name: Install dependencies (no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Typecheck and test (packages + root)
+        run: npm run check
+
+      - name: Verify tracked tool-contract snapshot
+        run: npm run contracts:check
+
+      - name: Verify fresh production install (self-contained host)
+        run: npm run verify:production
+
+      - name: Security audit (all dependencies)
+        run: npm audit --audit-level=high
+
+      - name: Security audit (production/peer surface only)
+        run: npm audit --omit=dev --audit-level=high
+
+  release:
+    name: Create tag + GitHub release (write-scoped, no install)
+    needs: verify
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout verified SHA (no persisted credentials)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Create tag / GitHub release via gh (token used only here)
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          EXPECTED_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node scripts/create-release.mjs

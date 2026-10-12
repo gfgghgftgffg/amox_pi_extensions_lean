@@ -1,0 +1,116 @@
+name: Check upstream
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+# The detection job is read-only. Only the final PR job receives write
+# permissions, and it never installs or executes upstream code.
+permissions:
+  contents: read
+
+concurrency:
+  group: check-upstream
+  cancel-in-progress: false
+
+jobs:
+  detect:
+    name: Detect + stage candidate (read-only)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    outputs:
+      has_candidate: ${{ steps.candidate.outputs.has_candidate }}
+    steps:
+      - name: Checkout (read-only, no persisted credentials)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+
+      - name: Install baseline dependencies (no lifecycle scripts)
+        run: npm ci --ignore-scripts
+
+      - name: Sanity-check the accepted contract snapshot
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .maintenance-candidate/diagnostics
+          npm run contracts:check 2>&1 | tee .maintenance-candidate/diagnostics/baseline-contracts-check.log
+
+      - name: Stage upstream maintenance candidate
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p .maintenance-candidate/diagnostics
+          node scripts/check-upstream.mjs --apply --out-dir .maintenance-candidate 2>&1 | tee .maintenance-candidate/diagnostics/check-upstream.log
+
+      - name: Emit candidate status
+        id: candidate
+        run: node scripts/workflow/candidate-status.mjs --artifact .maintenance-candidate/candidate.json
+
+      - name: Upload candidate + diagnostics
+        if: steps.candidate.outputs.has_candidate == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: maintenance-candidate
+          path: .maintenance-candidate/
+          if-no-files-found: error
+          retention-days: 7
+
+  open-pr:
+    name: Apply validated candidate + open draft PR (write-scoped, no install)
+    needs: detect
+    if: needs.detect.outputs.has_candidate == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout trusted baseline (no persisted credentials)
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - name: Download candidate artifact from this run
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: maintenance-candidate
+          path: .maintenance-candidate
+
+      - name: Validate and apply constrained candidate files
+        run: node scripts/validate-candidate.mjs --artifact .maintenance-candidate/candidate.json --repo . --apply
+
+      - name: Create or update draft pull request
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: maintenance/upstream-update
+          delete-branch: true
+          draft: always-true
+          add-paths: |
+            package-lock.json
+            packages/pi-web-access-lean/package.json
+            packages/rpiv-todo-lean/package.json
+            packages/pi-subagents-lean/package.json
+            maintenance/manifest.json
+            maintenance/tool-contracts.json
+            maintenance/update-report.md
+          commit-message: "chore(maintenance): staged upstream maintenance candidate"
+          title: "chore(maintenance): upstream maintenance candidate (draft, do not edit branch)"
+          body: |
+            Automated draft candidate. See `maintenance/update-report.md` in the diff and the `check-upstream` run artifacts for evidence, contract diff and diagnostics.
+
+            - Adapters, prompts, schemas and descriptions are NOT auto-rewritten.
+            - Contract drift keeps the accepted snapshot unchanged; a human/agent must make the minimal adjustment following `docs/maintenance.md`.
+            - Do not edit the `maintenance/upstream-update` branch manually; automation may regenerate it.
+            - Draft only: no auto-merge and no release.

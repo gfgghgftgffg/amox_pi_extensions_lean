@@ -37,6 +37,8 @@
     "contracts": "node scripts/capture-contracts.mjs --write",
     "contracts:check": "node scripts/capture-contracts.mjs --check",
     "verify:production": "node scripts/verify-production-install.mjs",
+    "maintenance:plan": "node scripts/check-upstream.mjs",
+    "maintenance:stage": "node scripts/check-upstream.mjs --apply",
     "build": "npm run typecheck"
   },
   "pi": {
@@ -54,8 +56,10 @@
     "packages/*/README.md",
     "packages/*/README.zh-CN.md",
     "packages/*/MAINTENANCE.md",
+    "docs/",
     "maintenance/",
     "scripts/",
+    "LICENSE",
     "README.md"
   ]
 }

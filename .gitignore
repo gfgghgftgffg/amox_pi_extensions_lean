@@ -9,3 +9,6 @@ dist/
 Thumbs.db
 .venv/
 __pycache__/
+
+# Untracked staging directory for `scripts/check-upstream.mjs --apply`.
+.maintenance-candidate/

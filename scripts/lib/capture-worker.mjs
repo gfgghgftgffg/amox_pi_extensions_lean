@@ -3,7 +3,7 @@
  * writes its registered tool contracts to a result file.
  *
  * Spawned by scripts/capture-contracts.mjs (one process per target) and by
- * phase 2 maintenance tooling. Input JSON: { id, extensionPath, resultPath,
+ * maintenance tooling. Input JSON: { id, extensionPath, resultPath,
  * hostModulePath }.
  */
 import { readFileSync, writeFileSync } from "node:fs";

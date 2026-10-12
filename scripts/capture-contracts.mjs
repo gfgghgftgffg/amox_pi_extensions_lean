@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Reusable contract-capture entrypoint (phase 1 + phase 2 maintenance).
+ * Reusable contract-capture entrypoint for tests and maintenance tooling.
  *
  * Loads every maintained lean facade AND its pinned upstream engine in
  * separate isolated Pi print-mode sessions (one child process per target), then
@@ -8,14 +8,15 @@
  * character counts and the fixed `ceil(chars / 4)` character proxy.
  *
  * Usage:
- *   node scripts/capture-contracts.mjs            # print report
- *   node scripts/capture-contracts.mjs --write    # refresh maintenance/tool-contracts.json
- *   node scripts/capture-contracts.mjs --check    # fail if the snapshot is stale
+ *   node scripts/capture-contracts.mjs                   # print report
+ *   node scripts/capture-contracts.mjs --write           # refresh maintenance/tool-contracts.json
+ *   node scripts/capture-contracts.mjs --check           # fail if the snapshot is stale
+ *   node scripts/capture-contracts.mjs --output <file>   # write a JSON snapshot elsewhere (never overwrites the accepted one)
  *
  * The estimator is a character proxy, NOT provider tokenization or billing.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -27,11 +28,20 @@ const snapshotPath = join(repoRoot, "maintenance", "tool-contracts.json");
 const manifestPath = join(repoRoot, "maintenance", "manifest.json");
 const workerPath = join(scriptDir, "lib", "capture-worker.mjs");
 
-const mode = process.argv.includes("--write")
-  ? "write"
-  : process.argv.includes("--check")
-    ? "check"
-    : "report";
+const writeRequested = process.argv.includes("--write");
+const checkRequested = process.argv.includes("--check");
+const outputIndex = process.argv.indexOf("--output");
+const outputPath = outputIndex === -1 ? undefined : process.argv[outputIndex + 1];
+if (outputIndex !== -1 && (!outputPath || outputPath.startsWith("--"))) {
+  console.error("--output 需要一个文件路径参数");
+  process.exit(2);
+}
+const modeCount = [writeRequested, checkRequested, outputPath !== undefined].filter(Boolean).length;
+if (modeCount > 1) {
+  console.error("--write / --check / --output 只能使用其中一个");
+  process.exit(2);
+}
+const mode = writeRequested ? "write" : checkRequested ? "check" : outputPath !== undefined ? "output" : "report";
 
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
@@ -216,6 +226,18 @@ const snapshot = snapshotFrom(captures);
 
 if (mode === "report") {
   printReport(snapshot);
+  process.exit(0);
+}
+
+if (mode === "output") {
+  const resolvedOutput = resolve(outputPath);
+  if (resolvedOutput === resolve(snapshotPath)) {
+    console.error(`${relative(repoRoot, snapshotPath)} 是已接受快照；--output 不会静默改写它，请显式使用 --write`);
+    process.exit(1);
+  }
+  mkdirSync(dirname(resolvedOutput), { recursive: true });
+  writeFileSync(resolvedOutput, `${JSON.stringify(snapshot, null, 2)}\n`);
+  console.log(`Wrote snapshot copy: ${relative(repoRoot, resolvedOutput)}`);
   process.exit(0);
 }
 

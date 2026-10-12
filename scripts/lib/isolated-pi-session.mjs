@@ -6,7 +6,7 @@
  * capture and compatibility tests never touch the user's real `~/.pi` config,
  * sessions, or installed extensions.
  *
- * Phase 2 can reuse:
+ * Maintenance tooling reuses:
  *   - `resolveHostModulePath()` to locate a Pi host for loading;
  *   - `createIsolatedEnvironment()` for scratch cwd/agent/home dirs;
  *   - `loadExtensionContracts()` to read one extension's registered tool

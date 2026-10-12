@@ -1,6 +1,11 @@
 /** Built-in-only, public-registry-authoritative lock validation.
  * No npm, registry configuration, artifact metadata, redirects or package code.
- * Unsupported ranges/sources and peer/dev/shared-graph changes require humans.
+ * Unsupported ranges/sources and peer/dev/shared-graph changes require humans,
+ * with one narrow exception: two explicitly changed DIRECT dependency roots of
+ * the SAME updated workspace pinned to one approved target version may move
+ * together across their declared paired peer edge (synchronized cohort). Every
+ * unrelated or protected peer consumer still freezes that peer and its runtime
+ * closure.
  */
 import { posix } from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -111,6 +116,32 @@ function baselineClosure(packages, roots) {
   return seen;
 }
 
+/** Narrow same-workspace synchronized peer cohort, derived only from the
+ * already validated workspace/target roots: the consumer record and its peer
+ * record are two DISTINCT explicitly changed DIRECT dependency roots of ONE
+ * updated workspace, both already declared by the trusted baseline workspace
+ * record, pinned to the exact same approved target version, and resolved at
+ * unchanged root paths. This paired edge is the only peer change exemption;
+ * arbitrary transitive peer consumers, cohorts declared in another workspace,
+ * newly added dependencies, mismatched versions and moved resolutions stay
+ * fail-closed for human handling. */
+function synchronizedCohortPeerRoot(changedDirectRoots, consumerPath, peerName, peerPath) {
+  if (!consumerPath || !peerPath || consumerPath === peerPath) return false;
+  for (const cohortRoots of changedDirectRoots.values()) {
+    for (const [name, consumer] of cohortRoots) {
+      if (name === peerName || consumer.path !== consumerPath) continue;
+      const peer = cohortRoots.get(peerName);
+      if (!peer || !peer.baselineDeclared || !consumer.baselineDeclared) continue;
+      if (peer.path !== peerPath) continue;
+      // Old/new resolved root paths must be unchanged for both records.
+      if (consumer.oldPath !== consumer.path || peer.oldPath !== peer.path) continue;
+      if (consumer.target !== peer.target || !isExactStableVersion(consumer.target)) continue;
+      return true;
+    }
+  }
+  return false;
+}
+
 function checkMetadata(name, record, metadata, before) {
   if (!object(metadata) || metadata.name !== name || metadata.version !== record.version) throw new Error(`${name}: registry name/version 不一致`);
   const expectedTarball = `${REGISTRY}/${name}/-/${name.split("/").at(-1)}-${record.version}.tgz`;
@@ -156,6 +187,8 @@ export async function compareLockfile({ baselineLock, candidateLock, candidateWo
     const roots = [];
     const changedWorkspacePaths = new Set();
     const changedNamesByWorkspace = new Map();
+    // workspace path -> dep name -> { oldPath, path, target, baselineDeclared }
+    const changedDirectRoots = new Map();
     for (const [id, version] of targetVersions) {
       const entry = manifestEntries.get(id);
       const workspace = candidateWorkspaces.get(id);
@@ -172,6 +205,9 @@ export async function compareLockfile({ baselineLock, candidateLock, candidateWo
         if (!path || newPackages[path].version !== target) throw new Error(`${name}: lock 版本必须为 ${target}`);
         const oldPath = resolveDependency(oldPackages, entry.path, name);
         roots.push({ oldPath, path });
+        let cohortRoots = changedDirectRoots.get(entry.path);
+        if (!cohortRoots) changedDirectRoots.set(entry.path, (cohortRoots = new Map()));
+        cohortRoots.set(name, { oldPath, path, target, baselineDeclared: own(before.dependencies ?? {}, name) });
       }
       if (workspace.dependencies[entry.upstreamPackage] !== version) throw new Error(`${id}: 主依赖版本不一致`);
     }
@@ -195,7 +231,13 @@ export async function compareLockfile({ baselineLock, candidateLock, candidateWo
       for (const [peer, range] of Object.entries(recordChanged ? record.peerDependencies ?? {} : {})) {
         const peerPath = resolveDependency(newPackages, path, peer);
         if (!peerPath && record.peerDependenciesMeta?.[peer]?.optional === true) continue;
-        if (!peerPath || peerPath !== resolveDependency(oldPackages, path, peer) || !isDeepStrictEqual(newPackages[peerPath], oldPackages[peerPath]) || !satisfiesStableRange(newPackages[peerPath]?.version, range)) throw new Error(`${path}: peer ${peer}@${range} 不可达/变化，需人工处理`);
+        const oldPeerPath = peerPath ? resolveDependency(oldPackages, path, peer) : undefined;
+        const frozenPeer = Boolean(peerPath && oldPeerPath === peerPath && isDeepStrictEqual(newPackages[peerPath], oldPackages[peerPath]));
+        // Only the synchronized same-workspace cohort edge may replace an
+        // unchanged peer record; the range itself must still be satisfied.
+        const synchronizedPeer = !frozenPeer && oldPeerPath === peerPath
+          && synchronizedCohortPeerRoot(changedDirectRoots, path, peer, peerPath);
+        if (!peerPath || (!frozenPeer && !synchronizedPeer) || !satisfiesStableRange(newPackages[peerPath].version, range)) throw new Error(`${path}: peer ${peer}@${range} 不可达/变化，需人工处理`);
       }
       for (const [dependency, range] of Object.entries(dependencies(record))) {
         const child = resolveDependency(newPackages, path, dependency);
@@ -248,11 +290,19 @@ export async function compareLockfile({ baselineLock, candidateLock, candidateWo
     // This freezes peer-consumer subgraphs, not the whole old target graph.
     const peerConsumers = new Set([...oldClosure, ...protectedPaths]);
     for (const path of peerConsumers) {
-      const peerRoots = Object.keys(oldPackages[path]?.peerDependencies ?? {}).map((name) => resolveDependency(oldPackages, path, name));
-      for (const peerPath of baselineClosure(oldPackages, peerRoots)) {
-        if (protectedPaths.has(peerPath)) continue;
-        protectedPaths.add(peerPath);
-        peerConsumers.add(peerPath);
+      for (const [name] of Object.entries(oldPackages[path]?.peerDependencies ?? {})) {
+        const peerPath = resolveDependency(oldPackages, path, name);
+        // Exempt ONLY the synchronized same-workspace direct-root cohort edge
+        // from freezing this peer target and its runtime closure. Unrelated or
+        // protected consumers of the same peer still freeze it below, even
+        // when the cohort itself is an approved paired target.
+        if (peerPath && resolveDependency(newPackages, path, name) === peerPath
+          && synchronizedCohortPeerRoot(changedDirectRoots, path, name, peerPath)) continue;
+        for (const frozen of baselineClosure(oldPackages, [peerPath])) {
+          if (protectedPaths.has(frozen)) continue;
+          protectedPaths.add(frozen);
+          peerConsumers.add(frozen);
+        }
       }
     }
     for (const [path, record] of Object.entries(oldPackages)) {

@@ -113,5 +113,9 @@ pi install git:github.com/gfgghgftgffg/amox_pi_extensions_lean@v0.1.0
 - 特权校验只用 Node 内置模块从固定 `https://registry.npmjs.org` 获取版本 DATA（拒绝重定向），
   核对发布身份/commit、tarball 与规范 integrity；artifact/npm 配置不是 registry 权威。
   lock 只允许目标旧/新 runtime dependency closure 内可证明的变化；无关/共享记录、workspace metadata、peer/dev 变化与不支持的源/range 均拒绝并交人工处理。
+  唯一收窄例外：同一更新 workspace 内两个显式变更的直接依赖根（如 rpiv-todo 与 rpiv-i18n
+  在同一目标版本同步升级，且旧/新解析路径、peer 声明不变、range 满足、registry metadata 独立权威）
+  允许随其声明的配对 peer 边一起更新；任何无关或受保护的直接/传递 peer 消费者（含 peer 环）
+  仍会冻结该 peer 及其整个 runtime closure，其余 peer 变化一律交人工处理。
 - 隔离临时 `HOME` 只是配置隔离，不是 OS 沙箱；不要在候选里注入凭据。
 - 上游跟踪只读参考原始 lean 作者仓库，不会盲目覆盖本仓库的适配。

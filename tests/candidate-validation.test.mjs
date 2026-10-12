@@ -694,6 +694,170 @@ test("full validator rejects unrelated-peer shared churn but accepts the same cl
   }
 });
 
+/** Same-workspace synchronized cohort fixture (todo/i18n style): ONE updated
+ * workspace directly pins a primary and its cohort peer, and the primary's
+ * unchanged peerDependencies reach that peer. The narrow validator exception
+ * lets exactly this paired DIRECT-root edge move together at one approved
+ * target version. `unrelatedPeer` adds an unrelated consumer of the cohort
+ * peer (direct, or a nested peer -> runtime -> peer chain) which must still
+ * freeze it with its runtime closure; `transitiveConsumer` makes a changed
+ * non-root closure record consume the changed peer, which stays fail-closed. */
+function cohortPackages({ peerRange = "*", transitiveConsumer = false, unrelatedPeer = "none", otherPeerWorkspace = false } = {}) {
+  const rec = (name, version, extra = {}) => ({ version, ...fixtureDist(name, version), ...extra });
+  const packages = {
+    "": { name: "fixture", version: "1.0.0" },
+    "packages/cohort": { name: "cohort-wrapper", version: "1.0.0", dependencies: { primary: "1.0.0", "cohort-peer": "1.0.0" } },
+    "node_modules/primary": rec("primary", "1.0.0", transitiveConsumer
+      ? { dependencies: { mid: "^1.0.0" }, peerDependencies: { "cohort-peer": peerRange } }
+      : { peerDependencies: { "cohort-peer": peerRange } }),
+    "node_modules/cohort-peer": rec("cohort-peer", "1.0.0"),
+  };
+  if (transitiveConsumer) packages["node_modules/mid"] = rec("mid", "1.0.0", { peerDependencies: { "cohort-peer": "*" } });
+  if (otherPeerWorkspace) packages["packages/other"] = { name: "other-wrapper", version: "1.0.0", dependencies: { "cohort-peer": "1.0.0" } };
+  if (unrelatedPeer !== "none") {
+    packages["packages/unrelated"] = { name: "unrelated-wrapper", version: "1.0.0", dependencies: { unrelated: "1.0.0" } };
+    if (unrelatedPeer === "direct") {
+      packages["node_modules/unrelated"] = rec("unrelated", "1.0.0", { peerDependencies: { "cohort-peer": "^1.0.0" } });
+    } else {
+      packages["node_modules/unrelated"] = rec("unrelated", "1.0.0", { peerDependencies: { "peer-a": "^1.0.0" } });
+      packages["node_modules/peer-a"] = rec("peer-a", "1.0.0", { dependencies: { "peer-a-dep": "1.0.0" } });
+      packages["node_modules/peer-a-dep"] = rec("peer-a-dep", "1.0.0", { peerDependencies: { "cohort-peer": "^1.0.0" } });
+    }
+  }
+  return packages;
+}
+
+function cohortLocks({
+  peerRange = "*", candidatePeerRange = peerRange, transitiveConsumer = false, unrelatedPeer = "none", otherPeerWorkspace = false,
+  primaryTo = "2.0.0", peerTo = "2.0.0", workspacePeerTo = peerTo, otherPeerPin = peerTo, midTo = "2.0.0", nestedPeerCopy = false,
+} = {}) {
+  const baselineLock = { name: "fixture", version: "1.0.0", lockfileVersion: 3, packages: cohortPackages({ peerRange, transitiveConsumer, unrelatedPeer, otherPeerWorkspace }) };
+  const candidateLock = structuredClone(baselineLock);
+  candidateLock.packages["packages/cohort"].dependencies.primary = primaryTo;
+  candidateLock.packages["node_modules/primary"] = {
+    version: primaryTo, ...fixtureDist("primary", primaryTo),
+    ...(transitiveConsumer ? { dependencies: { mid: `^${midTo}` } } : {}),
+    peerDependencies: { "cohort-peer": candidatePeerRange },
+  };
+  if (transitiveConsumer) candidateLock.packages["node_modules/mid"] = { version: midTo, ...fixtureDist("mid", midTo), peerDependencies: { "cohort-peer": "*" } };
+  candidateLock.packages["packages/cohort"].dependencies["cohort-peer"] = workspacePeerTo;
+  candidateLock.packages["node_modules/cohort-peer"] = { version: peerTo, ...fixtureDist("cohort-peer", peerTo) };
+  if (otherPeerWorkspace) candidateLock.packages["packages/other"].dependencies["cohort-peer"] = otherPeerPin;
+  if (nestedPeerCopy) candidateLock.packages["node_modules/primary/node_modules/cohort-peer"] = { version: peerTo, ...fixtureDist("cohort-peer", peerTo) };
+  return { baselineLock, candidateLock };
+}
+
+/** Registry metadata derived from the trusted fixture formula, never from the candidate. */
+function cohortMetadata(name, version, { peerRange = "*", transitiveConsumer = false, gitHead = false } = {}) {
+  const dist = fixtureDist(name, version);
+  return {
+    name, version,
+    dist: { tarball: dist.resolved, integrity: dist.integrity },
+    ...(name === "primary" ? {
+      peerDependencies: { "cohort-peer": peerRange },
+      ...(transitiveConsumer ? { dependencies: { mid: "^2.0.0" } } : {}),
+      ...(gitHead ? { gitHead: "b".repeat(40) } : {}),
+    } : {}),
+    ...(name === "mid" ? { peerDependencies: { "cohort-peer": "*" } } : {}),
+  };
+}
+
+async function compareCohortGraph(options) {
+  const { baselineLock, candidateLock } = cohortLocks(options);
+  const errors = [];
+  const other = options.otherPeerWorkspace ? candidateLock.packages["packages/other"].dependencies : null;
+  await compareLockfile({
+    baselineLock,
+    candidateLock,
+    candidateWorkspaces: new Map([
+      ["cohort", { dependencies: candidateLock.packages["packages/cohort"].dependencies }],
+      ...(other ? [["other", { dependencies: other }]] : []),
+    ]),
+    manifestEntries: new Map([
+      ["cohort", { path: "packages/cohort", upstreamPackage: "primary" }],
+      ...(other ? [["other", { path: "packages/other", upstreamPackage: "cohort-peer" }]] : []),
+    ]),
+    targetVersions: new Map([["cohort", "2.0.0"], ...(other ? [["other", "2.0.0"]] : [])]),
+    errors,
+    // Metadata is only fetched for changed records' NEW versions, so the
+    // fixture catalog mirrors the candidate-side declaration coherently; a
+    // forged declaration must still be caught against the baseline record.
+    resolveRegistryMetadata: async (name, version) => cohortMetadata(name, version, {
+      peerRange: options.candidatePeerRange ?? options.peerRange ?? "*",
+      transitiveConsumer: options.transitiveConsumer,
+    }),
+  });
+  return errors;
+}
+
+test("same-workspace synchronized cohort peer pair is accepted; every deviation from the paired cohort fails closed", async () => {
+  assert.deepEqual(await compareCohortGraph({}), [], "synchronized todo/i18n-style paired direct roots move together");
+  const rejections = [
+    ["undeclared peer bump", { workspacePeerTo: "1.0.0" }, /node_modules\/primary: peer cohort-peer@\* 不可达\/变化/],
+    ["peer changed only in another workspace", { otherPeerWorkspace: true, workspacePeerTo: "1.0.0" }, /node_modules\/primary: peer cohort-peer@\* 不可达\/变化/],
+    ["mismatched cohort versions", { peerTo: "2.1.0", workspacePeerTo: "2.1.0" }, /node_modules\/primary: peer cohort-peer@\* 不可达\/变化/],
+    ["target outside the unchanged peer range", { peerRange: "^1.0.0" }, /node_modules\/primary: peer cohort-peer@\^1\.0\.0 不可达\/变化/],
+    ["changed peer declaration", { candidatePeerRange: "^2.0.0" }, /primary: peer 变化需要人工处理/],
+    ["changed peer resolution", { nestedPeerCopy: true }, /node_modules\/primary: peer cohort-peer@\* 不可达\/变化/],
+    ["transitive peer consumer of the paired target", { transitiveConsumer: true }, /node_modules\/mid: peer cohort-peer@\* 不可达\/变化/],
+    ["unrelated direct peer consumer of the paired target", { unrelatedPeer: "direct" }, /node_modules\/cohort-peer: 无关\/共享 lock record/],
+    ["unrelated transitive peer consumer of the paired target", { unrelatedPeer: "transitive" }, /node_modules\/cohort-peer: 无关\/共享 lock record/],
+  ];
+  for (const [label, options, pattern] of rejections) {
+    const errors = await compareCohortGraph(options);
+    assert.ok(errors.some((error) => pattern.test(error)), `${label}: ${errors.join("\n")}`);
+  }
+});
+
+test("full validator accepts the synchronized cohort and still freezes it for unrelated peer consumers", async () => {
+  const repo = fixtureRepo();
+  try {
+    const manifest = { schemaVersion: 1, monorepo: {}, packages: [{ id: "cohort", path: "packages/cohort", upstreamPackage: "primary", upstreamVersion: "1.0.0", upstreamGitHead: "a".repeat(40) }] };
+    const nextManifest = structuredClone(manifest);
+    nextManifest.packages[0].upstreamVersion = "2.0.0";
+    nextManifest.packages[0].upstreamGitHead = "b".repeat(40);
+    mkdirSync(join(repo, "packages/cohort"), { recursive: true });
+    for (const withUnrelatedPeer of [false, true]) {
+      const { baselineLock, candidateLock } = cohortLocks({ unrelatedPeer: withUnrelatedPeer ? "direct" : "none" });
+      writeFileSync(join(repo, "maintenance/manifest.json"), serializeJson(manifest));
+      writeFileSync(join(repo, "package-lock.json"), serializeJson(baselineLock));
+      writeFileSync(join(repo, "packages/cohort/package.json"), serializeJson({ name: "cohort-wrapper", version: "1.0.0", dependencies: baselineLock.packages["packages/cohort"].dependencies }));
+      const artifact = buildCandidateArtifact({
+        baseCommit,
+        status: "drift",
+        files: [
+          { path: "package-lock.json", content: serializeJson(candidateLock) },
+          { path: "packages/cohort/package.json", content: serializeJson({ name: "cohort-wrapper", version: "1.0.0", dependencies: candidateLock.packages["packages/cohort"].dependencies }) },
+          { path: "maintenance/manifest.json", content: serializeJson(nextManifest) },
+          { path: "maintenance/update-report.md", content: reportFor("drift") },
+        ],
+      });
+      const result = await validateActualCandidate({
+        artifact,
+        repoRoot: repo,
+        headSha: baseCommit,
+        resolveRegistryMetadata: async (name, version) => cohortMetadata(name, version, { gitHead: true }),
+      });
+      if (withUnrelatedPeer) {
+        assert.equal(result.ok, false, "unrelated peer consumer must freeze the synchronized cohort peer at the artifact layer");
+        assert.ok(result.errors.some((error) => /node_modules\/cohort-peer: 无关\/共享 lock record/.test(error)), result.errors.join("\n"));
+        assert.deepEqual(result.writes, []);
+      } else {
+        assert.deepEqual(result.errors, []);
+        assert.equal(result.ok, true);
+        assert.deepEqual(result.writes.map((write) => write.path).sort(), [
+          "maintenance/manifest.json",
+          "maintenance/update-report.md",
+          "package-lock.json",
+          "packages/cohort/package.json",
+        ]);
+      }
+    }
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
+});
+
 test("justified dependency closure additions work; invented dependencies and extra records fail", async () => {
   const repo = fixtureRepo();
   try {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { cleanGitFixture } from "../helpers/clean-git-fixture.mjs";
@@ -18,6 +18,7 @@ const logs = resolve(process.argv[2] || join(root, ".tmp/maintenance-pipeline"))
 mkdirSync(logs, { recursive: true });
 const fixture = cleanGitFixture(root), repo = fixture.repo;
 const env = Object.fromEntries(Object.entries(process.env).filter(([name]) => ["path", "systemroot", "windir", "comspec", "pathext", "temp", "tmp", "tmpdir", "home", "userprofile", "localappdata", "appdata", "https_proxy", "http_proxy", "no_proxy"].includes(name.toLowerCase())));
+let passed = false;
 try {
   const base = execFileSync("git", ["-C", repo, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
   const manifest = readJson(join(repo, "maintenance/manifest.json"));
@@ -42,11 +43,15 @@ try {
   // production verification, audits, commits and dependency-free apply run.
   const preload = join(out, "offline-git.mjs");
   writeFileSync(preload, `import cp from "node:child_process";\nimport { syncBuiltinESMExports } from "node:module";\nconst spawn=cp.spawnSync, exec=cp.execFileSync;\nfunction head(cmd,args){const at=args.indexOf("ls-remote");return cmd==="git" && at>=0 ? (args[at+1]==="origin" ? (process.env.AMOX_TEST_MAIN_HEAD || ${JSON.stringify(base)}) : ${JSON.stringify(reviewedHead)})+"\\tHEAD\\n" : undefined;}\ncp.spawnSync=(cmd,args,opts)=>{const value=head(cmd,args);return value===undefined ? spawn(cmd,args,opts) : {status:0,stdout:value,stderr:""};};\ncp.execFileSync=(cmd,args,opts)=>{const value=head(cmd,args);return value===undefined ? exec(cmd,args,opts) : opts?.encoding ? value : Buffer.from(value);};\nsyncBuiltinESMExports();\n`);
-  const invoke = (phase, variables = {}) => run(process.execPath, ["--import", pathToFileURL(preload).href, "scripts/automate-maintenance.mjs", phase], { cwd: repo, env: { ...env, ...variables }, timeout: 600_000 });
+  // Windows temp-volume installs can take >10 minutes; keep the same checks
+  // but leave headroom inside the 40-minute CI job deadline.
+  const invoke = (phase, variables = {}) => run(process.execPath, ["--import", pathToFileURL(preload).href, "scripts/automate-maintenance.mjs", phase], { cwd: repo, env: { ...env, ...variables }, timeout: 25 * 60_000 });
   const result = invoke("verify");
   writeFileSync(join(logs, "verify.log"), `${result.stdout || ""}\n${result.stderr || ""}`);
-  const checkLog = join(out, "verification/run-check.log");
-  if (existsSync(checkLog)) writeFileSync(join(logs, "check.log"), readFileSync(checkLog));
+  const verification = join(out, "verification");
+  if (existsSync(verification)) for (const entry of readdirSync(verification, { withFileTypes: true })) {
+    if (entry.isFile()) writeFileSync(join(logs, entry.name), readFileSync(join(verification, entry.name)));
+  }
   assert.equal(result.status, 0, `Verify failed; see ${logs}`);
   const bundle = readJson(join(out, "verified.json"));
   assert.equal(bundle.status, "verified");
@@ -66,4 +71,10 @@ try {
   assert.equal(applied.status, 0, `Dependency-free apply failed; see ${logs}`);
   assert.equal(readJson(join(repo, "package.json")).version, version);
   console.log("Offline maintenance pipeline passed: independent verify, version generation, three real archives, release plan, stale-main refusal and dependency-free PR apply. No real model or publication.");
-} finally { fixture.cleanup(); }
+  passed = true;
+} finally {
+  try { fixture.cleanup(); } catch (error) {
+    if (passed) throw error;
+    console.warn(`Secondary fixture cleanup failure (original pipeline error preserved): ${error.message}`);
+  }
+}

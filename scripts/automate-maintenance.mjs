@@ -120,9 +120,10 @@ try {
     git(["-c", "commit.gpgSign=false", "-c", "user.name=Maintenance verification", "-c", "user.email=maintenance@example.invalid", "commit", "--quiet", "-m", "Temporary verified proposal"]);
     const verificationCommit = head();
     for (const args of [["run", "check"], ["run", "contracts:check"], ["run", "verify:production"], ["audit", "--audit-level=high"], ["audit", "--omit=dev", "--audit-level=high"]]) {
+      mkdirSync(join(outDir, "verification"), { recursive: true });
+      writeFileSync(join(outDir, "verification/current-step.json"), jsonText({ command: "npm", args, startedAt: new Date().toISOString() }));
       const result = run("npm", args, { cwd: repoRoot, timeout: 35 * 60_000 });
       const log = `$ npm ${args.join(" ")}\n${result.stdout || ""}\n${result.stderr || ""}`;
-      mkdirSync(join(outDir, "verification"), { recursive: true });
       writeFileSync(join(outDir, "verification", `${args.join("-").replace(/[^\w-]/g, "")}.log`), log);
       if (result.error || result.status !== 0) throw new Error(`Independent verification failed: npm ${args.join(" ")}; see verification artifact`);
     }

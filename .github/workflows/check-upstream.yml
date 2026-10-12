@@ -32,14 +32,14 @@ jobs:
       - run: npm run contracts:check
       - id: prepare
         run: node scripts/automate-maintenance.mjs prepare
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.prepare.outputs.has_candidate == 'true'
         with:
           name: maintenance-input
           path: .maintenance-candidate/
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: maintenance-detection-failure
@@ -76,7 +76,7 @@ jobs:
           MAINTENANCE_API: ${{ vars.MAINTENANCE_API }}
           MAINTENANCE_THINKING: ${{ vars.MAINTENANCE_THINKING }}
         run: node scripts/automate-maintenance.mjs adapt
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: maintenance-proposed
           path: .maintenance-candidate/adapted.json
@@ -108,14 +108,14 @@ jobs:
           path: .maintenance-candidate
       - id: verify
         run: node scripts/automate-maintenance.mjs verify
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: steps.verify.outputs.verified == 'true' && matrix.os == 'ubuntu-latest'
         with:
           name: maintenance-verified
           path: .maintenance-candidate/verified.json
           if-no-files-found: error
           retention-days: 7
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: maintenance-verification-logs-${{ matrix.os }}

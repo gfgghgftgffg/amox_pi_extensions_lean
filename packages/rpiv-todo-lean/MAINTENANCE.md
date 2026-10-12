@@ -12,13 +12,13 @@
 
 ## 锁定的上游版本
 
-- `@juicesharp/rpiv-todo@2.13.5`（精确固定；`dependencies`）。
-- `@juicesharp/rpiv-i18n@2.13.5`（精确固定；上游 2.13.5 把 i18n 改为可选 peer，但保留安装以维持原行为的
-  本地化 UI）。
-- 上游 2.13.5 自带传递依赖 `@juicesharp/rpiv-config@^2.13.5`（由 npm 解析，不显式固定）。
+- `@juicesharp/rpiv-todo@2.13.8`（精确固定；`dependencies`；此前为 2.13.5）。
+- `@juicesharp/rpiv-i18n@2.13.8`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
+- 上游 2.13.8 自带传递依赖 `@juicesharp/rpiv-config@^2.13.8`（此前为 ^2.13.5；由 npm 解析，不显式固定）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
-- 开发/测试依赖：Pi 1.1.0、typebox 1.3.27、jiti 2.7.0、TypeScript 5.9.3。
+- 当前候选开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
+  （由规划阶段暂存，独立任务验证；此前为 typebox 1.3.27 / TypeScript 5.9.3）。
 
 ## 相对基线的精确改动（最小适配）
 
@@ -49,6 +49,40 @@
 - 2.13.5 新增：状态变更时写入 `appendEntry("rpiv-todo-state", details)`，回放优先使用该自定义条目
   （`STATE_ENTRY_TYPE`）。本包透传 `appendEntry`，无需适配。
 - 2.13.5 起 `@juicesharp/rpiv-i18n` 为可选 peer，`index.ts` 动态导入其 `/loader`；缺失时回退英文。
+
+## 本次审查：2.13.5 → 2.13.8
+
+- 审查 npm 发布源码（含相关 rpiv-i18n 目录）：
+  `e516242c51adace38b8dd0a3c70495d24a6e9b79` →
+  `afc21bc25f7d07cae9fb3103dc309240a16b9f49`，不是远端 HEAD
+  `2d88b79c08ce19ffeecbe85d5ee1071046b708c0`。依据为收集的 `sources.json`、新旧
+  `package.json`、两个包的 CHANGELOG 和下述新旧源码。
+- CHANGELOG 的 2.13.6/7/8 均为空条目；核对 `tool/types.ts`、`todo.ts`、`index.ts`、
+  `todo-overlay.ts`、`config.ts`、`state/store.ts`、`state/replay.ts`、
+  `state/state-reducer.ts`、`state/i18n-bridge.ts`，这些审查面源码一致。
+- 工具仍只有 todo；action 为 create/update/list/get/delete/clear。字段仍为 action、
+  subject、description、activeForm、status、blockedBy、addBlockedBy、removeBlockedBy、
+  owner、metadata、id、includeDeleted。required 仍为 action；create 默认 pending，
+  list 默认 includeDeleted=false，clear 重置 nextId=1。没有新增/删除工具或参数、默认值变化。
+- 执行仍为 execute(callId, params, signal, onUpdate, ctx)。真实上游工具仍没有
+  prepareArguments；facade 的可选 hook 委派与缺省 action 推断继续成立，原始 hook 返回后
+  才做本地推断。原地去 description 不改变字段、枚举或 required。
+- 覆盖层 lastNextId、completedTaskIdsPendingHide、hiddenCompletedTaskIds、getSnapshot
+  仍为普通 TypeScript private 而非 #private；全部依赖的方法、会话 store 函数、事件、
+  /todos 命令与折叠快捷键保持不变。持久化条目仍为 rpiv-todo-state，回放仍优先使用这些
+  自定义条目，无条目时兼容历史 todo toolResult。
+- 相关 i18n 的 index.ts、loader.ts 和 todo 的 bridge 不变：registerLocalesFromDir 从
+  调用包的 locales 加载；scope 在 render 时读取当前语言；缺失 SDK 回退英文。
+  config.ts 对 rpiv-config 的调用签名未变；本次源码材料未包含 rpiv-config 本体，
+  传递依赖的安装与真实配置行为仍须由独立验证覆盖。
+- 最小适配结论：仅消费规划阶段暂存的 todo/i18n 精确版本；`index.ts` 前后完全相同，
+  不改 schema、prompt、execute、RPC 会话补丁或工具身份。lean 作者 commit 前后同为
+  `ec463cd90fbae962122fff2e0619955a8f17df1a`，无新作者改动可复用或拒绝。
+- 没有改变 API/行为，因此没有增加重复实现的测试；所有既有 schema、reducer、持久化、
+  RPC 隔离和 stale ctx 断言保留。测试名称中的 2.13.5 是原始编写基线，实际加载当前固定版本。
+- 本阶段未运行 npm ci、npm run check、npm run contracts、npm run contracts:check、
+  node scripts/verify-production-install.mjs 或字符统计。README 保留 2.13.5 历史测量并标明
+  基线；独立任务生成新统计/快照/包装版本，manifest 的目标版本/revision 已由规划阶段暂存。
 
 ## 升级步骤
 

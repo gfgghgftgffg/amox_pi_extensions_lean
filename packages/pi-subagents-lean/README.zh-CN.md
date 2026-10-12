@@ -50,22 +50,42 @@ node scripts/install-extension.mjs pi-subagents-lean
 但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
 
+## 本次审查：0.20.0 → 0.21.0
+
+四个上游工具的名称、参数 Schema、默认值与执行签名不变，lean 入口无需修改。高级选项仍放入
+`input` 并通过 `help` 查询；会话始终只暴露一个 `subagent` 工具。
+
+后台 Agent、分组和 Workflow 的完成通知现在进入 steering 队列：忙碌父会话在当前工具批次结束后、
+下一次模型调用前收到，不打断正在运行的工具。前台新派生任务运行中可在编辑器有焦点时按 `ctrl+b`
+将全部前台任务转后台，或在会话 viewer 按 `b` 将单个任务转后台；调用返回 ID，任务继续执行并在完成时通知。
+viewer 也会遵循 Pi 的全屏模式与滚动条设置。
+
+Agent 文件的 `isolated` 现在对 Workflow 子任务、mention 和 RPC 都生效，文件设置优先于调用参数。
+文件的 `isolation` 同样覆盖 mention/RPC，指定 worktree 而目录不是可用 git 仓库时会启动失败；
+Workflow 的 worktree 仍只由脚本选项决定。子会话继承父会话项目 trust，跨目录派生不会自动信任目标目录。
+`extensions: true` 的子会话现在加载 Pi 内置 codemode、tool search 和 MCP，每个子会话启动自己的 MCP
+服务器；可用 Agent 的 `exclude_extensions: builtin:mcp`、全局 `-builtin:mcp` 或 `--no-mcp` 关闭。
+子工具作用域尊重 exposure/defaultActive，并检查嵌套的 `ctx.executeTool` 调用。
+
+源码证据与测试边界见 [MAINTENANCE.md](MAINTENANCE.md)。新增离线回归覆盖 Workflow 隔离透传和子工具
+暴露／作用域。本 agent 阶段**未运行**安装、测试、契约捕获或生产安装验证，交给独立任务执行；发版仍需人工确认。
+
 ## 上下文占用（字符代理）
 
-由 [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs) 在隔离的 Pi 1.1.0 print 模式会话中测量
-（原始数据见 [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)）。估算方式为固定字符代理
-`ceil(字符数 / 4)`，**不是** 模型 tokenizer 计费值。
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.1 | 270 |
+| @tintinweb/pi-subagents | 0.21.0 | 8415 |
 
-| 版本 | 注册工具 | 注册合计 | 绑定时激活 |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/pi-subagents-lean@0.1.0` | `subagent` | **270** | **270** |
-| 上游 `@tintinweb/pi-subagents@0.20.0` | `Agent` 2,533 + `SubagentWorkflow` 5,584 + `get_subagent_result` 158 + `steer_subagent` 159 | **8,415** | **8,415** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.0`
-* 上游运行时：锁定 `@tintinweb/pi-subagents@0.20.0`（精确版本）
-* 要求 Pi `>=1.1.0`（上游 peer 下限）；已测试 Pi `1.1.0`、Node `22.22.1`
+* 包装层：`0.1.1`
+* 上游运行时：锁定 `@tintinweb/pi-subagents@0.21.0`（精确版本）
+* 要求 Pi `>=1.1.0`（上游 peer 下限不变）；此前基线测试使用 Pi `1.1.0`、Node `22.22.1`，本次候选等待独立任务验证。
 
 ## 开发
 

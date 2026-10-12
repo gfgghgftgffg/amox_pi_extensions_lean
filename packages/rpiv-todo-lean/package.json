@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/rpiv-todo-lean",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Lean Pi todo extension: the full @juicesharp/rpiv-todo runtime with a compact flat schema and per-session RPC overlay handling preserved.",
   "license": "MIT",
@@ -46,8 +46,8 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "@juicesharp/rpiv-i18n": "2.13.5",
-    "@juicesharp/rpiv-todo": "2.13.5"
+    "@juicesharp/rpiv-i18n": "2.13.8",
+    "@juicesharp/rpiv-todo": "2.13.8"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",

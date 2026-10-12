@@ -56,22 +56,48 @@ preserves that discovery mechanism. After installation: review discovered agent 
 their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, and watch for naming
 collisions with the built-in `general-purpose`, `Explore`, and `Plan` types.
 
+## Reviewed upgrade: 0.20.0 → 0.21.0
+
+The four upstream tools, parameter schemas, defaults, and execution signatures are unchanged; the
+lean entry is unchanged. Advanced options still go through `input` and `help`, and the session
+continues to expose one `subagent` tool.
+
+Background agent, group, and workflow completions now enter the steering queue: a busy parent sees
+one after its current tool batch and before the next model call. Running tools are not interrupted.
+A running foreground spawn can be handed to the background with `ctrl+b` while the editor has focus
+(all foreground spawns), or `b` in its conversation viewer (one spawn); it returns an ID and later
+notifies on completion. The viewer also follows Pi's fullscreen mode and scrollbar setting.
+
+Agent-file `isolated` now applies to workflow children, mentions, and RPC spawns; file values override
+caller values. File `isolation` applies to mentions/RPC too, and a requested worktree fails to start
+outside a usable git repository. Workflow worktrees remain controlled by the script's option.
+Children inherit the parent's project trust; a different spawn directory is not implicitly trusted.
+With `extensions: true`, children load Pi's built-in codemode, tool search, and MCP, each with its
+own MCP servers. Opt out with agent `exclude_extensions: builtin:mcp`, global `-builtin:mcp`, or
+`--no-mcp`. Child tool scope respects exposure/defaultActive and also gates nested `ctx.executeTool`
+calls.
+
+Source review and test scope are recorded in [MAINTENANCE.md](MAINTENANCE.md). New offline regression
+tests cover workflow isolation forwarding and child tool exposure/scope. Installation, tests, contract
+capture, and production-install verification have **not run in this agent stage**; they belong to the
+independent validation job. Release still requires human approval.
+
 ## Context footprint (character proxy)
 
-Measured in isolated Pi 1.1.0 print-mode sessions by [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs)
-(see [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)); estimator is a fixed
-`ceil(characters / 4)` proxy, **not** provider tokenization or billing.
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.1 | 270 |
+| @tintinweb/pi-subagents | 0.21.0 | 8415 |
 
-| Variant | Registered tools | Registered | Active at bind |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/pi-subagents-lean@0.1.0` | `subagent` | **270** | **270** |
-| Upstream `@tintinweb/pi-subagents@0.20.0` | `Agent` 2,533 + `SubagentWorkflow` 5,584 + `get_subagent_result` 158 + `steer_subagent` 159 | **8,415** | **8,415** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.0`
-* Upstream runtime: pinned to `@tintinweb/pi-subagents@0.20.0` (exact)
-* Requires Pi `>=1.1.0` (upstream peer floor); tested with Pi `1.1.0`, Node `22.22.1`
+* Wrapper: `0.1.1`
+* Upstream runtime: pinned to `@tintinweb/pi-subagents@0.21.0` (exact)
+* Requires Pi `>=1.1.0` (unchanged upstream peer floor). Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 
 ## Development
 

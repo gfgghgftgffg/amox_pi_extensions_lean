@@ -47,18 +47,18 @@ node scripts/install-extension.mjs pi-web-access-lean
 
 ## 上下文占用（字符代理）
 
-由 [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs) 在隔离的 Pi 1.1.0 print 模式会话中测量
-（原始数据见 [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)）。估算方式为固定字符代理
-`ceil(字符数 / 4)`，**不是** 模型 tokenizer 计费值。
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.1 | 149 |
+| pi-web-access | 0.39.0 | 2669 |
 
-| 版本 | 注册工具 | 注册合计 | 绑定时激活 |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/pi-web-access-lean@0.1.0` | `web_access` | **149** | **149** |
-| 上游 `pi-web-access@0.39.0` | `web_search` 901 + `source_check` 607 + `fetch_content` 706 + `get_search_content` 389（另有 `web_enable` 66） | **2,669** | **2,603** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.0`
+* 包装层：`0.1.1`
 * 上游运行时：锁定 `pi-web-access@0.39.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

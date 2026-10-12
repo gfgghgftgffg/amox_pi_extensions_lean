@@ -1,6 +1,6 @@
 # amox-pi-extensions-lean
 
-三个 Pi 扩展的 lean 版本：`pi-web-access`、`rpiv-todo` 和 `pi-subagents`。按当前快照的字符数估算，工具提示词与 schema 的总上下文占用减少约 **94.4%**（非实际计费 token）。
+三个 Pi 扩展的 lean 版本：`pi-web-access`、`rpiv-todo` 和 `pi-subagents`。按此前已接受快照的字符数估算，工具提示词与 schema 的总上下文占用减少约 **94.4%**（非实际计费 token）。本次候选固定 subagents 0.21.0、todo/i18n 2.13.8，web-access 保持 0.39.0；新的字符统计与测试结果由独立验证任务生成，审查记录见 [maintenance/agent-review.md](maintenance/agent-review.md)。
 
 基于 [kunkun9527 的 lean 指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md)和原作者的 lean 扩展：精简工具描述与 schema，合并同类工具，完整说明按需获取；实际执行仍调用上游代码，不复制或修改上游实现。
 

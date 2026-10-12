@@ -8,7 +8,7 @@
   "upstream": {
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.20.0",
+      "version": "0.21.0",
       "entry": "node_modules/@tintinweb/pi-subagents/src/index.ts",
       "registeredTools": [
         "Agent",
@@ -792,7 +792,7 @@
     },
     "@juicesharp/rpiv-todo": {
       "package": "@juicesharp/rpiv-todo",
-      "version": "2.13.5",
+      "version": "2.13.8",
       "entry": "node_modules/@juicesharp/rpiv-todo/index.ts",
       "registeredTools": [
         "todo"
@@ -917,7 +917,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -998,7 +998,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1056,7 +1056,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

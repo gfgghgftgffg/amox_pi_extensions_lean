@@ -31,22 +31,34 @@ node scripts/install-extension.mjs rpiv-todo-lean
 通常需要显式传入 `action`；省略时封装会依据 `subject` 推断 `create`，或依据 `id` 加可变字段推断
 `update`，其余情况交由上游报错。
 
+## 本次审查：2.13.5 → 2.13.8
+
+上游 2.13.6–2.13.8 的 CHANGELOG 条目没有列出工具或行为变化。核对工具 Schema、注册／执行路径、
+reducer、回放／store、覆盖层私有字段、配置适配器和 i18n loader／bridge 后，这些审查面源码保持一致。
+lean 入口无需修改：仍为一个 `todo` 工具、六个 action、同样的 action 推断与逐会话 RPC 覆盖层。
+create 仍默认 `pending`；list 默认排除 deleted tombstone，`includeDeleted: true` 可包含；clear 重置 ID 为 1。
+持久化键仍为 `rpiv-todo-state`，继续兼容历史 toolResult 回放。
+
+配套 i18n 固定版本同步到 2.13.8，上游传递依赖 rpiv-config 范围同步到 `^2.13.8`。
+源码 revision 与审查边界见 [MAINTENANCE.md](MAINTENANCE.md)，既有回归断言全部保留。
+本 agent 阶段**未运行**安装、测试、契约捕获或生产安装验证，交给独立任务执行；发版仍需人工确认。
+
 ## 上下文占用（字符代理）
 
-由 [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs) 在隔离的 Pi 1.1.0 print 模式会话中测量
-（原始数据见 [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)）。估算方式为固定字符代理
-`ceil(字符数 / 4)`，**不是** 模型 tokenizer 计费值。
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.1 | 247 |
+| @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
-| 版本 | 工具 | 注册合计 | 绑定时激活 |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/rpiv-todo-lean@0.1.0` | `todo` | **247** | **247** |
-| 上游 `@juicesharp/rpiv-todo@2.13.5` | `todo` | **882** | **882** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.0`
-* 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.5` 与 `@juicesharp/rpiv-i18n@2.13.5`（精确版本）
-* 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
+* 包装层：`0.1.1`
+* 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.8` 与 `@juicesharp/rpiv-i18n@2.13.8`（精确版本）
+* 此前基线测试使用 Pi `1.1.0`、Node `22.22.1`；本次候选等待独立任务验证。
 
 ## 开发
 

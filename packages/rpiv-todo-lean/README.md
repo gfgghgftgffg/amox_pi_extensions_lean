@@ -36,22 +36,37 @@ The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`,
 `action` is normally required; when it is omitted the facade infers `create` from `subject` or
 `update` from `id` plus a mutable field, and otherwise lets upstream report the error.
 
+## Reviewed upgrade: 2.13.5 → 2.13.8
+
+Upstream's 2.13.6–2.13.8 changelog entries contain no tool or behavior changes. The reviewed tool
+schema, registration/execute path, reducer, replay/store, overlay private fields, configuration
+adapter, and i18n loader/bridge are unchanged. The lean entry remains unchanged: one `todo` tool,
+six actions, the same action inference, and the same per-session RPC overlays. Create still defaults
+to `pending`; list excludes tombstones unless `includeDeleted: true`; clear resets task IDs to 1.
+The persistence key remains `rpiv-todo-state`, with legacy tool-result replay retained.
+
+The coupled i18n pin advances to 2.13.8; upstream's transitive rpiv-config range advances to
+`^2.13.8`. See [MAINTENANCE.md](MAINTENANCE.md) for source revisions and review limits. All existing
+regression assertions are preserved. Installation, tests, contract capture, and production-install
+verification have **not run in this agent stage**; they belong to the independent validation job.
+Release still requires human approval.
+
 ## Context footprint (character proxy)
 
-Measured in isolated Pi 1.1.0 print-mode sessions by [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs)
-(see [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)); estimator is a fixed
-`ceil(characters / 4)` proxy, **not** provider tokenization or billing.
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.1 | 247 |
+| @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
-| Variant | Tool | Registered | Active at bind |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/rpiv-todo-lean@0.1.0` | `todo` | **247** | **247** |
-| Upstream `@juicesharp/rpiv-todo@2.13.5` | `todo` | **882** | **882** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.0`
-* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.5` and `@juicesharp/rpiv-i18n@2.13.5` (exact)
-* Pi host tested: `1.1.0`; Node `22.22.1`
+* Wrapper: `0.1.1`
+* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
+* Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 
 ## Development
 

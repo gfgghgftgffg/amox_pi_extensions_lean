@@ -52,18 +52,18 @@ names are unclear.
 
 ## Context footprint (character proxy)
 
-Measured in isolated Pi 1.1.0 print-mode sessions by [`scripts/capture-contracts.mjs`](../../scripts/capture-contracts.mjs)
-(see [`maintenance/tool-contracts.json`](../../maintenance/tool-contracts.json)); estimator is a fixed
-`ceil(characters / 4)` proxy, **not** provider tokenization or billing.
+<!-- amox-measurement:start -->
+| Package | Version | Registered character proxy |
+| --- | --- | ---: |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.1 | 149 |
+| pi-web-access | 0.39.0 | 2669 |
 
-| Variant | Registered tools | Registered | Active at bind |
-| --- | --- | ---: | ---: |
-| Lean `@gfgghgftgffg/pi-web-access-lean@0.1.0` | `web_access` | **149** | **149** |
-| Upstream `pi-web-access@0.39.0` | `web_search` 901 + `source_check` 607 + `fetch_content` 706 + `get_search_content` 389 (+ `web_enable` 66) | **2,669** | **2,603** |
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.0`
+* Wrapper: `0.1.1`
 * Upstream runtime: pinned to `pi-web-access@0.39.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

@@ -12,12 +12,13 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.20.0`（精确固定；`dependencies`）。
-- 0.20.0 要求 Pi `>=1.1.0`（上游 peer 下限从 0.84 提升），并把 `typebox` v1 作为 `*` peer；
-  `@sinclair/typebox` 已从上游依赖中移除。
+- `@tintinweb/pi-subagents@0.21.0`（精确固定；`dependencies`；此前为 0.20.0）。
+- 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
+  `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
-- 开发/测试依赖：Pi 1.1.0、typebox 1.3.27、jiti 2.7.0、TypeScript 5.9.3（不再使用 @sinclair/typebox）。
+- 当前候选开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
+  （由规划阶段暂存，独立任务验证；此前为 typebox 1.3.27 / TypeScript 5.9.3）。
 
 ## 相对基线的精确改动（最小适配）
 
@@ -47,6 +48,47 @@
   未拦截该调用；因 facade 工具名不同，不会影响 `subagent`。
 - 上游 0.20.0 的 typebox v1 `Value.Errors` 使用 `instancePath`（旧版为 `path`）。
 
+## 本次审查：0.20.0 → 0.21.0
+
+- 审查 npm 发布源码：`13106ab6f608b3acc54185da5299ee7fbaabb6b9` →
+  `26c23bb7db7b181ff3f4233cdc4e5bc9fefb6f04`，不是远端 HEAD
+  `e819a82ae364a2b0432881b89b0c784b413a88c1`。依据为收集的 `sources.json`、新旧
+  `package.json` / `CHANGELOG.md` 与下述源码。
+- 新旧 `src/index.ts` 的四个工具名、参数类型、required、条件注册、五参数执行签名与渲染签名
+  不变。`Agent` 的 `subagent_type` 描述格式仍可解析；未新增 `prepareArguments`。
+  `withUsageReporting` 仍在注册前包装执行，facade 捕获并透传这个对象。
+- 参数面：`run` 为 prompt/description/subagent_type（必填），name/model/thinking/max_turns/
+  run_in_background/resume/isolated/inherit_context（可选），isolation/schedule（按设置加入）；
+  `result` 为 agent_id + wait/verbose；`steer` 为 agent_id/message；`workflow` 为
+  script/scriptPath/name/args/resumeFromRunId/title/description。没有新增或删除。
+- 默认值不变：顶层默认后台，inherit_context=false，wait/verbose=false，isolation 默认 off；
+  `src/invocation-config.ts` 的 frontmatter 优先级和 schema 完全一致。
+- 行为变化由依赖承接：后台 agent/group/workflow 通知从 followUp 改为 steer，在忙碌父会话当前
+  工具批次结束后、下一次模型调用前到达；不打断正在执行的工具。前台新 spawn 可用 ctrl+b
+  （编辑器焦点下全部）或 viewer 的 b（单个）转后台，返回后台 ID 并继续运行。
+- `src/workflow/host.ts` 现在透传 agent 文件的 isolated；`src/agent-runner.ts` 统一使用
+  agentConfig.isolated ?? options.isolated；`src/agent-manager.ts` 统一采用文件 isolation，
+  workflow 子任务除外（仍由脚本决定 worktree）。因此 mention/RPC 文件指定 worktree 在非 git
+  目录现在启动失败，文件 false/off 也能否决 caller 的设置。
+- 子会话现在装载宿主的 builtin:codemode/tool-search/mcp；extensions=true 会各自启动 MCP
+  服务器，可用 exclude_extensions: builtin:mcp、全局 -builtin:mcp 或 --no-mcp 禁用。
+  子会话继承父会话项目 trust；跨目录 spawn 的 cwd 不自动获得 trust。
+- 子工具作用域尊重 exposure/defaultActive，允许显式或 tool_search 激活的范围内工具；
+  ctx.executeTool 的嵌套调用也经过作用域检查。全屏 viewer、滚轮/滚动条和 FleetView 修复仍由上游渲染。
+- 最小适配结论：`index.ts` 前后完全相同，保留 prompt/schema/execute 与单一 subagent 工具。
+  高级字段仍由 input/help 暴露。现有“完成时通知、不轮询”描述与新行为一致，不需要加长 prompt。
+  lean 作者 commit 前后同为 `83f1454b26c32dd2a674385df55955ac9d3a45c3`，无新改动可复用或拒绝。
+- 新增 `tests/upstream-021-regression.test.mjs`：facade 对前台 handoff update、后台结果（含 usage）
+  和 steering 通知的完整透传及工具名稳定；真实上游作用域函数的 exposure/defaultActive、
+  延迟注册、激活保留、直接调用 veto 与 nested gate；真实 workflow host 的 isolated 三态透传
+  和脚本 worktree 优先规则。所有既有测试与断言保留；旧测试名称中的 0.20.0 为原始编写基线，
+  实际加载 package.json 中固定的当前版本。
+- 本阶段未运行安装、测试、契约捕获或字符统计。README 表格保留 0.20.0 历史测量并标明基线，
+  新测量与包装版本由独立验证任务同步；manifest 的目标版本/revision 已由规划阶段暂存。
+  独立任务须运行 npm ci、npm run check、npm run contracts、npm run contracts:check 与
+  node scripts/verify-production-install.mjs。交互式 ctrl+b、真实 MCP/provider 与 trust 端到端
+  行为未在本阶段实测；新增测试覆盖的是无凭据内部边界，不能替代这些场景。
+
 ## 升级步骤
 
 1. `npm view @tintinweb/pi-subagents version`，阅读上游 `CHANGELOG.md`，对比 0.19.0 基线源码。
@@ -61,5 +103,7 @@
 
 - `Agent` 类型列表在扩展启动时解析一次；启动后新增/删除 agent 定义需要重新加载扩展。
 - 上游若再次更换 Schema 构建库（如回到 `@sinclair/typebox`），需要同步切换本包校验导入。
-- `workflowsEnabled: false` 或冲突退出时上游不注册 `SubagentWorkflow`，此时 `op: "workflow"` 返回不可用。
+- `workflowsEnabled: false` 在启动注册前生效时不捕获 `SubagentWorkflow`，`op: "workflow"` 返回不可用。
+  会话启动时的冲突退出仍只尝试从宿主激活集移除原工具名；facade 捕获的对象保持不变，
+  不应把这种退出描述为 facade 工具被注销。
 - 字符代理值 `ceil(chars / 4)` 只用于横向比较，不代表真实模型计费 token。

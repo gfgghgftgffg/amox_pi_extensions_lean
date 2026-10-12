@@ -240,11 +240,20 @@ export async function compareLockfile({ baselineLock, candidateLock, candidateWo
     // Root workspace links would traverse the bumped workspace again. Skip
     // links here; the unchanged workspace's dependencies were seeded above.
     const protectedPaths = baselineClosure(oldPackages, unrelatedRoots.filter((path) => !oldPackages[path]?.link));
-    // Peers are not part of the update permission. Freeze their transitive
-    // runtime graphs too, even when referenced only by an updated target.
-    for (const path of oldClosure) {
+    // Peers are not part of the update permission. Freeze the baseline peer
+    // targets and their transitive runtime graphs reachable from BOTH the
+    // updated target closure AND every unrelated protected path. Newly
+    // protected peer consumers can declare further peers, so process until a
+    // fixed point; the live-growing Set also terminates peer/runtime cycles.
+    // This freezes peer-consumer subgraphs, not the whole old target graph.
+    const peerConsumers = new Set([...oldClosure, ...protectedPaths]);
+    for (const path of peerConsumers) {
       const peerRoots = Object.keys(oldPackages[path]?.peerDependencies ?? {}).map((name) => resolveDependency(oldPackages, path, name));
-      for (const peerPath of baselineClosure(oldPackages, peerRoots)) protectedPaths.add(peerPath);
+      for (const peerPath of baselineClosure(oldPackages, peerRoots)) {
+        if (protectedPaths.has(peerPath)) continue;
+        protectedPaths.add(peerPath);
+        peerConsumers.add(peerPath);
+      }
     }
     for (const [path, record] of Object.entries(oldPackages)) {
       for (const field of ["dependencies", "optionalDependencies", "devDependencies", "peerDependencies"]) {

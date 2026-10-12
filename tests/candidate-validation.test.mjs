@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash } from "node:crypto";
-import { cpSync, lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -19,6 +19,7 @@ import {
   buildCandidateArtifact,
   validateCandidateArtifact as validateActualCandidate,
 } from "../scripts/lib/candidate.mjs";
+import { compareLockfile } from "../scripts/lib/lock-validation.mjs";
 import { fixtureRegistryMetadata, fixtureDist } from "./helpers/registry-fixture.mjs";
 import { serializeJson } from "../scripts/lib/upstream-plan.mjs";
 
@@ -564,6 +565,133 @@ test("independent lock smuggling probes fail even with a coherent trusted target
       assert.deepEqual(result.writes, []);
     }
   } finally { rmSync(repo, { recursive: true, force: true }); }
+});
+
+/** Minimal fixture for the peer/shared graph: an updated target wrapper
+ * resolves primary -> shared, while an unrelated wrapper consumes its
+ * baseline graph through a peerDependency. baselineClosure does not traverse
+ * peers, so the freeze must follow peer edges explicitly. `nested` adds a
+ * peer -> runtime-closure -> peer chain (unrelated -peer-> peer-a -runtime->
+ * peer-a-dep -peer-> shared) plus a peer cycle between the protected
+ * peer-a-dep and peer-b records to exercise the fixed-point traversal.
+ */
+function peerGraphPackages({ withUnrelatedPeer = true, nested = false } = {}) {
+  const rec = (name, version, extra = {}) => ({ version, ...fixtureDist(name, version), ...extra });
+  const packages = {
+    "": { name: "fixture", version: "1.0.0" },
+    "packages/target": { name: "target-wrapper", version: "1.0.0", dependencies: { primary: "1.0.0" } },
+    "node_modules/primary": rec("primary", "1.0.0", { dependencies: { shared: "^1.0.0" } }),
+    "node_modules/shared": rec("shared", "1.0.0"),
+  };
+  if (nested) {
+    packages["node_modules/peer-a"] = rec("peer-a", "1.0.0", { dependencies: { "peer-a-dep": "1.0.0" } });
+    packages["node_modules/peer-a-dep"] = rec("peer-a-dep", "1.0.0", { peerDependencies: { shared: "^1.0.0", "peer-b": "^1.0.0" } });
+    packages["node_modules/peer-b"] = rec("peer-b", "1.0.0", { peerDependencies: { "peer-a-dep": "^1.0.0" } });
+  }
+  if (withUnrelatedPeer) {
+    packages["packages/unrelated"] = { name: "unrelated-wrapper", version: "1.0.0", dependencies: { unrelated: "1.0.0" } };
+    packages["node_modules/unrelated"] = rec("unrelated", "1.0.0", { peerDependencies: nested ? { "peer-a": "^1.0.0" } : { shared: "^1.0.0" } });
+  }
+  return packages;
+}
+
+function peerGraphLocks(options) {
+  const baselineLock = { name: "fixture", version: "1.0.0", lockfileVersion: 3, packages: peerGraphPackages(options) };
+  const candidateLock = structuredClone(baselineLock);
+  candidateLock.packages["packages/target"].dependencies.primary = "2.0.0";
+  candidateLock.packages["node_modules/primary"] = { version: "2.0.0", ...fixtureDist("primary", "2.0.0"), dependencies: { shared: "^1.0.0" } };
+  candidateLock.packages["node_modules/shared"] = { version: "1.1.0", ...fixtureDist("shared", "1.1.0") };
+  return { baselineLock, candidateLock };
+}
+
+/** Registry metadata derived from the trusted fixture formula, never from the candidate. */
+function peerGraphMetadata(name, version, withGitHead = false) {
+  return {
+    name,
+    version,
+    dist: { tarball: fixtureDist(name, version).resolved, integrity: fixtureDist(name, version).integrity },
+    ...(name === "primary" ? { dependencies: { shared: "^1.0.0" }, ...(withGitHead ? { gitHead: "b".repeat(40) } : {}) } : {}),
+  };
+}
+
+async function comparePeerGraph(options) {
+  const { baselineLock, candidateLock } = peerGraphLocks(options);
+  const errors = [];
+  await compareLockfile({
+    baselineLock,
+    candidateLock,
+    candidateWorkspaces: new Map([["target", { dependencies: { primary: "2.0.0" } }]]),
+    manifestEntries: new Map([["target", { path: "packages/target", upstreamPackage: "primary" }]]),
+    targetVersions: new Map([["target", "2.0.0"]]),
+    errors,
+    resolveRegistryMetadata: async (name, version) => peerGraphMetadata(name, version),
+  });
+  return errors;
+}
+
+test("unrelated transitive peer consumers freeze shared target records (independent probe graph)", async () => {
+  assert.deepEqual(await comparePeerGraph({ withUnrelatedPeer: false }), [], "same changed target closure without a peer consumer stays accepted");
+  const rejected = await comparePeerGraph({ withUnrelatedPeer: true });
+  assert.ok(rejected.some((error) => /node_modules\/shared: 无关\/共享 lock record/.test(error)), rejected.join("\n"));
+});
+
+test("peer freeze reaches peers of newly protected runtime closures and terminates peer cycles", async () => {
+  // shared is reachable from the unrelated graph only through
+  // unrelated -peer-> peer-a -runtime-> peer-a-dep -peer-> shared, and
+  // peer-a-dep <-> peer-b is a peer cycle among newly protected records.
+  assert.deepEqual(await comparePeerGraph({ withUnrelatedPeer: false, nested: true }), [], "nested graph without the unrelated consumer stays accepted");
+  const rejected = await comparePeerGraph({ withUnrelatedPeer: true, nested: true });
+  assert.ok(rejected.some((error) => /node_modules\/shared: 无关\/共享 lock record/.test(error)), rejected.join("\n"));
+});
+
+test("full validator rejects unrelated-peer shared churn but accepts the same closure without the peer consumer", async () => {
+  const repo = fixtureRepo();
+  try {
+    const manifest = { schemaVersion: 1, monorepo: {}, packages: [{ id: "target", path: "packages/target", upstreamPackage: "primary", upstreamVersion: "1.0.0", upstreamGitHead: "a".repeat(40) }] };
+    const nextManifest = structuredClone(manifest);
+    nextManifest.packages[0].upstreamVersion = "2.0.0";
+    nextManifest.packages[0].upstreamGitHead = "b".repeat(40);
+    const workspace = { name: "target-wrapper", version: "1.0.0", dependencies: { primary: "2.0.0" } };
+    for (const withUnrelatedPeer of [false, true]) {
+      const { baselineLock, candidateLock } = peerGraphLocks({ withUnrelatedPeer });
+      writeFileSync(join(repo, "maintenance/manifest.json"), serializeJson(manifest));
+      writeFileSync(join(repo, "package-lock.json"), serializeJson(baselineLock));
+      mkdirSync(join(repo, "packages/target"), { recursive: true });
+      writeFileSync(join(repo, "packages/target/package.json"), serializeJson({ ...workspace, dependencies: { primary: "1.0.0" } }));
+      const artifact = buildCandidateArtifact({
+        baseCommit,
+        status: "drift",
+        files: [
+          { path: "package-lock.json", content: serializeJson(candidateLock) },
+          { path: "packages/target/package.json", content: serializeJson(workspace) },
+          { path: "maintenance/manifest.json", content: serializeJson(nextManifest) },
+          { path: "maintenance/update-report.md", content: reportFor("drift") },
+        ],
+      });
+      const result = await validateActualCandidate({
+        artifact,
+        repoRoot: repo,
+        headSha: baseCommit,
+        resolveRegistryMetadata: async (name, version) => peerGraphMetadata(name, version, true),
+      });
+      if (withUnrelatedPeer) {
+        assert.equal(result.ok, false, "unrelated peer consumer must reject shared churn at the artifact layer");
+        assert.ok(result.errors.some((error) => /node_modules\/shared: 无关\/共享 lock record/.test(error)), result.errors.join("\n"));
+        assert.deepEqual(result.writes, []);
+      } else {
+        assert.deepEqual(result.errors, []);
+        assert.equal(result.ok, true);
+        assert.deepEqual(result.writes.map((write) => write.path).sort(), [
+          "maintenance/manifest.json",
+          "maintenance/update-report.md",
+          "package-lock.json",
+          "packages/target/package.json",
+        ]);
+      }
+    }
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
 
 test("justified dependency closure additions work; invented dependencies and extra records fail", async () => {

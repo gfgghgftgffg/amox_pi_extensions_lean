@@ -21,6 +21,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
+import { checkedSnapshotOutput, writeSnapshotCopy } from "./lib/snapshot-output.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -220,6 +221,7 @@ function printReport(snapshot) {
   }
 }
 
+if (mode === "output") checkedSnapshotOutput(outputPath, snapshotPath);
 const targets = buildTargets();
 const captures = targets.map(captureTarget);
 const snapshot = snapshotFrom(captures);
@@ -230,13 +232,8 @@ if (mode === "report") {
 }
 
 if (mode === "output") {
-  const resolvedOutput = resolve(outputPath);
-  if (resolvedOutput === resolve(snapshotPath)) {
-    console.error(`${relative(repoRoot, snapshotPath)} 是已接受快照；--output 不会静默改写它，请显式使用 --write`);
-    process.exit(1);
-  }
-  mkdirSync(dirname(resolvedOutput), { recursive: true });
-  writeFileSync(resolvedOutput, `${JSON.stringify(snapshot, null, 2)}\n`);
+  const resolvedOutput = checkedSnapshotOutput(outputPath, snapshotPath);
+  writeSnapshotCopy({ outputPath: resolvedOutput, baselinePath: snapshotPath, content: `${JSON.stringify(snapshot, null, 2)}\n` });
   console.log(`Wrote snapshot copy: ${relative(repoRoot, resolvedOutput)}`);
   process.exit(0);
 }

@@ -10,7 +10,8 @@ import { isExactStableVersion, looksLikePrerelease } from "./semver.mjs";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 
-const HEX40 = /^[0-9a-f]{40}$/;
+// Strict end-of-string: JavaScript $ also accepts a trailing newline.
+const HEX40 = /^[0-9a-f]{40}(?![\s\S])/;
 
 /** Sorted unique dependency names pinned across all workspace packages. */
 export function trackedDependencies(workspaces) {
@@ -45,6 +46,7 @@ function assertMetadataShape(metadata, origin) {
     if (!value || typeof value !== "object" || !isExactStableVersion(value.latestStable)) {
       throw new Error(`${origin}: metadata.npm[${name}].latestStable must be an exact stable X.Y.Z version`);
     }
+    if (value.gitHead !== undefined && !HEX40.test(value.gitHead)) throw new Error(`${origin}: metadata.npm[${name}].gitHead must be a full publication commit`);
   }
   for (const [url, value] of Object.entries(metadata.git)) {
     if (!value || typeof value !== "object" || typeof value.head !== "string" || !HEX40.test(value.head)) {
@@ -93,10 +95,12 @@ async function fetchNpmLatest({ name, fetchImpl, registry }) {
   if (!isExactStableVersion(latest)) {
     throw new Error(`${looksLikePrerelease(latest) ? "拒绝预发布版本" : "latest 不是精确稳定版本"} (${name}): ${latest}`);
   }
-  if (Array.isArray(body.versions) && !body.versions.includes(latest)) {
-    throw new Error(`npm registry latest ${latest} 不在 versions 列表中 (${name})`);
+  if (!body.versions || typeof body.versions !== "object" || Array.isArray(body.versions) || !body.versions[latest] || body.versions[latest].name !== name || body.versions[latest].version !== latest) {
+    throw new Error(`npm registry latest ${latest} 缺少 version-specific metadata (${name})`);
   }
-  return latest;
+  const gitHead = body.versions[latest].gitHead;
+  if (!HEX40.test(gitHead ?? "")) throw new Error(`npm publication gitHead 缺失/非法 (${name}@${latest})；需人工审查`);
+  return { latestStable: latest, gitHead };
 }
 
 /** Default git HEAD resolver: `git ls-remote <url> HEAD`. */
@@ -132,7 +136,7 @@ export async function fetchUpstreamMetadata({
   }
   const npm = {};
   for (const name of trackedDependencies(workspaces)) {
-    npm[name] = { latestStable: await fetchNpmLatest({ name, fetchImpl, registry }) };
+    npm[name] = await fetchNpmLatest({ name, fetchImpl, registry });
   }
   const git = {};
   for (const url of requiredGitUrls(manifest)) {

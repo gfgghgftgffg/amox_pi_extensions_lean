@@ -86,6 +86,7 @@ test("release workflow is manual-only, environment gated, and never publishes to
   assert.doesNotMatch(text, /\n {2}schedule:\n/);
   assert.match(text, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(text, /environment: release/);
+  assert.match(text, /concurrency:\n {2}group: release\n {2}cancel-in-progress: false/);
   assert.match(text, /node scripts\/create-release\.mjs --verify-only/);
   assert.match(text, /node scripts\/create-release\.mjs$/m);
   assert.match(text, /GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);

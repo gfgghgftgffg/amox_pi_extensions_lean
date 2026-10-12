@@ -91,7 +91,8 @@ npm run maintenance:stage        # 在 .maintenance-candidate/ 生成候选与�
 - 发布（`.github/workflows/release.yml`）：仅手动、仅 `main`、需要 `release` environment 审批
   （在 Settings → Environments → release 配置 required reviewers 与仅允许 `main` 部署）；
   创建 tag/GitHub release 前先通过完整 CI/契约/生产/审计校验，永不 `npm publish`；
-  后续发版需先人工 bump 根 `package.json` 的 version，tag 在发布成功前不存在。
+  后续发版需先人工 bump 根 `package.json` 的 version；tag 原子预留到已验证 SHA 后才创建 release，
+  若 release 创建失败，tag 仍可能已存在，需人工恢复，自动化不会删除或重定向它。
 
 维护与最小改动流程、状态说明、维护提示词见 [docs/maintenance.md](docs/maintenance.md)；
 Actions 启用、environment 审批、分支保护与 `GITHUB_TOKEN` 创建 PR 的 CI 审批行为见

@@ -21,7 +21,8 @@ import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { contractsAreStructurallyEqual } from "./contract-diff.mjs";
+import { compareSnapshot } from "./snapshot-validation.mjs";
+import { compareLockfile, resolvePublicRegistryMetadata } from "./lock-validation.mjs";
 import { compareExactStableVersions, isExactStableVersion } from "./semver.mjs";
 
 export const CANDIDATE_KIND = "amox-lean-maintenance-candidate";
@@ -31,7 +32,8 @@ const LOCKFILE_PATH = "package-lock.json";
 const MANIFEST_PATH = "maintenance/manifest.json";
 const SNAPSHOT_PATH = "maintenance/tool-contracts.json";
 const REPORT_PATH = "maintenance/update-report.md";
-const HEX40 = /^[0-9a-f]{40}$/;
+// Strict end-of-string: JavaScript $ also accepts a trailing newline.
+const HEX40 = /^[0-9a-f]{40}(?![\s\S])/;
 const SHA256 = /^[0-9a-f]{64}$/;
 const MAX_FILE_BYTES = 5_000_000;
 const MAX_TOTAL_BYTES = 20_000_000;
@@ -169,6 +171,12 @@ function compareManifest(baselineManifest, candidateManifest, errors) {
     }
     changed.set(baselineEntry.id, { version: candidateEntry.upstreamVersion });
   }
+  const expected = structuredClone(baselineManifest);
+  for (const entry of expected.packages) {
+    const candidate = candidateManifest.packages.find((p) => p?.id === entry.id);
+    if (candidate) { entry.upstreamVersion = candidate.upstreamVersion; entry.upstreamGitHead = candidate.upstreamGitHead; }
+  }
+  if (!isDeepStrictEqual(expected, candidateManifest)) errors.push("maintenance/manifest.json: 额外/缺失字段、顺序或无关 metadata 变化不允许");
   return changed;
 }
 
@@ -226,97 +234,6 @@ function compareWorkspacePackage({ id, path, baselinePackage, candidatePackage, 
   return changed;
 }
 
-function compareLockfile({ baselineLock, candidateLock, candidateWorkspaces, manifestEntries, targetVersions, errors }) {
-  if (!isPlainObject(candidateLock)) {
-    errors.push(`${LOCKFILE_PATH}: 不是 JSON 对象`);
-    return;
-  }
-  if (candidateLock.lockfileVersion !== baselineLock.lockfileVersion) {
-    errors.push(`${LOCKFILE_PATH}: lockfileVersion 不允许变化`);
-  }
-  const baselineRoot = baselineLock.packages?.[""];
-  const candidateRoot = candidateLock.packages?.[""];
-  if (!isDeepStrictEqual(candidateRoot, baselineRoot)) {
-    errors.push(`${LOCKFILE_PATH}: 根 package 记录不允许变化`);
-  }
-  const candidatePackages = candidateLock.packages ?? {};
-  for (const key of Object.keys(candidatePackages)) {
-    if (key.includes("..") || key.startsWith("/") || key.includes("\\")) {
-      errors.push(`${LOCKFILE_PATH}: 非法 packages key ${key}`);
-    }
-  }
-  for (const [id, targetVersion] of targetVersions.entries()) {
-    const manifestEntry = manifestEntries.get(id);
-    const workspacePackage = candidateWorkspaces.get(id);
-    if (!manifestEntry || !workspacePackage) {
-      errors.push(`${LOCKFILE_PATH}: 缺少 ${id} 的候选 package.json，无法核对`);
-      continue;
-    }
-    const candidateEntry = candidatePackages[manifestEntry.path];
-    if (!candidateEntry) {
-      errors.push(`${LOCKFILE_PATH}: 缺少工作区记录 ${manifestEntry.path}`);
-      continue;
-    }
-    if (candidateEntry.name !== workspacePackage.name || candidateEntry.version !== workspacePackage.version) {
-      errors.push(`${LOCKFILE_PATH}: ${manifestEntry.path} 的 name/version 不允许变化`);
-    }
-    if (!isDeepStrictEqual(candidateEntry.dependencies, workspacePackage.dependencies)) {
-      errors.push(`${LOCKFILE_PATH}: ${manifestEntry.path} 的 dependencies 必须与 package.json 一致`);
-    }
-    const enginePath = `node_modules/${manifestEntry.upstreamPackage}`;
-    const engineEntry = candidatePackages[enginePath];
-    if (!engineEntry) {
-      errors.push(`${LOCKFILE_PATH}: 缺少 ${enginePath}`);
-    } else {
-      if (engineEntry.version !== targetVersion) {
-        errors.push(`${LOCKFILE_PATH}: ${enginePath} 版本必须为 ${targetVersion}，得到 ${engineEntry.version}`);
-      }
-      // The write-scoped job never runs npm; keep the lockfile entry from
-      // smuggling a local/relative/git source or a missing integrity hash.
-      const resolved = engineEntry.resolved;
-      if (typeof resolved !== "string" || !/^https?:\/\//.test(resolved)) {
-        errors.push(`${LOCKFILE_PATH}: ${enginePath} resolved 必须是 http(s) URL（得到 ${JSON.stringify(resolved)}）`);
-      }
-      if (typeof engineEntry.integrity !== "string" || !/^sha(1|256|512)-/.test(engineEntry.integrity)) {
-        errors.push(`${LOCKFILE_PATH}: ${enginePath} integrity 必须是 sha 校验值`);
-      }
-    }
-  }
-}
-
-function compareSnapshot({ baselineSnapshot, candidateSnapshot, candidateWorkspaces, manifestEntries, targetVersions, errors }) {
-  if (!isPlainObject(candidateSnapshot)) {
-    errors.push(`${SNAPSHOT_PATH}: 不是 JSON 对象`);
-    return;
-  }
-  try {
-    if (!contractsAreStructurallyEqual(baselineSnapshot, candidateSnapshot)) {
-      errors.push(`${SNAPSHOT_PATH}: 存在结构契约漂移时不允许更新已接受快照（必须由人工调整适配代码后重新生成）`);
-    }
-  } catch (error) {
-    errors.push(`${SNAPSHOT_PATH}: ${error.message}`);
-  }
-  if (candidateSnapshot.schemaVersion !== baselineSnapshot.schemaVersion) {
-    errors.push(`${SNAPSHOT_PATH}: schemaVersion 不允许变化`);
-  }
-  for (const [id, targetVersion] of targetVersions.entries()) {
-    const manifestEntry = manifestEntries.get(id);
-    const workspacePackage = candidateWorkspaces.get(id);
-    if (!manifestEntry || !workspacePackage) {
-      errors.push(`${SNAPSHOT_PATH}: 缺少 ${id} 的候选 package.json，无法核对`);
-      continue;
-    }
-    const upstreamRecord = candidateSnapshot.upstream?.[manifestEntry.upstreamPackage];
-    if (!upstreamRecord || upstreamRecord.version !== targetVersion) {
-      errors.push(`${SNAPSHOT_PATH}: upstream ${manifestEntry.upstreamPackage} 版本必须为 ${targetVersion}`);
-    }
-    const leanRecord = candidateSnapshot.lean?.[workspacePackage.name];
-    if (!leanRecord || leanRecord.version !== workspacePackage.version) {
-      errors.push(`${SNAPSHOT_PATH}: lean ${workspacePackage.name} 版本必须为 ${workspacePackage.version}`);
-    }
-  }
-}
-
 function checkReport({ content, status, errors }) {
   if (typeof content !== "string" || content.length === 0) {
     errors.push(`${REPORT_PATH}: 内容为空`);
@@ -337,7 +254,13 @@ function checkReport({ content, status, errors }) {
  *
  * @returns {{ok:boolean, errors:string[], writes:Array<{path:string,content:string}>}}
  */
-export function validateCandidateArtifact({ artifact, repoRoot, headSha }) {
+export async function validateCandidateArtifact({ artifact, repoRoot, headSha, resolveRegistryMetadata = resolvePublicRegistryMetadata }) {
+  const metadataCache = new Map();
+  const registryMetadata = (name, version) => {
+    const key = `${name}@${version}`;
+    if (!metadataCache.has(key)) metadataCache.set(key, Promise.resolve().then(() => resolveRegistryMetadata(name, version)));
+    return metadataCache.get(key);
+  };
   const errors = [];
   const writes = [];
   if (!isPlainObject(artifact)) {
@@ -445,6 +368,21 @@ export function validateCandidateArtifact({ artifact, repoRoot, headSha }) {
     if (contents.has(MANIFEST_PATH)) errors.push(`candidate.json: status=${status} 不允许修改 ${MANIFEST_PATH}`);
   }
 
+  // Publication commit is authority from version-specific public npm DATA,
+  // never live repository HEAD or artifact-supplied metadata.
+  for (const [id, version] of changedIds) {
+    const entry = manifestEntries.get(id);
+    try {
+      const metadata = await registryMetadata(entry.upstreamPackage, version);
+      const claimedHead = candidateManifest.packages.find((p) => p.id === id).upstreamGitHead;
+      if (metadata?.name !== entry.upstreamPackage || metadata?.version !== version || !HEX40.test(metadata.gitHead ?? "") || metadata.gitHead !== claimedHead) {
+        errors.push(`maintenance/manifest.json: ${id} upstreamGitHead 必须等于 trusted npm release gitHead（缺失时需人工处理）`);
+      }
+    } catch (error) {
+      errors.push(`maintenance/manifest.json: trusted npm release metadata 失败: ${error.message}`);
+    }
+  }
+
   const candidateWorkspaces = new Map();
   const packageChangedIds = new Set();
   for (const [path, id] of packageJsonPaths.entries()) {
@@ -480,9 +418,10 @@ export function validateCandidateArtifact({ artifact, repoRoot, headSha }) {
     else {
       const candidateLock = parseJsonFileFromContent(contents.get(LOCKFILE_PATH), LOCKFILE_PATH, errors);
       if (candidateLock) {
-        compareLockfile({
+        await compareLockfile({
           baselineLock,
           candidateLock,
+          resolveRegistryMetadata: registryMetadata,
           candidateWorkspaces,
           manifestEntries,
           targetVersions: changedIds,
@@ -514,16 +453,7 @@ export function validateCandidateArtifact({ artifact, repoRoot, headSha }) {
     else {
       const candidateSnapshot = parseJsonFileFromContent(contents.get(SNAPSHOT_PATH), SNAPSHOT_PATH, errors);
       if (candidateSnapshot) {
-        try {
-          if (!contractsAreStructurallyEqual(baselineSnapshot, candidateSnapshot)) {
-            errors.push(`${SNAPSHOT_PATH}: 存在结构契约漂移时不允许刷新快照`);
-          }
-        } catch (error) {
-          errors.push(`${SNAPSHOT_PATH}: ${error.message}`);
-        }
-        if (candidateSnapshot.schemaVersion !== baselineSnapshot.schemaVersion) {
-          errors.push(`${SNAPSHOT_PATH}: schemaVersion 不允许变化`);
-        }
+        compareSnapshot({ baselineSnapshot, candidateSnapshot, manifestEntries, targetVersions: new Map(), errors });
       }
     }
   }

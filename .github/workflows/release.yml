@@ -13,6 +13,12 @@ on:
 permissions:
   contents: read
 
+# Serialize manual releases, including environment approval waits. API ref
+# reservation remains create-only even against writers outside this workflow.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   verify:
     name: Verify immutable SHA (read-only)

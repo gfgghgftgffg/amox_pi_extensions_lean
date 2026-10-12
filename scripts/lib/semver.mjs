@@ -6,11 +6,13 @@
  * ranges silently. No external dependencies.
  */
 
-export const EXACT_STABLE_VERSION = /^\d+\.\d+\.\d+$/;
+export const EXACT_STABLE_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 /** True for an exact stable `X.Y.Z` version string. */
 export function isExactStableVersion(value) {
-  return typeof value === "string" && EXACT_STABLE_VERSION.test(value);
+  return typeof value === "string" && EXACT_STABLE_VERSION.test(value)
+    && value.split(".").every((part) => Number.isSafeInteger(Number(part)))
+    && value.split(".").map(Number).join(".") === value;
 }
 
 /** Parse `X.Y.Z` into numeric parts; throws on anything else (incl. ranges). */

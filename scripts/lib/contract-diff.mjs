@@ -19,24 +19,13 @@
 import { isDeepStrictEqual } from "node:util";
 
 function normalizeTool(tool) {
-  return {
-    name: tool.name,
-    active: Boolean(tool.active),
-    source: tool.source ?? "extension",
-    description: typeof tool.description === "string" ? tool.description : "",
-    promptSnippet: typeof tool.promptSnippet === "string" ? tool.promptSnippet : "",
-    promptGuidelines: Array.isArray(tool.promptGuidelines) ? tool.promptGuidelines : [],
-    parameters: tool.parameters ?? {},
-  };
+  const { chars, proxyTokens, ...contract } = tool;
+  return contract;
 }
 
 function normalizeRecord(record) {
-  return {
-    package: record.package,
-    registeredTools: record.registeredTools ?? record.tools.map((tool) => tool.name),
-    activeToolNames: record.activeToolNames ?? [],
-    tools: record.tools.map(normalizeTool),
-  };
+  const { version, totals, ...contract } = record;
+  return { ...contract, tools: record.tools.map(normalizeTool) };
 }
 
 /**
@@ -125,17 +114,17 @@ function diffTool(before, after) {
   const snippetChanged = before.promptSnippet !== after.promptSnippet;
   const guidelines = diffGuidelines(before.promptGuidelines, after.promptGuidelines);
   const parameterEntries = diffJson(before.parameters, after.parameters, "");
-  const changed = descriptionChanged
-    || snippetChanged
-    || guidelines.added.length > 0
-    || guidelines.removed.length > 0
-    || parameterEntries.length > 0
-    || before.active !== after.active;
+  const changed = !isDeepStrictEqual(before, after);
   return {
     name: after.name,
     status: changed ? "changed" : "unchanged",
     activeBefore: before.active,
     activeAfter: after.active,
+    sourceChanged: before.source !== after.source,
+    sourceBefore: before.source,
+    sourceAfter: after.source,
+    guidelinesChanged: !isDeepStrictEqual(before.promptGuidelines, after.promptGuidelines),
+    structuralChanges: diffJson(before, after),
     descriptionChanged,
     descriptionBefore: descriptionChanged ? preview(before.description) : undefined,
     descriptionAfter: descriptionChanged ? preview(after.description) : undefined,
@@ -180,13 +169,13 @@ function diffGroup(direction, baselineGroup, candidateGroup) {
       status: "present",
       addedTools,
       removedTools,
+      structuralChanges: diffJson(before, after),
+      registeredToolsChanged: !isDeepStrictEqual(before.registeredTools, after.registeredTools),
+      toolsOrderChanged: !isDeepStrictEqual(before.tools.map((t) => t.name), after.tools.map((t) => t.name)),
       activeToolNamesChanged: !isDeepStrictEqual(before.activeToolNames, after.activeToolNames),
       tools,
     };
-    const changed = addedTools.length > 0
-      || removedTools.length > 0
-      || entry.activeToolNamesChanged
-      || tools.some((tool) => tool.status !== "unchanged");
+    const changed = !isDeepStrictEqual(before, after);
     if (changed) results.push(entry);
   }
   return results;
@@ -206,7 +195,7 @@ export function diffContractSnapshots(baseline, candidate) {
     ...diffGroup("lean", before.lean, after.lean),
   ];
   packages.sort((left, right) => left.package.localeCompare(right.package) || left.direction.localeCompare(right.direction));
-  return { drift: packages.length > 0, packages };
+  return { drift: !isDeepStrictEqual(before, after), packages };
 }
 
 function renderParameterEntries(label, entries, limit = 10) {
@@ -230,10 +219,15 @@ export function renderContractDiffMarkdown(diff) {
     lines.push(`### ${entry.direction} \`${entry.package}\` (${entry.status})`);
     if (entry.addedTools.length > 0) lines.push(`- 新增工具: ${entry.addedTools.map((name) => `\`${name}\``).join(", ")}`);
     if (entry.removedTools.length > 0) lines.push(`- 删除工具: ${entry.removedTools.map((name) => `\`${name}\``).join(", ")}`);
+    if (entry.structuralChanges?.length) lines.push(`- 结构变化字段: ${entry.structuralChanges.map((change) => `\`${change.path}\``).join(", ")}`);
+    if (entry.registeredToolsChanged) lines.push("- 注册工具列表/顺序发生变化");
+    if (entry.toolsOrderChanged) lines.push("- 工具记录顺序发生变化");
     if (entry.activeToolNamesChanged) lines.push("- 活跃工具列表发生变化");
     for (const tool of entry.tools) {
       if (tool.status === "unchanged") continue;
       lines.push(`- \`${tool.name}\`${tool.activeBefore !== tool.activeAfter ? ` active ${tool.activeBefore} -> ${tool.activeAfter}` : ""}`);
+      if (tool.sourceChanged) lines.push(`  - source 变化: ${tool.sourceBefore} -> ${tool.sourceAfter}`);
+      if (tool.guidelinesChanged) lines.push("  - guideline 内容/顺序发生变化");
       if (tool.descriptionChanged) lines.push(`  - 描述变化: ${tool.descriptionBefore} -> ${tool.descriptionAfter}`);
       if (tool.snippetChanged) lines.push(`  - promptSnippet 变化: ${tool.snippetBefore} -> ${tool.snippetAfter}`);
       if (tool.guidelinesAdded.length > 0) lines.push(`  - guideline 新增 ${tool.guidelinesAdded.length} 条`);

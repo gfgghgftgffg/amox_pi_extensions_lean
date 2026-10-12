@@ -15,7 +15,8 @@
 import { compareExactStableVersions, isExactStableVersion } from "./semver.mjs";
 import { renderContractDiffMarkdown } from "./contract-diff.mjs";
 
-const HEX40 = /^[0-9a-f]{40}$/;
+// Strict end-of-string: JavaScript $ also accepts a trailing newline.
+const HEX40 = /^[0-9a-f]{40}(?![\s\S])/;
 
 function errorMessage(code, context) {
   switch (code) {
@@ -114,11 +115,11 @@ export function buildUpdatePlan({ manifest, workspaces, metadata }) {
     const upstreamGit = metadata.git?.[entry.upstreamRepository];
     let upstreamGitHead = entry.upstreamGitHead;
     if (versionChange === "bump") {
-      if (!upstreamGit || !HEX40.test(upstreamGit.head)) {
-        errors.push({ code: "invalid-metadata", package: entry.id, message: errorMessage("invalid-metadata", `${entry.upstreamRepository} 缺少有效 git HEAD`) });
+      if (!HEX40.test(primaryMeta.gitHead ?? "")) {
+        errors.push({ code: "invalid-metadata", package: entry.id, message: errorMessage("invalid-metadata", `${primary}@${latestVersion} 缺少有效 npm publication gitHead；需人工审查（不回退到 repo HEAD）`) });
         continue;
       }
-      upstreamGitHead = upstreamGit.head;
+      upstreamGitHead = primaryMeta.gitHead;
     }
     const leanGit = metadata.git?.[entry.leanRepository];
     if (!leanGit || !HEX40.test(leanGit.head)) {

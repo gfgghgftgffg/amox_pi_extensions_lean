@@ -35,9 +35,9 @@
   checkout 相同基线（不持久化凭据）→ 下载同一次运行的 artifact →
   `node scripts/validate-candidate.mjs --apply` 严格校验后才写入文件 → 固定的
   `peter-evans/create-pull-request` 创建/更新 **draft** PR。
-  该 job 不安装依赖、不执行上游或 artifact 中的任何代码；token 只在最后创建 PR 的步骤使用。
+  该 job 不安装依赖、不执行上游或 artifact 中的任何代码；仅用 Node 内置 fetch 读取固定 public npm registry 的版本 DATA 核对 lock/发布 commit，token 只在最后创建 PR 的步骤使用。
 - 合法写入路径仅限：`package-lock.json`、三个 `packages/*/package.json`、
-  `maintenance/{manifest,tool-contracts,update-report}.md`；越界路径、符号链接、模式变更、
+  `maintenance/manifest.json`、`maintenance/tool-contracts.json`、`maintenance/update-report.md`；越界路径、符号链接、模式变更、
   删除、改名、额外 JSON 字段修改都会在写入前被拒绝。
 - 固定机器分支 `maintenance/upstream-update` **请勿手工编辑**，自动化会重建它。
 - 状态与人工流程见 [maintenance.md](./maintenance.md)。
@@ -48,8 +48,10 @@
 - **verify job（只读）**：校验 tag 与根 `package.json` version 一致、checkout HEAD 等于本次运行的
   `github.sha`，然后完整跑 CI/契约/生产安装/审计。
 - **release job**：`environment: release` + `contents: write`，checkout 精确 SHA，最后一步才注入
-  `GITHUB_TOKEN` 并用 `gh` 创建 tag 与 GitHub release；拒绝重定向已存在 tag 或覆盖已有 release。
-  该 job 不安装依赖、不执行任何 npm 命令。
+  `GITHUB_TOKEN`；通过 GitHub git-ref API create-only POST 原子预留 tag 到已验证 SHA，再核对创建的 ref，
+  用 `gh release create --verify-tag` 创建 release；已有/并发创建的 tag 必须失败，不删除或重定向。
+  工作流串行执行（`concurrency: release`，不取消），该 job 不安装依赖、不执行任何 npm 命令。
+  tag 创建后 release 失败会报告 tag 已预留、需人工恢复；不会自动删除、重试或 retarget。
 - 工作流**永不**执行 `npm publish`。
 
 ## 3. 首次发布步骤
@@ -71,6 +73,8 @@ pi install git:github.com/gfgghgftgffg/amox_pi_extensions_lean@v0.1.0
 
 ## 4. 分支保护与 draft PR 的 CI
 
+- 对 `v*` 配置 tag protection / repository ruleset，限制更新和删除（含管理员 bypass）。
+  原子预留解决 create race，但外部管理员之后强制移动 tag 仍需托管规则保护；本地 mock 不代表已验证线上并发或 reviewer 配置。
 - 建议 `main` 要求 PR + 必须通过的 status check（例如 CI 的
   `check + contracts + production + audit`），并限制推送权限。
 - 上游跟踪 PR 由 `GITHUB_TOKEN` 创建/更新。官方文档说明：这类 PR 的

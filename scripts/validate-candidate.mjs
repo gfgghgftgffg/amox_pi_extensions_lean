@@ -67,7 +67,7 @@ try {
     fail(`无法读取/解析 ${artifactPath}: ${error.message}`);
   }
 
-  const { ok, errors, writes } = validateCandidateArtifact({ artifact, repoRoot, headSha });
+  const { ok, errors, writes } = await validateCandidateArtifact({ artifact, repoRoot, headSha });
   if (!ok) fail(`artifact=${artifactPath}`, errors);
 
   console.log(`Candidate valid: status=${artifact.status}, baseCommit=${artifact.baseCommit}, files=${writes.map((write) => write.path).join(", ")}`);

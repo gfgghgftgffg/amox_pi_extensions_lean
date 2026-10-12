@@ -31,10 +31,18 @@ function gh(args, { allowNotFound = false } = {}) {
   } catch (error) {
     const stderr = String(error.stderr ?? "");
     const status = error.status;
-    if (allowNotFound && (status === 1 || status === 4) && /(404|Not Found)/i.test(stderr)) {
+    if (allowNotFound && (status === 1 || status === 4) && /\bHTTP 404\b/i.test(stderr)) {
       return { ok: false, notFound: true, stderr };
     }
     throw new Error(`gh ${args.join(" ")} 失败 (exit ${status}): ${stderr.trim() || error.message}`);
+  }
+}
+
+let reservedTag;
+function verifyRef(text, tag, sha) {
+  const ref = JSON.parse(text);
+  if (ref.ref !== `refs/tags/${tag}` || ref.object?.type !== "commit" || ref.object?.sha !== sha) {
+    throw new Error(`created tag ref 与 verified SHA 不一致: ${tag}`);
   }
 }
 
@@ -69,18 +77,25 @@ try {
     console.error(`Refusing to retarget existing tag ${tag}.`);
     process.exit(1);
   }
-  const release = gh(["release", "view", tag, "--repo", repository], { allowNotFound: true });
+  const release = gh(["api", `repos/${repository}/releases/tags/${tag}`], { allowNotFound: true });
   if (release.ok) {
     console.error(`Refusing to overwrite existing release ${tag}.`);
     process.exit(1);
   }
 
+  // Create-only GitHub ref API is the atomic reservation. An existing ref,
+  // including one created after the precheck, MUST cause POST to fail.
+  const reservation = gh(["api", "--method", "POST", `repos/${repository}/git/refs`, "-f", `ref=refs/tags/${tag}`, "-f", `sha=${expectedSha}`]);
+  reservedTag = tag;
+  verifyRef(reservation.stdout, tag, expectedSha);
+  verifyRef(gh(["api", `repos/${repository}/git/ref/tags/${tag}`]).stdout, tag, expectedSha);
   const notes = releaseNotes({ tag, repository, sha: expectedSha });
-  const created = gh(["release", "create", tag, "--repo", repository, "--target", expectedSha, "--title", tag, "--notes", notes]);
+  const created = gh(["release", "create", tag, "--repo", repository, "--verify-tag", "--title", tag, "--notes", notes]);
   console.log(`Created release ${tag} (tag target ${expectedSha}).`);
   if (created.stdout) console.log(created.stdout);
   process.exit(0);
 } catch (error) {
   console.error(`Release failed: ${error.message}`);
+  if (reservedTag) console.error(`Tag ${reservedTag} is reserved; manual recovery needed. No deletion, retry or retarget was attempted.`);
   process.exit(1);
 }

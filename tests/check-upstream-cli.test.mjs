@@ -11,6 +11,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { cleanGitFixture } from "./helpers/clean-git-fixture.mjs";
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance", "manifest.json"), "utf8"));
 
@@ -35,7 +37,7 @@ function fixtureMetadata({ leanHeads = {}, versions = {} } = {}) {
   for (const entry of manifest.packages) {
     const packageJson = JSON.parse(readFileSync(join(repoRoot, entry.path, "package.json"), "utf8"));
     for (const [name, version] of Object.entries(packageJson.dependencies)) {
-      npm[name] = { latestStable: versions[name] ?? version };
+      npm[name] = { latestStable: versions[name] ?? version, gitHead: entry.upstreamGitHead };
     }
   }
   const git = {};
@@ -52,9 +54,9 @@ function writeMetadata(dir, name, metadata) {
   return path;
 }
 
-function runCli(args, env = {}) {
+function runCli(args, env = {}, repo = repoRoot) {
   return spawnSync(process.execPath, ["scripts/check-upstream.mjs", ...args], {
-    cwd: repoRoot,
+    cwd: repo,
     encoding: "utf8",
     env: { ...process.env, ...env },
   });
@@ -92,10 +94,11 @@ test("no update: dry-run report is JSON, apply stages nothing and mutates no tra
 test("lean-only update stages a report-only draft candidate and leaves leanCommit untouched", () => {
   const dir = mkdtempSync(join(tmpdir(), "amox-cli-lean-"));
   const before = hashFiles();
+  const fixture = cleanGitFixture(repoRoot);
   try {
     const metadataPath = writeMetadata(dir, "metadata.json", fixtureMetadata({ leanHeads: { "rpiv-todo-lean": "9".repeat(40) } }));
     const outDir = join(dir, "out");
-    const applied = runCli(["--apply", "--metadata", metadataPath, "--out-dir", outDir]);
+    const applied = runCli(["--apply", "--metadata", metadataPath, "--out-dir", outDir], {}, fixture.repo);
     assert.equal(applied.status, 0, applied.stderr);
     assert.match(applied.stdout, /status=lean-review/);
     assert.match(applied.stdout, /manual reuse review/);
@@ -105,13 +108,14 @@ test("lean-only update stages a report-only draft candidate and leaves leanCommi
     assert.match(readFileSync(join(outDir, "update-report.md"), "utf8"), /manual reuse review/);
     assert.deepEqual(hashFiles(), before, "lean-only candidate must not touch the manifest");
 
-    const validated = spawnSync(process.execPath, ["scripts/validate-candidate.mjs", "--artifact", join(outDir, "candidate.json"), "--repo", repoRoot], {
+    const validated = spawnSync(process.execPath, ["scripts/validate-candidate.mjs", "--artifact", join(outDir, "candidate.json"), "--repo", fixture.repo], {
       cwd: repoRoot,
       encoding: "utf8",
     });
     assert.equal(validated.status, 0, validated.stderr);
     assert.match(validated.stdout, /Candidate valid/);
   } finally {
+    fixture.cleanup();
     rmSync(dir, { recursive: true, force: true });
   }
 });
@@ -132,6 +136,12 @@ test("downgrade, prerelease and malformed metadata fail visibly", () => {
     assert.equal(malformed.status, 1);
     assert.match(malformed.stderr, /无法解析 metadata JSON/);
 
+    for (const version of ["01.2.3", "0.01.0", "0.1.00", "9007199254740992.0.0"]) {
+      const invalid = runCli(["--dry-run", "--metadata", writeMetadata(dir, "noncanonical.json", fixtureMetadata({ versions: { "pi-web-access": version } }))]);
+      assert.equal(invalid.status, 1, version);
+      assert.match(invalid.stderr, /latestStable/);
+      assert.doesNotMatch(invalid.stdout, /no-update/);
+    }
     const missing = runCli(["--dry-run", "--metadata", join(dir, "absent.json")]);
     assert.equal(missing.status, 1);
     assert.deepEqual(hashFiles(), before, "error paths must not mutate tracked files");
@@ -191,4 +201,19 @@ test("validate-candidate CLI refuses a candidate whose baseCommit drifted", () =
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test("actual producer CLI rejects uncommitted tracked edits before creating a candidate", () => {
+  const fixture = cleanGitFixture(repoRoot);
+  const dir = mkdtempSync(join(tmpdir(), "amox-cli-dirty-"));
+  try {
+    const metadataPath = writeMetadata(dir, "metadata.json", fixtureMetadata({ leanHeads: { "rpiv-todo-lean": "9".repeat(40) } }));
+    writeFileSync(join(fixture.repo, "docs/maintenance.md"), "uncommitted tracked content");
+    const outDir = join(dir, "out");
+    const result = runCli(["--apply", "--metadata", metadataPath, "--out-dir", outDir], {}, fixture.repo);
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stderr, /clean tracked checkout/);
+    assert.equal(existsSync(join(outDir, "candidate.json")), false);
+  } finally { fixture.cleanup(); rmSync(dir, { recursive: true, force: true }); }
 });

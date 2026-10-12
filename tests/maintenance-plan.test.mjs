@@ -82,10 +82,10 @@ function fixtureMetadata({ npm = {}, git = {} } = {}) {
   const manifest = fixtureManifest();
   const metadata = {
     npm: {
-      "pi-web-access": { latestStable: "0.39.0" },
-      "@juicesharp/rpiv-todo": { latestStable: "2.13.5" },
-      "@juicesharp/rpiv-i18n": { latestStable: "2.13.5" },
-      "@tintinweb/pi-subagents": { latestStable: "0.20.0" },
+      "pi-web-access": { latestStable: "0.39.0", gitHead: HEAD },
+      "@juicesharp/rpiv-todo": { latestStable: "2.13.5", gitHead: HEAD },
+      "@juicesharp/rpiv-i18n": { latestStable: "2.13.5", gitHead: HEAD },
+      "@tintinweb/pi-subagents": { latestStable: "0.20.0", gitHead: HEAD },
     },
     git: {},
   };
@@ -180,7 +180,7 @@ test("prerelease or missing metadata is rejected instead of silently ignored", (
 
 test("a version bump also requires a valid upstream git HEAD", () => {
   const metadata = fixtureMetadata({ npm: { "pi-web-access": "0.40.0" } });
-  metadata.git["https://example.test/pi-web-access.git"] = { head: "not-a-sha" };
+  metadata.npm["pi-web-access"].gitHead = "not-a-sha";
   const plan = buildUpdatePlan({ manifest: fixtureManifest(), workspaces: fixtureWorkspaces(), metadata });
   assert.equal(plan.status, "error");
   assert.ok(plan.errors.some((error) => error.code === "invalid-metadata"));
@@ -253,7 +253,10 @@ test("fetchUpstreamMetadata fails visibly on network errors and malformed payloa
   const ok = await fetchUpstreamMetadata({
     manifest,
     workspaces,
-    fetchImpl: async () => ({ ok: true, json: async () => ({ "dist-tags": { latest: "0.39.0" }, versions: ["0.39.0"] }) }),
+    fetchImpl: async (url) => {
+      const name = decodeURIComponent(url.slice("https://registry.npmjs.org/".length));
+      return { ok: true, json: async () => ({ "dist-tags": { latest: "0.39.0" }, versions: { "0.39.0": { name, version: "0.39.0", gitHead: HEAD } } }) };
+    },
     gitHeadResolver: () => HEAD,
   });
   assert.equal(ok.npm["pi-web-access"].latestStable, "0.39.0");
@@ -267,7 +270,7 @@ test("injected metadata files are shape-validated", () => {
     writeFileSync(malformed, "{ not json");
     assert.throws(() => loadInjectedMetadata(malformed), /无法解析 metadata JSON/);
     const badShape = join(dir, "bad-shape.json");
-    writeFileSync(badShape, JSON.stringify({ npm: { "pi-web-access": { latestStable: "1.2.3-rc" } }, git: {} }));
+    writeFileSync(badShape, JSON.stringify({ npm: { "pi-web-access": { latestStable: "1.2.3-rc", gitHead: HEAD } }, git: {} }));
     assert.throws(() => loadInjectedMetadata(badShape), /latestStable/);
     const missingGit = join(dir, "missing-git.json");
     writeFileSync(missingGit, JSON.stringify({ npm: {}, git: { "https://example.test/x.git": { head: "zzz" } } }));
@@ -279,4 +282,26 @@ test("injected metadata files are shape-validated", () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+
+test("publication gitHead is distinct from live repository HEAD; missing publication never falls back", async () => {
+  const metadata = fixtureMetadata({ npm: { "pi-web-access": "0.40.0" } });
+  metadata.npm["pi-web-access"].gitHead = "b".repeat(40);
+  metadata.git["https://example.test/pi-web-access.git"].head = "c".repeat(40);
+  const manifest = fixtureManifest();
+  const plan = buildUpdatePlan({ manifest, workspaces: fixtureWorkspaces(), metadata });
+  assert.equal(plan.status, "update");
+  assert.equal(plan.packagePlans[0].remoteGitHead, "c".repeat(40));
+  assert.equal(applyPlanToManifest(manifest, plan).packages[0].upstreamGitHead, "b".repeat(40));
+  metadata.npm["pi-web-access"].gitHead = "b".repeat(40) + "\n";
+  assert.equal(buildUpdatePlan({ manifest, workspaces: fixtureWorkspaces(), metadata }).status, "error", "publication SHA must be exactly 40 characters");
+  delete metadata.npm["pi-web-access"].gitHead;
+  const missing = buildUpdatePlan({ manifest, workspaces: fixtureWorkspaces(), metadata });
+  assert.equal(missing.status, "error");
+  assert.match(missing.errors.map((e) => e.message).join("\n"), /npm publication gitHead/);
+  await assert.rejects(fetchUpstreamMetadata({ manifest, workspaces: fixtureWorkspaces(), gitHeadResolver: () => "c".repeat(40), fetchImpl: async (url) => {
+    const name = decodeURIComponent(url.slice("https://registry.npmjs.org/".length));
+    return { ok: true, json: async () => ({ "dist-tags": { latest: "1.0.0" }, versions: { "1.0.0": { name, version: "1.0.0" } } }) };
+  } }), /publication gitHead/);
 });

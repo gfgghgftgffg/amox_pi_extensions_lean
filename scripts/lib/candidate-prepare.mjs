@@ -13,7 +13,7 @@
  * and still stages a draft-status candidate for humans to review.
  */
 import { execFileSync, spawnSync } from "node:child_process";
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
@@ -24,23 +24,33 @@ import {
   serializeCandidateArtifact,
 } from "./candidate.mjs";
 import { diffContractSnapshots } from "./contract-diff.mjs";
+import { isDeepStrictEqual } from "node:util";
 import { applyPlanToManifest, applyPlanToWorkspacePackage, buildUpdateReport, serializeJson } from "./upstream-plan.mjs";
 
 export function gitHead(repoRoot) {
   return execFileSync("git", ["-C", repoRoot, "rev-parse", "HEAD"], { encoding: "utf8" }).trim();
 }
 
-function gitTrackedFiles(repoRoot) {
-  const output = execFileSync("git", ["-C", repoRoot, "ls-files", "-z"], { encoding: "utf8", maxBuffer: 20 * 1024 * 1024 });
-  return output.split("\0").filter((entry) => entry.length > 0);
+export function assertCleanBaseline(repoRoot, baselineSnapshot) {
+  const head = gitHead(repoRoot);
+  const status = execFileSync("git", ["-C", repoRoot, "status", "--porcelain", "--untracked-files=no"], { encoding: "utf8" });
+  if (status.trim()) throw new Error("候选生成要求 clean tracked checkout；本地未提交/暂存改动被拒绝");
+  const committedSnapshot = JSON.parse(execFileSync("git", ["-C", repoRoot, "show", `${head}:${SNAPSHOT_PATH}`], { encoding: "utf8", maxBuffer: 5_000_000 }));
+  if (!isDeepStrictEqual(committedSnapshot, baselineSnapshot)) throw new Error("baseline snapshot 与 HEAD 不一致");
+  return head;
 }
 
-function copyTrackedTree(repoRoot, target) {
-  for (const path of gitTrackedFiles(repoRoot)) {
-    const destination = join(target, path);
-    mkdirSync(dirname(destination), { recursive: true });
-    cpSync(join(repoRoot, path), destination);
-  }
+export function cloneBaselineTree(repoRoot, target, baselineSha) {
+  // Local Git only: keep valid Git metadata for the real root tests. No
+  // untracked source, auth, remote network access, or shared writable objects.
+  execFileSync("git", ["clone", "--quiet", "--no-hardlinks", "--no-checkout", "--", repoRoot, target]);
+  execFileSync("git", ["-C", target, "-c", "core.hooksPath=/dev/null", "checkout", "--quiet", "--detach", baselineSha]);
+  if (gitHead(target) !== baselineSha) throw new Error("temporary clone HEAD 不等于 artifact baseline");
+}
+
+function commitTemporaryProposal(workTree, paths) {
+  execFileSync("git", ["-C", workTree, "add", "--", ...paths]);
+  execFileSync("git", ["-C", workTree, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", "-c", "user.name=Maintenance verification", "-c", "user.email=maintenance@example.invalid", "commit", "--quiet", "-m", "Temporary maintenance proposal (verification only)"]);
 }
 
 function runLogged(command, args, { cwd, logFile, env = {} }) {
@@ -83,7 +93,7 @@ function stageBundle({ outDir, status, files, plan }) {
  * @param {boolean} [options.refreshSnapshot] allow a snapshot-only metadata refresh
  */
 export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapshot, refreshSnapshot = false }) {
-  const baseCommit = gitHead(repoRoot);
+  const baseCommit = assertCleanBaseline(repoRoot, baselineSnapshot);
   const fullPlan = { ...plan, baseCommit };
   const diagnosticsDir = join(outDir, "diagnostics");
 
@@ -139,17 +149,18 @@ export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapsho
   const tempRoot = mkdtempSync(join(tmpdir(), "amox-maintenance-candidate-"));
   const workTree = join(tempRoot, "repo");
   try {
-    copyTrackedTree(repoRoot, workTree);
+    cloneBaselineTree(repoRoot, workTree, baseCommit);
+    if (assertCleanBaseline(repoRoot, baselineSnapshot) !== baseCommit) throw new Error("候选复制期间 baseline HEAD 变化");
     for (const file of packageFiles.values()) {
       writeFileSync(join(workTree, file.path), file.content);
     }
     if (manifestContent) writeFileSync(join(workTree, MANIFEST_PATH), manifestContent);
     mkdirSync(diagnosticsDir, { recursive: true });
 
-    const install = runLogged(NPM, ["install", "--ignore-scripts"], {
+    const install = runLogged(NPM, ["install", "--ignore-scripts", "--registry=https://registry.npmjs.org"], {
       cwd: workTree,
       logFile: join(diagnosticsDir, "install.log"),
-      env: { npm_config_ignore_scripts: "true" },
+      env: { npm_config_ignore_scripts: "true", npm_config_registry: "https://registry.npmjs.org" },
     });
     if (!install.ok) {
       const report = buildUpdateReport({ plan, status: "failed", baseCommit, install });
@@ -178,6 +189,9 @@ export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapsho
       // (which includes contracts:check) can pass in the candidate tree.
       writeFileSync(join(workTree, SNAPSHOT_PATH), serializeJson(candidateSnapshot));
     }
+    // Git-dependent tests run on a clean, TEMP-only proposal commit. Artifact
+    // baseCommit remains the original baseline; never commit the owned tree.
+    commitTemporaryProposal(workTree, [...packageFiles.values()].map((file) => file.path).concat([MANIFEST_PATH, "package-lock.json", ...(!drift ? [SNAPSHOT_PATH] : [])]));
     const check = runLogged(NPM, ["run", "check"], { cwd: workTree, logFile: join(diagnosticsDir, "check.log") });
     const contractsCheck = runLogged(NPM, ["run", "contracts:check"], { cwd: workTree, logFile: join(diagnosticsDir, "contracts-check.log") });
     const checkDetail = {

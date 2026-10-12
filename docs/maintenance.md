@@ -17,8 +17,9 @@ node scripts/check-upstream.mjs --json          # 机器可读
 node scripts/check-upstream.mjs --metadata <f>  # 离线注入元数据（测试/手动）
 ```
 
-- `--apply` 才生成候选：候选树严格取自 `git HEAD`（未提交的本地改动不会进入候选），
-  只在临时目录中改依赖版本、重装、重新捕获契约、对比快照，
+- `--apply` 才生成候选：要求 tracked checkout 与 `HEAD` 一致且无未提交/暂存改动（本地改动会被拒绝），
+  用本地 Git 克隆精确基线到临时目录，排除 untracked 源文件；只在该临时目录改依赖版本、重装、重新捕获契约、对比快照。
+  测试前在临时树创建 proposal commit 以供 Git 相关检查；artifact 的 `baseCommit` 仍是原始基线，绝不提交真实工作树。
   输出受约束的 `candidate.json` + 报告 + 诊断；**不会**修改适配代码、prompt、schema、描述或工具契约。
 - 自动化**不会**自动改写代码、不会自动合并、不会发布 npm、不会使用 AI/模型密钥。
 
@@ -33,7 +34,10 @@ node scripts/check-upstream.mjs --metadata <f>  # 离线注入元数据（测试
 | `snapshot-refresh` | 无依赖变化，仅用 `--refresh-snapshot` 刷新无漂移快照元数据 | 人工确认快照内容无结构变化 |
 
 结构对比会忽略包版本与 node 环境元数据，但会比较：工具增删、参数增删、`default` 值、
-描述、promptSnippet、promptGuidelines。旧测试通过**不等于**新特性已被 lean 版正确处理，
+描述、promptSnippet、promptGuidelines（含顺序）、source、注册/活跃工具列表、entry 与包身份。
+快照续期只允许 environment 与已声明升级的 upstream version 变化，lean 版本/entry 和无关 metadata 必须保留；计数器按真实契约字符串验证。
+`upstreamGitHead` 来自 npm 已发布版本的 `gitHead`，不是可能已经前进的 repo HEAD；发布元数据缺失时失败并交人工处理。
+旧测试通过**不等于**新特性已被 lean 版正确处理，
 所有 draft PR 都需要人工查看上游 CHANGELOG/代码 diff。
 
 ## 3. 人工/agent 最小改动流程
@@ -106,5 +110,8 @@ pi install git:github.com/gfgghgftgffg/amox_pi_extensions_lean@v0.1.0
 ## 6. 安全声明
 
 - 生成/安装/捕获/测试 job 只读、无 secret；写权限 job 只做候选校验与 PR 创建，不执行任何依赖。
+- 特权校验只用 Node 内置模块从固定 `https://registry.npmjs.org` 获取版本 DATA（拒绝重定向），
+  核对发布身份/commit、tarball 与规范 integrity；artifact/npm 配置不是 registry 权威。
+  lock 只允许目标旧/新 runtime dependency closure 内可证明的变化；无关/共享记录、workspace metadata、peer/dev 变化与不支持的源/range 均拒绝并交人工处理。
 - 隔离临时 `HOME` 只是配置隔离，不是 OS 沙箱；不要在候选里注入凭据。
 - 上游跟踪只读参考原始 lean 作者仓库，不会盲目覆盖本仓库的适配。

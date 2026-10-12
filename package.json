@@ -23,7 +23,7 @@
     "@earendil-works/pi-tui": "1.1.0",
     "jiti": "2.7.0",
     "typebox": "1.3.36",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   },
   "scripts": {
     "check": "npm run typecheck && npm test",

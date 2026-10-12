@@ -16,7 +16,9 @@ process.env.PI_CODING_AGENT_SESSION_DIR = join(root, "sessions");
 const jiti = createJiti(import.meta.url);
 const { installExtensionToolScope } = await jiti.import("@tintinweb/pi-subagents/src/agent-runner.ts");
 const { createWorkflowHost } = await jiti.import("@tintinweb/pi-subagents/src/workflow/host.ts");
-const { registerAgents } = await jiti.import("@tintinweb/pi-subagents/src/agent-types.ts");
+// Match the host's .js specifier: on Windows jiti's direct .ts import can
+// resolve a second registry instance through a differently separated path.
+const { registerAgents } = await jiti.import("@tintinweb/pi-subagents/src/agent-types.js");
 const { createSubagentsFacade } = await jiti.import("../index.ts");
 
 // The new handoff result/update shapes must travel through the facade intact.

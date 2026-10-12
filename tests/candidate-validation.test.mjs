@@ -6,6 +6,7 @@
 // structural drift exists. These tests craft real artifacts against a fixture
 // copy of the repository.
 import assert from "node:assert/strict";
+import { symlinkSkip } from "./helpers/fs-capabilities.mjs";
 import test from "node:test";
 import { createHash } from "node:crypto";
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
@@ -283,7 +284,7 @@ test("manifest leanCommit/monorepo/extra-field edits are rejected", async () => 
   const repo = fixtureRepo();
   try {
     const variants = [
-      (manifest) => { manifest.packages[0].leanCommit = "f".repeat(40); },
+      (manifest) => { manifest.packages[0].leanCommit = manifest.packages[0].leanCommit === "f".repeat(40) ? "e".repeat(40) : "f".repeat(40); },
       (manifest) => { manifest.monorepo = { evil: true }; },
       (manifest) => { manifest.packages[0].extra = true; },
       (manifest) => { manifest.packages[0].upstreamVersion = "0.39.0"; manifest.packages[0].upstreamGitHead = "e".repeat(40); }, // head without version
@@ -440,7 +441,7 @@ test("report marker must match the artifact status", async () => {
   }
 });
 
-test("apply refuses to write through symlinked paths", async () => {
+test("apply refuses to write through symlinked paths", { skip: symlinkSkip }, async () => {
   const repo = fixtureRepo();
   try {
     const { artifact } = validReadyArtifact({ repo });

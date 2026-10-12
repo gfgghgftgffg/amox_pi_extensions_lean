@@ -1,149 +1,57 @@
 #!/usr/bin/env node
-/**
- * Fresh production-install verification.
- *
- * Reproduces what Pi 1.1.0 does for a Git package
- * (`npm install --omit=dev --legacy-peer-deps`), plus `--ignore-scripts` for
- * test safety, then loads all three monorepo entrypoints through the real Pi
- * host loader from that production tree.
- *
- * The Pi host module is resolved from THIS checkout's dev dependencies before
- * the production tree is created and is passed explicitly to each worker. The
- * production tree intentionally does not contain host peers, and the check is
- * self-contained on a clean machine that has no managed `~/.pi` installation
- * (e.g. a fresh GitHub-hosted runner).
- *
- * Usage: node scripts/verify-production-install.mjs [--keep]
- */
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+// Pack and install each workspace in an independent npm prefix, exactly as
+// the per-extension installer does. No sibling or host peer may be installed.
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { installPackedExtension, packageEntries } from "./lib/extension-package.mjs";
+import { checkedRun } from "./lib/process.mjs";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const keep = process.argv.includes("--keep");
-const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
-const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance", "manifest.json"), "utf8"));
-// Resolve the host from the dev checkout BEFORE copying/omitting dependencies,
-// so the worker never depends on a managed ~/.pi installation.
 const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
+const entries = packageEntries(repoRoot);
 console.log(`Host module (from dev checkout): ${hostModulePath}`);
-
-const failures = [];
-function check(condition, message) {
-  if (condition) {
-    console.log(`  ok   ${message}`);
-  } else {
-    failures.push(message);
-    console.log(`  FAIL ${message}`);
-  }
-}
-
 const tempRoot = mkdtempSync(join(tmpdir(), "amox-production-install-"));
-const target = join(tempRoot, "repo");
-console.log(`Production install target: ${target}`);
-
+const failures = [];
+function check(ok, message) {
+  console.log(`  ${ok ? "ok" : "FAIL"} ${message}`);
+  if (!ok) failures.push(message);
+}
 try {
-  cpSync(repoRoot, target, {
-    recursive: true,
-    filter(source) {
-      const rel = relative(repoRoot, source);
-      if (rel === "") return true;
-      const top = rel.split(/[\\/]/)[0];
-      return top !== "node_modules" && top !== ".git" && top !== ".tmp" && top !== ".maintenance-candidate" && !top.endsWith(".tgz");
-    },
-  });
-
-  console.log("\n[1] npm install --omit=dev --legacy-peer-deps --ignore-scripts");
-  const install = spawnSync("npm", ["install", "--omit=dev", "--legacy-peer-deps", "--ignore-scripts"], {
-    cwd: target,
-    encoding: "utf8",
-    env: { ...process.env, npm_config_audit: "false", npm_config_fund: "false" },
-  });
-  if (install.status !== 0) {
-    console.error(install.stdout?.slice(-4000));
-    console.error(install.stderr?.slice(-4000));
-    throw new Error("production install failed");
-  }
-  console.log("  ok   install exited 0");
-
-  console.log("\n[2] production dependency tree");
-  for (const entry of manifest.packages) {
-    const packageJsonPath = join(target, "node_modules", ...entry.upstreamPackage.split("/"), "package.json");
-    check(existsSync(packageJsonPath), `${entry.upstreamPackage} installed`);
-    if (existsSync(packageJsonPath)) {
-      const version = JSON.parse(readFileSync(packageJsonPath, "utf8")).version;
-      check(version === entry.upstreamVersion, `${entry.upstreamPackage} is exactly ${entry.upstreamVersion} (got ${version})`);
+  check(!JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).pi, "root is not an install-all Pi package");
+  for (const entry of entries) {
+    console.log(`\nIndependent production install: ${entry.packageName}`);
+    const prefix = join(tempRoot, entry.id);
+    const packageDir = installPackedExtension({ repoRoot, entry, prefix, outDir: join(tempRoot, "archives") });
+    for (const sibling of entries.filter((item) => item.id !== entry.id)) {
+      check(!existsSync(join(prefix, "node_modules", ...sibling.packageName.split("/"))), `${sibling.packageName} is NOT installed`);
+      check(!existsSync(join(prefix, "node_modules", ...sibling.upstreamPackage.split("/"))), `${sibling.upstreamPackage} is NOT installed`);
     }
-    const workspacePath = join(target, "node_modules", ...entry.packageName.split("/"));
-    const workspaceExists = existsSync(workspacePath);
-    check(workspaceExists, `${entry.packageName} workspace link installed`);
-    if (workspaceExists && lstatSync(workspacePath).isSymbolicLink()) {
-      console.log(`       link -> ${readlinkSync(workspacePath)}`);
+    for (const peer of ["@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]) {
+      check(!existsSync(join(prefix, "node_modules", ...peer.split("/"))), `host peer ${peer} is NOT installed`);
     }
-  }
-  for (const peer of ["@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]) {
-    check(
-      !existsSync(join(target, "node_modules", ...peer.split("/"))),
-      `host-provided peer ${peer} is NOT installed by production install`,
-    );
-  }
-  const productionLock = JSON.parse(readFileSync(join(target, "package-lock.json"), "utf8"));
-  const leakedPeers = Object.entries(productionLock.packages ?? {})
-    .filter(([path, entry]) => /node_modules\/(@earendil-works\/|typebox$)/.test(path) && !entry.dev)
-    .map(([path]) => path);
-  check(leakedPeers.length === 0, `production lockfile has no runtime host peers (${leakedPeers.join(", ") || "none"})`);
-  check(!existsSync(join(target, "node_modules", "typebox")), "host-provided typebox peer is NOT installed by production install");
-
-  console.log("\n[3] load the three entrypoints through the real Pi host loader");
-  const workDir = join(tempRoot, "work");
-  mkdirSync(workDir, { recursive: true });
-  for (const entry of manifest.packages) {
-    const entryPath = join(target, entry.path, entry.entry);
-    const inputPath = join(workDir, `${entry.id}.input.json`);
+    const upstream = JSON.parse(readFileSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"), "package.json"), "utf8"));
+    check(upstream.version === entry.upstreamVersion, `${entry.upstreamPackage} is pinned to ${entry.upstreamVersion}`);
+    const workDir = join(tempRoot, "workers");
+    mkdirSync(workDir, { recursive: true });
+    const input = join(workDir, `${entry.id}.input.json`);
     const resultPath = join(workDir, `${entry.id}.result.json`);
-    // Explicit host module path: the production tree has no dev dependency and
-    // the runner may not have a managed Pi installation at all.
-    writeFileSync(inputPath, `${JSON.stringify({ id: entry.id, extensionPath: entryPath, resultPath, hostModulePath }, null, 2)}\n`);
-    const worker = spawnSync(process.execPath, [join(target, "scripts", "lib", "capture-worker.mjs"), inputPath], {
-      cwd: target,
-      encoding: "utf8",
-    });
-    if (worker.status !== 0) {
-      console.error(worker.stderr?.slice(-4000));
-      check(false, `${entry.id} worker exited 0`);
-      continue;
-    }
+    const extensionPath = join(packageDir, entry.entry);
+    writeFileSync(input, JSON.stringify({ id: entry.id, extensionPath, resultPath, hostModulePath }));
+    checkedRun(process.execPath, [join(repoRoot, "scripts/lib/capture-worker.mjs"), input], { cwd: repoRoot });
     const result = JSON.parse(readFileSync(resultPath, "utf8"));
-    check(result.loadErrors.length === 0, `${entry.id} has no load errors`);
-    check(result.runtimeErrors.length === 0, `${entry.id} has no runtime errors`);
-    check(result.tools.length === 1, `${entry.id} registers exactly one tool (${result.tools.map((tool) => tool.name).join(",")})`);
-    check(
-      result.loadedPaths.length === 1 && resolve(result.loadedPaths[0]) === resolve(entryPath),
-      `${entry.id} loaded only its own entrypoint`,
-    );
-    console.log(`       ${entry.id}: pi ${result.piVersion}, tool ${result.tools.map((tool) => tool.name).join(",")}`);
+    check(result.loadErrors.length === 0 && result.runtimeErrors.length === 0, `${entry.id} loads without errors`);
+    check(result.tools.length === 1, `${entry.id} registers exactly one tool`);
+    check(result.loadedPaths.length === 1 && resolve(result.loadedPaths[0]) === resolve(extensionPath), `${entry.id} loads only its own entrypoint`);
   }
-
-  console.log("\n[4] root pi.extensions discovery");
-  check(rootPackage.pi.extensions.length === 3, "root declares exactly three pi.extensions entries");
-  for (const extensionPath of rootPackage.pi.extensions) {
-    check(existsSync(join(target, extensionPath)), `${extensionPath} exists in the production tree`);
-  }
-
-  if (failures.length > 0) {
-    console.error(`\nPRODUCTION INSTALL VERIFICATION FAILED (${failures.length})`);
-    for (const failure of failures) console.error(`  - ${failure}`);
-    process.exitCode = 1;
-  } else {
-    console.log("\nProduction install verification passed.");
-  }
+  if (failures.length) throw new Error(failures.join("\n"));
+  console.log("\nProduction install verification passed.");
+} catch (error) {
+  console.error(error.message);
+  process.exitCode = 1;
 } finally {
-  if (keep) {
-    console.log(`Kept: ${tempRoot}`);
-  } else {
-    rmSync(tempRoot, { recursive: true, force: true });
-  }
+  if (process.argv.includes("--keep")) console.log(`Kept: ${tempRoot}`);
+  else rmSync(tempRoot, { recursive: true, force: true });
 }

@@ -2,7 +2,7 @@
   "name": "@gfgghgftgffg/rpiv-todo-lean",
   "version": "0.1.0",
   "type": "module",
-  "description": "Lean Pi todo extension: the full @juicesharp/rpiv-todo 2.13.5 runtime with a compact flat schema and per-session RPC overlay handling preserved.",
+  "description": "Lean Pi todo extension: the full @juicesharp/rpiv-todo runtime with a compact flat schema and per-session RPC overlay handling preserved.",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

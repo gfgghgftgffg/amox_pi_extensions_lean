@@ -1,89 +1,138 @@
 name: Release
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - package.json
+      - packages/**
+      - maintenance/**
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag vX.Y.Z (must match root package.json version)"
+        description: "Initial/retry manual release tag vX.Y.Z (matches root and all package versions)"
         required: true
         type: string
 
-# Default read-only. Only the final job gets contents: write, scoped to the
-# protected `release` environment, and it never installs or runs dependencies.
 permissions:
   contents: read
 
-# Serialize manual releases, including environment approval waits. API ref
-# reservation remains create-only even against writers outside this workflow.
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  verify:
-    name: Verify immutable SHA (read-only)
+  plan:
+    name: Release only a reviewed version bump (or explicit manual request)
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
-    permissions:
-      contents: read
+    outputs:
+      should_release: ${{ steps.plan.outputs.should_release }}
+      tag: ${{ steps.plan.outputs.tag }}
     steps:
-      - name: Checkout immutable run SHA (no persisted credentials)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+      - id: plan
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_BEFORE_SHA: ${{ github.event.before }}
+        run: node scripts/release-plan.mjs --run
+
+  verify:
+    name: Verify immutable SHA (${{ matrix.os }}, no secrets)
+    needs: plan
+    if: needs.plan.outputs.should_release == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.22.1"
-
-      - name: Validate release tag against root version and run SHA
+      - name: Validate release context without token
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
           EXPECTED_SHA: ${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/create-release.mjs --verify-only
-
-      - name: Install dependencies (no lifecycle scripts)
-        run: npm ci --ignore-scripts
-
-      - name: Typecheck and test (packages + root)
-        run: npm run check
-
-      - name: Verify tracked tool-contract snapshot
-        run: npm run contracts:check
-
-      - name: Verify fresh production install (self-contained host)
-        run: npm run verify:production
-
-      - name: Security audit (all dependencies)
-        run: npm audit --audit-level=high
-
-      - name: Security audit (production/peer surface only)
-        run: npm audit --omit=dev --audit-level=high
+      - run: npm ci --ignore-scripts
+      - run: npm run check
+      - run: npm run contracts:check
+      - run: npm run verify:production
+      - run: npm audit --audit-level=high
+      - run: npm audit --omit=dev --audit-level=high
+      - run: node scripts/release-assets.mjs --build
+        if: matrix.os == 'ubuntu-latest'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          name: release-assets
+          path: .release-assets/
+          if-no-files-found: error
+          retention-days: 7
 
   release:
-    name: Create tag + GitHub release (write-scoped, no install)
-    needs: verify
-    if: github.ref == 'refs/heads/main'
+    name: Create immutable tag + GitHub Release (no dependency execution)
+    needs: [plan, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: release
     permissions:
       contents: write
     steps:
-      - name: Checkout verified SHA (no persisted credentials)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-
-      - name: Create tag / GitHub release via gh (token used only here)
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets
+          path: .release-assets
+      - name: Validate assets, atomically reserve tag and create release
         env:
-          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
           EXPECTED_SHA: ${{ github.sha }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: node scripts/create-release.mjs
+        run: node scripts/create-release.mjs --assets-dir .release-assets
+
+  npm:
+    name: Optional independent npm publication (prebuilt archives only)
+    needs: [plan, release]
+    if: vars.PUBLISH_NPM == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: npm-publish
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+          registry-url: https://registry.npmjs.org/
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-assets
+          path: .release-assets
+      - name: Publish individual packages without lifecycle scripts
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: node scripts/publish-packages.mjs

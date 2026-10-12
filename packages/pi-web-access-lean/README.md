@@ -22,13 +22,13 @@ by [Nico Bailon](https://github.com/nicobailon/pi-web-access). Both are MIT-lice
 
 ## Installation
 
-Preferred: install the whole monorepo as one Pi package (Git install):
+Install only this extension from the repository root (clone as shown in the root README):
 
 ```bash
-pi install git:git@github.com:gfgghgftgffg/amox_pi_extensions_lean.git
+node scripts/install-extension.mjs pi-web-access-lean
 ```
 
-Standalone npm publishing of this workspace package is optional and not part of phase 1.
+Once published to npm, `pi install npm:@gfgghgftgffg/pi-web-access-lean` is also available. Choose one installation method.
 
 Do not load this package alongside another `pi-web-access` wrapper, to avoid duplicate tool
 registrations.

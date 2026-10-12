@@ -19,7 +19,9 @@
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { releaseNotes, validateReleaseContext } from "./lib/release-validation.mjs";
+import { validateReleaseAssets } from "./release-assets.mjs";
 
 function git(args, options = {}) {
   return execFileSync("git", args, { encoding: "utf8", ...options }).trim();
@@ -68,6 +70,14 @@ try {
     process.exit(0);
   }
 
+  const assetsIndex = process.argv.indexOf("--assets-dir");
+  if (assetsIndex >= 0 && !process.argv[assetsIndex + 1]) throw new Error("--assets-dir needs a directory");
+  const assetsDir = assetsIndex < 0 ? undefined : process.argv[assetsIndex + 1];
+  const assets = assetsDir ? [
+    ...validateReleaseAssets({ repoRoot: process.cwd(), dir: assetsDir }).map((asset) => asset.path),
+    resolve(assetsDir, "assets.json"),
+  ] : [];
+
   if (!process.env.GH_TOKEN) {
     throw new Error("GH_TOKEN 缺失：release job 需要在最终步骤注入 token");
   }
@@ -90,7 +100,7 @@ try {
   verifyRef(reservation.stdout, tag, expectedSha);
   verifyRef(gh(["api", `repos/${repository}/git/ref/tags/${tag}`]).stdout, tag, expectedSha);
   const notes = releaseNotes({ tag, repository, sha: expectedSha });
-  const created = gh(["release", "create", tag, "--repo", repository, "--verify-tag", "--title", tag, "--notes", notes]);
+  const created = gh(["release", "create", tag, "--repo", repository, "--verify-tag", "--title", tag, "--notes", notes, ...assets]);
   console.log(`Created release ${tag} (tag target ${expectedSha}).`);
   if (created.stdout) console.log(created.stdout);
   process.exit(0);

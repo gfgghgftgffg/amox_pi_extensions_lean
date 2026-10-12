@@ -23,14 +23,13 @@ original `LICENSE` is preserved in this package.
 
 ## Installation
 
-Preferred: install the whole monorepo as one Pi package (Git install):
+Install only this extension from the repository root (clone as shown in the root README):
 
 ```bash
-pi install git:git@github.com:gfgghgftgffg/amox_pi_extensions_lean.git
+node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-Standalone npm publishing of this workspace package is optional and not part of phase 1. Do not load
-it alongside another `pi-subagents` wrapper.
+Once published to npm, `pi install npm:@gfgghgftgffg/pi-subagents-lean` is also available. Choose one installation method; do not load another `pi-subagents` wrapper alongside it.
 
 ## Usage
 

@@ -31,6 +31,7 @@
       "upstreamVersion": "2.13.5",
       "upstreamRepository": "https://github.com/juicesharp/rpiv-mono.git",
       "upstreamRepositoryDirectory": "packages/rpiv-todo",
+      "upstreamRelatedDirectories": ["packages/rpiv-i18n"],
       "upstreamGitHead": "e516242c51adace38b8dd0a3c70495d24a6e9b79",
       "leanRepository": "https://github.com/kunkun9527/rpiv-todo-lean.git",
       "leanCommit": "ec463cd90fbae962122fff2e0619955a8f17df1a"

@@ -7,7 +7,6 @@
     "noEmit": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
-    "baseUrl": ".",
     "paths": {
       "pi-web-access/index.ts": [
         "./tests/types/pi-web-access.d.ts"

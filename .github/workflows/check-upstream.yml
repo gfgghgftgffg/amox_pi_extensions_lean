@@ -37,6 +37,8 @@ jobs:
         with:
           name: maintenance-input
           path: .maintenance-candidate/
+          # Only this no-secret source bundle, never the whole checkout.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -44,6 +46,7 @@ jobs:
         with:
           name: maintenance-detection-failure
           path: .maintenance-candidate/diagnostics/
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
 
@@ -80,6 +83,7 @@ jobs:
         with:
           name: maintenance-proposed
           path: .maintenance-candidate/adapted.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 
@@ -113,6 +117,7 @@ jobs:
         with:
           name: maintenance-verified
           path: .maintenance-candidate/verified.json
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -120,6 +125,7 @@ jobs:
         with:
           name: maintenance-verification-logs-${{ matrix.os }}
           path: .maintenance-candidate/verification/
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
 

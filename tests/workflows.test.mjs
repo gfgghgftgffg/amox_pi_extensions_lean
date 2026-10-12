@@ -29,6 +29,31 @@ test("every action is SHA-pinned and checkouts never persist credentials", () =>
   }
 });
 
+test("hidden artifact bundles explicitly opt in without uploading the whole checkout", () => {
+  const allowed = new Set([
+    ".maintenance-candidate/", ".maintenance-candidate/diagnostics/",
+    ".maintenance-candidate/adapted.json", ".maintenance-candidate/verified.json",
+    ".maintenance-candidate/verification/", ".release-assets/",
+  ]);
+  const found = new Set();
+  for (const file of readdirSync(workflowsDir).filter((name) => name.endsWith(".yml"))) {
+    for (const step of workflow(file).split(/\n {6}- /).slice(1)) {
+      if (!step.startsWith("uses: actions/upload-artifact@")) continue;
+      const path = step.match(/^ {10}path: (.+)$/m)?.[1];
+      if (path && /(?:^|\/)\.[^/]+/.test(path)) {
+        assert.match(step, /^ {10}include-hidden-files: true$/m, `${file}: ${path} would be silently excluded`);
+        found.add(path);
+      }
+      if (/^ {10}include-hidden-files: true$/m.test(step)) {
+        assert.ok(allowed.has(path), `${file}: hidden uploads must stay scoped to a known no-secret artifact`);
+        assert.doesNotMatch(step, /secrets\./);
+        assert.match(step, /^ {10}retention-days: 7$/m);
+      }
+    }
+  }
+  assert.deepEqual(found, allowed);
+});
+
 test("CI remains read-only, secret-free and covers complete verification", () => {
   const text = workflow("test.yml");
   for (const event of ["push", "pull_request", "workflow_dispatch", "schedule"]) assert.match(text, new RegExp(`\\n {2}${event}:\\n`));

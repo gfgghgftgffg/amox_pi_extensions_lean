@@ -80,6 +80,8 @@ jobs:
         with:
           name: release-assets
           path: .release-assets/
+          # Contains only the validated archives and assets.json, no credentials.
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
 

@@ -17,8 +17,8 @@ import {
 } from "../scripts/lib/isolated-pi-session.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
-const entryPaths = rootPackage.pi.extensions.map((entry) => resolve(repoRoot, entry));
+const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8"));
+const entryPaths = manifest.packages.map((entry) => resolve(repoRoot, entry.path, entry.entry));
 const expectedTools = ["web_access", "todo", "subagent"];
 const upstreamToolNames = [
   "web_search",
@@ -77,7 +77,7 @@ test("Task Router ext: selector identity is unchanged by the monorepo bundle", a
   const { extensionCanonicalNames } = await jiti.import("@tintinweb/pi-subagents/src/agent-runner.ts");
 
   for (const entryPath of entryPaths) {
-    const expected = entryPath.split("/").slice(-2)[0].toLowerCase();
+    const expected = entryPath.replaceAll("\\", "/").split("/").slice(-2)[0].toLowerCase();
     const names = extensionCanonicalNames(entryPath);
     assert.ok(
       names.includes(expected),

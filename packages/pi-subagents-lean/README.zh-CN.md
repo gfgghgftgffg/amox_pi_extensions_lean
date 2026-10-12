@@ -19,13 +19,13 @@
 
 ## 安装
 
-推荐把整个单仓作为一个 Pi 包安装（Git 安装）：
+从仓库根目录只安装本扩展（先按根 README 克隆仓库）：
 
 ```bash
-pi install git:git@github.com:gfgghgftgffg/amox_pi_extensions_lean.git
+node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-本工作区包单独发布到 npm 为可选项，不属于 phase 1 范围。请勿与其它 `pi-subagents` 包装扩展同时加载。
+已发布到 npm 后，也可用 `pi install npm:@gfgghgftgffg/pi-subagents-lean`。两种方式只选一种，请勿与其它 `pi-subagents` 包装扩展同时加载。
 
 ## 使用方法
 

@@ -5,8 +5,6 @@ on:
     - cron: "23 2 * * *"
   workflow_dispatch:
 
-# The detection job is read-only. Only the final PR job receives write
-# permissions, and it never installs or executes upstream code.
 permissions:
   contents: read
 
@@ -16,81 +14,139 @@ concurrency:
 
 jobs:
   detect:
-    name: Detect + stage candidate (read-only)
+    name: Detect + collect exact source context (no secrets)
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
-    permissions:
-      contents: read
+    timeout-minutes: 55
     outputs:
-      has_candidate: ${{ steps.candidate.outputs.has_candidate }}
+      has_candidate: ${{ steps.prepare.outputs.has_candidate }}
     steps:
-      - name: Checkout (read-only, no persisted credentials)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-
-      - name: Set up Node.js
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "22.22.1"
-
-      - name: Install baseline dependencies (no lifecycle scripts)
-        run: npm ci --ignore-scripts
-
-      - name: Sanity-check the accepted contract snapshot
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p .maintenance-candidate/diagnostics
-          npm run contracts:check 2>&1 | tee .maintenance-candidate/diagnostics/baseline-contracts-check.log
-
-      - name: Stage upstream maintenance candidate
-        shell: bash
-        run: |
-          set -o pipefail
-          mkdir -p .maintenance-candidate/diagnostics
-          node scripts/check-upstream.mjs --apply --out-dir .maintenance-candidate 2>&1 | tee .maintenance-candidate/diagnostics/check-upstream.log
-
-      - name: Emit candidate status
-        id: candidate
-        run: node scripts/workflow/candidate-status.mjs --artifact .maintenance-candidate/candidate.json
-
-      - name: Upload candidate + diagnostics
-        if: steps.candidate.outputs.has_candidate == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+      - run: npm ci --ignore-scripts
+      - run: npm run contracts:check
+      - id: prepare
+        run: node scripts/automate-maintenance.mjs prepare
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.prepare.outputs.has_candidate == 'true'
         with:
-          name: maintenance-candidate
+          name: maintenance-input
           path: .maintenance-candidate/
           if-no-files-found: error
           retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: failure()
+        with:
+          name: maintenance-detection-failure
+          path: .maintenance-candidate/diagnostics/
+          if-no-files-found: ignore
+          retention-days: 7
 
-  open-pr:
-    name: Apply validated candidate + open draft PR (write-scoped, no install)
+  adapt:
+    name: Agent review + minimal lean adaptation (read-only GitHub token)
     needs: detect
     if: needs.detect.outputs.has_candidate == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+      # Install trusted baseline SDK, never agent-proposed code with secrets.
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: maintenance-input
+          path: .maintenance-candidate
+      - name: Run restricted SDK agent (file tools only; no upstream execution)
+        env:
+          MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}
+          MAINTENANCE_PROVIDER: ${{ vars.MAINTENANCE_PROVIDER }}
+          MAINTENANCE_MODEL: ${{ vars.MAINTENANCE_MODEL }}
+          MAINTENANCE_BASE_URL: ${{ vars.MAINTENANCE_BASE_URL }}
+          MAINTENANCE_API: ${{ vars.MAINTENANCE_API }}
+          MAINTENANCE_THINKING: ${{ vars.MAINTENANCE_THINKING }}
+        run: node scripts/automate-maintenance.mjs adapt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: maintenance-proposed
+          path: .maintenance-candidate/adapted.json
+          if-no-files-found: error
+          retention-days: 7
+
+  verify:
+    name: Independent verification (${{ matrix.os }}, no model key or write token)
+    needs: adapt
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 55
+    outputs:
+      verified: ${{ steps.verify.outputs.verified }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: "22.22.1"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: maintenance-proposed
+          path: .maintenance-candidate
+      - id: verify
+        run: node scripts/automate-maintenance.mjs verify
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: steps.verify.outputs.verified == 'true' && matrix.os == 'ubuntu-latest'
+        with:
+          name: maintenance-verified
+          path: .maintenance-candidate/verified.json
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: maintenance-verification-logs-${{ matrix.os }}
+          path: .maintenance-candidate/verification/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  open-pr:
+    name: Apply validated source bundle + open reviewed PR (no dependency execution)
+    needs: verify
+    if: needs.verify.result == 'success' && needs.verify.outputs.verified == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout trusted baseline (no persisted credentials)
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          ref: ${{ github.sha }}
           persist-credentials: false
-
-      - name: Download candidate artifact from this run
-        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          name: maintenance-candidate
+          node-version: "22.22.1"
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: maintenance-verified
           path: .maintenance-candidate
-
-      - name: Validate and apply constrained candidate files
-        run: node scripts/validate-candidate.mjs --artifact .maintenance-candidate/candidate.json --repo . --apply
-
-      - name: Create or update draft pull request
-        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
+      - name: Validate every path, hash, dependency and generated version before applying
+        run: node scripts/automate-maintenance.mjs apply
+      - uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           base: main
@@ -98,19 +154,18 @@ jobs:
           delete-branch: true
           draft: always-true
           add-paths: |
+            README.md
+            package.json
             package-lock.json
-            packages/pi-web-access-lean/package.json
-            packages/rpiv-todo-lean/package.json
-            packages/pi-subagents-lean/package.json
-            maintenance/manifest.json
-            maintenance/tool-contracts.json
-            maintenance/update-report.md
-          commit-message: "chore(maintenance): staged upstream maintenance candidate"
-          title: "chore(maintenance): upstream maintenance candidate (draft, do not edit branch)"
+            packages/
+            maintenance/
+          commit-message: "chore: reviewed upstream adaptation and next patch release"
+          title: "chore: verified upstream lean adaptation (human review required)"
           body: |
-            Automated draft candidate. See `maintenance/update-report.md` in the diff and the `check-upstream` run artifacts for evidence, contract diff and diagnostics.
+            The restricted agent reviewed exact upstream and lean-source revisions and proposed minimal changes.
+            An independent credential-free job passed tests, contract checks, standalone installs and audits.
 
-            - Adapters, prompts, schemas and descriptions are NOT auto-rewritten.
-            - Contract drift keeps the accepted snapshot unchanged; a human/agent must make the minimal adjustment following `docs/maintenance.md`.
-            - Do not edit the `maintenance/upstream-update` branch manually; automation may regenerate it.
-            - Draft only: no auto-merge and no release.
+            Review `maintenance/agent-review.md`, `maintenance/update-report.md`, every code/test diff and the Actions artifacts.
+            Approve the PR workflows when GitHub asks, mark ready only after review, then merge.
+            Merging the version bump triggers Release. There is NO automatic merge.
+            The machine branch may be regenerated; do not edit it manually. Use a separate fix PR if verification fails.

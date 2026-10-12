@@ -140,7 +140,9 @@ export function toolContract(tool, { active, substitutions = [] }) {
     // Upstream descriptions embed the agent dir / cwd (e.g. subagents lists
     // `<agentDir>/agents/*.md`); normalize them so snapshots stay portable and
     // reproducible across machines instead of leaking temp paths.
-    contract = JSON.parse(replaceAll(JSON.stringify(contract), substitutions));
+    contract = JSON.parse(replaceAll(JSON.stringify(contract), substitutions.map(([from, to]) => [
+      JSON.stringify(from).slice(1, -1), JSON.stringify(to).slice(1, -1),
+    ])));
   }
   const chars = contractChars(contract);
   return {

@@ -12,7 +12,8 @@
  * Drift or install/capture/check failure keeps the accepted snapshot intact
  * and still stages a draft-status candidate for humans to review.
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
+import { run } from "./process.mjs";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -53,8 +54,8 @@ function commitTemporaryProposal(workTree, paths) {
   execFileSync("git", ["-C", workTree, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", "-c", "user.name=Maintenance verification", "-c", "user.email=maintenance@example.invalid", "commit", "--quiet", "-m", "Temporary maintenance proposal (verification only)"]);
 }
 
-function runLogged(command, args, { cwd, logFile, env = {} }) {
-  const result = spawnSync(command, args, {
+function runLogged(command, args, { cwd, logFile, env = {}, runner = run }) {
+  const result = runner(command, args, {
     cwd,
     encoding: "utf8",
     env: { ...process.env, npm_config_audit: "false", npm_config_fund: "false", npm_config_update_notifier: "false", ...env },
@@ -72,7 +73,7 @@ function runLogged(command, args, { cwd, logFile, env = {} }) {
   };
 }
 
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+const NPM = "npm";
 
 function stageBundle({ outDir, status, files, plan }) {
   const diagnosticsDir = join(outDir, "diagnostics");
@@ -92,7 +93,7 @@ function stageBundle({ outDir, status, files, plan }) {
  * @param {object} options.baselineSnapshot parsed accepted snapshot
  * @param {boolean} [options.refreshSnapshot] allow a snapshot-only metadata refresh
  */
-export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapshot, refreshSnapshot = false }) {
+export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapshot, refreshSnapshot = false, runCommand = run }) {
   const baseCommit = assertCleanBaseline(repoRoot, baselineSnapshot);
   const fullPlan = { ...plan, baseCommit };
   const diagnosticsDir = join(outDir, "diagnostics");
@@ -160,6 +161,7 @@ export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapsho
     const install = runLogged(NPM, ["install", "--ignore-scripts", "--registry=https://registry.npmjs.org"], {
       cwd: workTree,
       logFile: join(diagnosticsDir, "install.log"),
+      runner: runCommand,
       env: { npm_config_ignore_scripts: "true", npm_config_registry: "https://registry.npmjs.org" },
     });
     if (!install.ok) {
@@ -172,10 +174,17 @@ export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapsho
     const capture = runLogged(process.execPath, ["scripts/capture-contracts.mjs", "--output", captureOut], {
       cwd: workTree,
       logFile: join(diagnosticsDir, "capture.log"),
+      runner: runCommand,
     });
     if (!capture.ok) {
       const report = buildUpdateReport({ plan, status: "failed", baseCommit, install, capture });
-      const files = [...packageFiles.values(), { path: MANIFEST_PATH, content: manifestContent }, { path: REPORT_PATH, content: report }];
+      // The new engine is installed, but the old facade may no longer load.
+      // Keep the validated dependency lock so the agent can repair that API
+      // break instead of stopping before the adaptation phase can run.
+      const files = [...packageFiles.values(),
+        { path: MANIFEST_PATH, content: manifestContent },
+        { path: "package-lock.json", content: readFileSync(join(workTree, "package-lock.json"), "utf8") },
+        { path: REPORT_PATH, content: report }];
       return stageBundle({ outDir, status: "failed", files, plan: fullPlan });
     }
     const candidateSnapshot = JSON.parse(readFileSync(captureOut, "utf8"));
@@ -192,8 +201,8 @@ export async function prepareCandidate({ repoRoot, outDir, plan, baselineSnapsho
     // Git-dependent tests run on a clean, TEMP-only proposal commit. Artifact
     // baseCommit remains the original baseline; never commit the owned tree.
     commitTemporaryProposal(workTree, [...packageFiles.values()].map((file) => file.path).concat([MANIFEST_PATH, "package-lock.json", ...(!drift ? [SNAPSHOT_PATH] : [])]));
-    const check = runLogged(NPM, ["run", "check"], { cwd: workTree, logFile: join(diagnosticsDir, "check.log") });
-    const contractsCheck = runLogged(NPM, ["run", "contracts:check"], { cwd: workTree, logFile: join(diagnosticsDir, "contracts-check.log") });
+    const check = runLogged(NPM, ["run", "check"], { cwd: workTree, logFile: join(diagnosticsDir, "check.log"), runner: runCommand });
+    const contractsCheck = runLogged(NPM, ["run", "contracts:check"], { cwd: workTree, logFile: join(diagnosticsDir, "contracts-check.log"), runner: runCommand });
     const checkDetail = {
       detail: `${check.detail}; contracts:check ${contractsCheck.detail}`,
       ok: check.ok && contractsCheck.ok,

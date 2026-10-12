@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Minimal-change monorepo maintaining three lean Pi extension facades (web access, todo, subagents) that keep full upstream features while shrinking the provider-facing tool spec.",
+  "description": "Three independently installable lean Pi extensions with reviewed automated upstream maintenance.",
   "license": "MIT",
   "engines": {
     "node": ">=22.19.0"
@@ -11,11 +11,6 @@
   "workspaces": [
     "packages/*"
   ],
-  "dependencies": {
-    "@gfgghgftgffg/pi-subagents-lean": "*",
-    "@gfgghgftgffg/pi-web-access-lean": "*",
-    "@gfgghgftgffg/rpiv-todo-lean": "*"
-  },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",
     "@earendil-works/pi-coding-agent": ">=1.1.0",
@@ -37,16 +32,14 @@
     "contracts": "node scripts/capture-contracts.mjs --write",
     "contracts:check": "node scripts/capture-contracts.mjs --check",
     "verify:production": "node scripts/verify-production-install.mjs",
+    "test:maintenance-pipeline": "node tests/integration/maintenance-pipeline.mjs",
     "maintenance:plan": "node scripts/check-upstream.mjs",
     "maintenance:stage": "node scripts/check-upstream.mjs --apply",
-    "build": "npm run typecheck"
-  },
-  "pi": {
-    "extensions": [
-      "./packages/pi-web-access-lean/index.ts",
-      "./packages/rpiv-todo-lean/index.ts",
-      "./packages/pi-subagents-lean/index.ts"
-    ]
+    "build": "npm run typecheck",
+    "install:extension": "node scripts/install-extension.mjs",
+    "maintenance:prepare": "node scripts/automate-maintenance.mjs prepare",
+    "maintenance:adapt": "node scripts/automate-maintenance.mjs adapt",
+    "maintenance:verify": "node scripts/automate-maintenance.mjs verify"
   },
   "files": [
     "packages/*/index.ts",

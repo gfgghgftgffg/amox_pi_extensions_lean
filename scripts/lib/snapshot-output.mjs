@@ -10,8 +10,9 @@ export function checkedSnapshotOutput(outputPath, baselinePath) {
   const canonicalBaseline = existsSync(baseline) ? realpathSync(baseline) : join(realpathSync(dirname(baseline)), basename(baseline));
   let alias = canonicalOutput === canonicalBaseline;
   if (existsSync(output) && existsSync(baseline)) {
-    const a = statSync(output);
-    const b = statSync(baseline);
+    // NTFS inode IDs may exceed Number's safe range; compare exact IDs.
+    const a = statSync(output, { bigint: true });
+    const b = statSync(baseline, { bigint: true });
     alias ||= a.dev === b.dev && a.ino === b.ino;
   }
   if (alias) throw new Error("已接受快照/文件别名不允许通过 --output 改写；请显式使用 --write");

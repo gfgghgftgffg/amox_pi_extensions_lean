@@ -14,6 +14,7 @@ if (!inputPath) throw new Error("Usage: node capture-worker.mjs <input.json>");
 
 const input = JSON.parse(readFileSync(inputPath, "utf8"));
 
+const previousCwd = process.cwd();
 const isolated = createIsolatedEnvironment({ prefix: `amox-${input.id}-` });
 try {
   // Resolve the host before HOME is redirected to the isolated env.
@@ -27,5 +28,6 @@ try {
   });
   writeFileSync(input.resultPath, `${JSON.stringify({ id: input.id, ...result }, null, 2)}\n`);
 } finally {
+  process.chdir(previousCwd);
   isolated.cleanup();
 }

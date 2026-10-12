@@ -38,12 +38,19 @@ export function releaseNotes({ tag, repository, sha }) {
   return [
     `Release ${tag} of amox-pi-extensions-lean.`,
     "",
-    "Git-install pinned to this immutable tag:",
+    "Install each extension separately from this tag:",
     "",
     "```bash",
-    `pi install git:github.com/${repository}@${tag}`,
+    `git clone --branch ${tag} https://github.com/${repository}.git`,
+    "cd amox_pi_extensions_lean",
+    "node scripts/install-extension.mjs pi-web-access-lean",
+    "# Or, independently:",
+    "node scripts/install-extension.mjs rpiv-todo-lean",
+    "node scripts/install-extension.mjs pi-subagents-lean",
     "```",
     "",
-    `Contains the three lean Pi extension facades (pi-web-access-lean, rpiv-todo-lean, pi-subagents-lean). CI, contract snapshot, fresh production install and npm audit passed at commit ${sha} before this tag was created. No npm publish is performed by this workflow.`,
+    "The three .tgz assets are independent npm packages. When npm publication is enabled, install only the package you want using pi install npm:@gfgghgftgffg/<extension-id>.",
+    "",
+    `Tests, contract snapshot, three independent production installs and npm audits passed at commit ${sha}. This workflow never automatically merges an adaptation PR.`,
   ].join("\n");
 }

@@ -1,12 +1,10 @@
-// Root manifest / packaging checks: the monorepo must be a valid installable Pi
-// package whose packing contains the three entrypoints and LICENSEs, without
-// lifecycle hooks and without loading upstream engines as extra extensions.
+// The root is maintenance-only; every workspace is a standalone Pi package.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
+import { checkedRun } from "../scripts/lib/process.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
@@ -28,19 +26,16 @@ const LIFECYCLE_HOOKS = [
   "postpack",
 ];
 
-test("root manifest is a private workspace with exactly three pi extension entrypoints", () => {
+test("root is maintenance-only and each workspace declares exactly one entrypoint", () => {
   assert.equal(rootPackage.private, true);
   assert.deepEqual(rootPackage.workspaces, ["packages/*"]);
-  assert.equal(rootPackage.pi.extensions.length, 3);
-  assert.deepEqual(
-    rootPackage.pi.extensions,
-    manifest.packages.map((entry) => `./${entry.path}/index.ts`),
-  );
-  for (const extensionPath of rootPackage.pi.extensions) {
-    assert.ok(!extensionPath.includes("node_modules"), `${extensionPath} must not point into node_modules`);
-    const absolute = resolve(repoRoot, extensionPath);
-    assert.ok(existsSync(absolute), `${extensionPath} must exist`);
-    assert.ok(statSync(absolute).isFile(), `${extensionPath} must be a file`);
+  assert.equal(rootPackage.pi, undefined);
+  assert.equal(rootPackage.dependencies, undefined);
+  for (const { dir, pkg } of workspacePackages) {
+    assert.deepEqual(pkg.pi.extensions, ["./index.ts"]);
+    const absolute = resolve(dir, pkg.pi.extensions[0]);
+    assert.ok(existsSync(absolute));
+    assert.ok(statSync(absolute).isFile());
   }
 });
 
@@ -62,7 +57,7 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
     assert.equal(entry.id, entry.path.split("/").pop());
     assert.equal(pkg.name, entry.packageName);
     assert.equal(pkg.name, `@gfgghgftgffg/${entry.id}`);
-    assert.equal(pkg.version, "0.1.0");
+    assert.equal(pkg.version, rootPackage.version);
     assert.equal(pkg.version, entry.version);
     assert.equal(pkg.license, "MIT");
     assert.equal(pkg.repository.directory, entry.path);
@@ -94,32 +89,18 @@ test("host-supplied Pi packages and typebox stay peers, never runtime dependenci
       }
     }
   }
-  assert.deepEqual(
-    Object.keys(rootPackage.dependencies).sort(),
-    manifest.packages.map((entry) => entry.packageName).sort(),
-    "the root bundle must depend on exactly the three workspace packages",
-  );
+  assert.equal(rootPackage.dependencies, undefined, "no install-all runtime bundle");
 });
 
-test("npm pack contains the three entrypoints, LICENSEs, and maintenance records", () => {
-  const pack = spawnSync("npm", ["pack", "--dry-run", "--json"], { cwd: repoRoot, encoding: "utf8" });
-  assert.equal(pack.status, 0, pack.stderr);
-  const files = JSON.parse(pack.stdout)[0].files.map((file) => file.path);
-  const required = [
-    "README.md",
-    "LICENSE",
-    "docs/actions-setup.md",
-    "docs/maintenance.md",
-    "maintenance/manifest.json",
-    "maintenance/tool-contracts.json",
-    ...manifest.packages.flatMap((entry) => [
-      `${entry.path}/index.ts`,
-      `${entry.path}/package.json`,
-      `${entry.path}/LICENSE`,
-      `${entry.path}/MAINTENANCE.md`,
-    ]),
-  ];
-  for (const path of required) {
-    assert.ok(files.includes(path), `packed tarball is missing ${path}`);
+test("each workspace packs its own entrypoint, LICENSE and maintenance records only", () => {
+  for (const { dir, pkg } of workspacePackages) {
+    const output = checkedRun("npm", ["pack", "--dry-run", "--ignore-scripts", "--workspaces=false", "--json"], { cwd: dir });
+    const packed = JSON.parse(output)[0];
+    assert.equal(packed.name, pkg.name);
+    const files = packed.files.map((file) => file.path);
+    for (const path of ["index.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) {
+      assert.ok(files.includes(path), `packed tarball is missing ${path}`);
+    }
+    assert.ok(!files.some((path) => path.startsWith("packages/") || path.startsWith("node_modules/")));
   }
 });

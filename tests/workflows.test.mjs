@@ -1,7 +1,7 @@
 // Offline guardrails for workflow permissions, execution and installation.
 import assert from "node:assert/strict";
 import test from "node:test";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -137,26 +137,30 @@ test("dependabot cannot bypass controlled upstream engine upgrades", () => {
   for (const name of ["pi-web-access", "@juicesharp/rpiv-todo", "@juicesharp/rpiv-i18n", "@tintinweb/pi-subagents"]) assert.ok(text.includes(`dependency-name: "${name}"`));
 });
 
-test("docs describe actual automated adaptation and separate installation, not the old bundle", () => {
+test("public README owns installation and Actions setup; docs retain maintainer details", () => {
   const readme = read("README.md");
-  const setup = read("docs/actions-setup.md");
   const maintenance = read("docs/maintenance.md");
-  assert.doesNotMatch(readme, /phase\s*[12]/i);
-  assert.match(readme, /docs\/actions-setup\.md/);
+  assert.doesNotMatch(readme, /phase\s*[12]|你审查|你确认|你的电脑|不自动合并|VPS|tmux/i);
   assert.match(readme, /docs\/maintenance\.md/);
-  assert.match(setup, /MAINTENANCE_API_KEY/);
-  assert.match(setup, /MAINTENANCE_PROVIDER/);
-  assert.match(setup, /MAINTENANCE_MODEL/);
-  assert.match(setup, /Approve workflows to run/);
-  assert.match(setup, /PUBLISH_NPM/);
-  assert.match(setup, /不是[\s\S]{0,10}操作系统级沙箱/);
-  assert.match(setup, /triggering-a-workflow/);
-  assert.match(setup, /secure-use/);
+  assert.match(readme, /安装和使用扩展不需要配置 Actions/);
+  for (const name of ["MAINTENANCE_API_KEY", "MAINTENANCE_PROVIDER", "MAINTENANCE_MODEL", "MAINTENANCE_BASE_URL", "MAINTENANCE_API", "MAINTENANCE_THINKING"]) {
+    assert.ok(readme.includes(name), `README missing ${name}`);
+  }
+  assert.match(readme, /02:23 UTC/);
+  assert.match(readme, /04:17 UTC/);
+  assert.match(readme, /没有上游更新时不调用模型/);
+  assert.match(readme, /不发布 npm 包/);
+  assert.doesNotMatch(readme, /pi install npm:|NPM_TOKEN|PUBLISH_NPM/);
+  assert.doesNotMatch(readme, /sub2api\.amox\.cc|gpt-6\.1-sol/);
+  assert.ok(!existsSync(join(repoRoot, "docs/actions-setup.md")), "obsolete Actions setup page should be removed");
   assert.match(maintenance, /最小改动/);
+  assert.match(maintenance, /Approve workflows to run/);
+  assert.match(maintenance, /不是[\s\S]{0,10}操作系统级沙箱/);
+  assert.doesNotMatch(maintenance, /你审查|你确认|Settings →|## 自动流程/);
   const manifest = JSON.parse(read("maintenance/manifest.json"));
   for (const entry of manifest.packages) {
     assert.ok(readme.includes(`node scripts/install-extension.mjs ${entry.id}`));
-    assert.ok(readme.includes(`pi install npm:${entry.packageName}`));
+    assert.ok(readme.includes(`${entry.path}/README.zh-CN.md`));
     for (const file of ["README.md", "README.zh-CN.md"]) {
       const doc = read(`${entry.path}/${file}`);
       assert.doesNotMatch(doc, /pi install git:|phase 1/);
@@ -164,6 +168,23 @@ test("docs describe actual automated adaptation and separate installation, not t
     }
   }
   assert.doesNotMatch(readme, /pi install git:/);
+});
+
+test("README and maintainer docs keep local links and anchors valid", () => {
+  const documents = ["README.md", ...readdirSync(join(repoRoot, "docs")).filter((file) => file.endsWith(".md")).map((file) => `docs/${file}`)];
+  for (const file of documents) {
+    for (const [, href] of read(file).matchAll(/\]\(([^)]+)\)/g)) {
+      if (/^[a-z]+:\/\//i.test(href)) continue;
+      const [target, anchor] = href.split("#");
+      const path = target ? resolve(repoRoot, dirname(file), decodeURIComponent(target)) : join(repoRoot, file);
+      assert.ok(existsSync(path), `${file}: missing link target ${href}`);
+      if (anchor) {
+        const headings = readFileSync(path, "utf8").split(/\r?\n/).filter((line) => /^#+ /.test(line))
+          .map((line) => line.replace(/^#+ /, "").trim().toLowerCase().replace(/ /g, "-"));
+        assert.ok(headings.includes(decodeURIComponent(anchor)), `${file}: missing anchor ${href}`);
+      }
+    }
+  }
 });
 
 test("official registry is pinned and no lockfile download uses the old mirror", () => {

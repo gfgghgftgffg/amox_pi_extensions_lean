@@ -3,11 +3,12 @@
 // refuse retagging/overwriting and never require npm or dependency execution.
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createHash } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { delimiter, dirname, join, resolve } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { releaseNotes, validateReleaseContext, validateReleaseTag } from "../scripts/lib/release-validation.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -52,18 +53,20 @@ if (args[0] === "release" && args[1] === "create") {
 fail(400, "Unexpected operation");
 `;
   writeFileSync(join(dir, "gh"), script);
+  // A preload routes only gh calls to the offline Node fixture on every OS.
+  writeFileSync(join(dir, "loader.mjs"), `import cp from "node:child_process";\nimport { syncBuiltinESMExports } from "node:module";\nconst original = cp.execFileSync;\ncp.execFileSync = (command, args, options) => command === "gh" ? original(process.execPath, [${JSON.stringify(join(dir, "gh"))}, ...args], options) : original(command, args, options);\nsyncBuiltinESMExports();\n`);
   chmodSync(join(dir, "gh"), 0o755);
   writeFileSync(logPath, "");
   return dir;
 }
 
 function runReleaseScript({ fakeDir, logPath, env = {}, args = [] }) {
-  return spawnSync(process.execPath, ["scripts/create-release.mjs", ...args], {
+  return spawnSync(process.execPath, ["--import", pathToFileURL(join(fakeDir, "loader.mjs")).href, "scripts/create-release.mjs", ...args], {
     cwd: repoRoot,
     encoding: "utf8",
     env: {
       ...process.env,
-      PATH: `${fakeDir}:${process.env.PATH}`,
+      PATH: `${fakeDir}${delimiter}${process.env.PATH}`,
       FAKE_GH_LOG: logPath,
       RELEASE_TAG: tag,
       EXPECTED_SHA: headSha,
@@ -85,7 +88,37 @@ test("release tag and context validation rules", () => {
   assert.ok(validateReleaseContext({ tag, packageVersion: rootVersion, expectedSha: "abc", headSha }).some((error) => /EXPECTED_SHA/.test(error)));
   assert.ok(validateReleaseContext({ tag, packageVersion: rootVersion, expectedSha: "f".repeat(40), headSha }).some((error) => /checkout HEAD/.test(error)));
   const notes = releaseNotes({ tag, repository: "test/repo", sha: headSha });
-  assert.match(notes, new RegExp(`pi install git:github.com/test/repo@${tag.replace(/\./g, "\\.")}`));
+  assert.ok(notes.includes(`git clone --branch ${tag} https://github.com/test/repo.git`));
+  assert.ok(notes.includes("node scripts/install-extension.mjs pi-web-access-lean"));
+  assert.doesNotMatch(notes, /pi install git:/);
+});
+
+test("release attaches three validated archives and the integrity manifest", () => {
+  const dir = mkdtempSync(join(tmpdir(), "amox-release-attachments-"));
+  const logPath = join(dir, "gh.log");
+  const fakeDir = fakeGhDir(logPath);
+  try {
+    const assetsDir = join(dir, "assets");
+    mkdirSync(assetsDir);
+    const entries = JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8")).packages;
+    const files = entries.map((entry) => {
+      const filename = `${entry.packageName.replace(/^@/, "").replaceAll("/", "-")}-${rootVersion}.tgz`;
+      const bytes = Buffer.from(entry.packageName);
+      writeFileSync(join(assetsDir, filename), bytes);
+      return { package: entry.packageName, filename, sha256: createHash("sha256").update(bytes).digest("hex"), integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}` };
+    });
+    writeFileSync(join(assetsDir, "assets.json"), JSON.stringify({ version: rootVersion, files }));
+    const result = runReleaseScript({ fakeDir, logPath, args: ["--assets-dir", assetsDir] });
+    assert.equal(result.status, 0, result.stderr);
+    const calls = readFileSync(logPath, "utf8");
+    assert.ok(calls.includes("release create"));
+    for (const asset of [...files.map((file) => file.filename), "assets.json"]) assert.ok(calls.includes(join(assetsDir, asset)), asset);
+    writeFileSync(join(assetsDir, files[0].filename), "tampered");
+    const rejected = runReleaseScript({ fakeDir, logPath, args: ["--assets-dir", assetsDir], env: { GH_TOKEN: "" } });
+    assert.equal(rejected.status, 1);
+    assert.match(rejected.stderr, /hash/);
+    assert.equal(readFileSync(logPath, "utf8"), calls, "tampered assets rejected before token/ref use");
+  } finally { rmSync(dir, { recursive: true, force: true }); rmSync(fakeDir, { recursive: true, force: true }); }
 });
 
 test("verify-only mode validates without any gh/token use", () => {

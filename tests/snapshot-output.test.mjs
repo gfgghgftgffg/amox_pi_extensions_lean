@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { symlinkSkip } from "./helpers/fs-capabilities.mjs";
 import test from "node:test";
 import { linkSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
@@ -9,7 +10,7 @@ import { writeSnapshotCopy } from "../scripts/lib/snapshot-output.mjs";
 import { cleanGitFixture } from "./helpers/clean-git-fixture.mjs";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
-test("snapshot output identity guard rejects symlink, hardlink and canonical-parent aliases without changing bytes", () => {
+test("snapshot output identity guard rejects symlink, hardlink and canonical-parent aliases without changing bytes", { skip: symlinkSkip }, () => {
   const dir = mkdtempSync(join(tmpdir(), "amox-output-alias-test-"));
   try {
     const acceptedDir = join(dir, "maintenance");
@@ -20,7 +21,7 @@ test("snapshot output identity guard rejects symlink, hardlink and canonical-par
     const symbolic = join(dir, "symlink.json"), hard = join(dir, "hardlink.json"), parent = join(dir, "parent-alias");
     symlinkSync(baselinePath, symbolic);
     linkSync(baselinePath, hard);
-    symlinkSync(acceptedDir, parent);
+    symlinkSync(acceptedDir, parent, process.platform === "win32" ? "junction" : "dir");
     for (const outputPath of [baselinePath, symbolic, hard, join(parent, "tool-contracts.json")]) {
       assert.throws(() => writeSnapshotCopy({ outputPath, baselinePath, content: "bad" }), /--write/);
       assert.equal(readFileSync(baselinePath, "utf8"), before);
@@ -38,16 +39,29 @@ test("snapshot output identity guard rejects symlink, hardlink and canonical-par
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("actual capture --output CLI cannot overwrite accepted baseline through filesystem aliases", () => {
+test("hardlink snapshot aliases cannot overwrite accepted bytes on any OS", () => {
+  const dir = mkdtempSync(join(tmpdir(), "amox-snapshot-hardlink-"));
+  try {
+    const acceptedPath = join(dir, "accepted.json");
+    const alias = join(dir, "hardlink.json");
+    const before = JSON.stringify({ accepted: "must stay immutable" }, null, 2) + "\n";
+    writeFileSync(acceptedPath, before);
+    linkSync(acceptedPath, alias);
+    assert.throws(() => writeSnapshotCopy({ outputPath: alias, baselinePath: acceptedPath, content: "changed" }), /--write/);
+    assert.equal(readFileSync(acceptedPath, "utf8"), before);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("actual capture --output CLI cannot overwrite accepted baseline through filesystem aliases", { skip: symlinkSkip }, () => {
   const fixture = cleanGitFixture(repoRoot);
   const dir = mkdtempSync(join(tmpdir(), "amox-capture-alias-cli-"));
   try {
-    symlinkSync(join(repoRoot, "node_modules"), join(fixture.repo, "node_modules"), "dir");
+    symlinkSync(join(repoRoot, "node_modules"), join(fixture.repo, "node_modules"), process.platform === "win32" ? "junction" : "dir");
     const baseline = join(fixture.repo, "maintenance/tool-contracts.json");
     const before = readFileSync(baseline, "utf8");
     symlinkSync(baseline, join(dir, "symbolic.json"));
     linkSync(baseline, join(dir, "hard.json"));
-    symlinkSync(join(fixture.repo, "maintenance"), join(dir, "parent"));
+    symlinkSync(join(fixture.repo, "maintenance"), join(dir, "parent"), process.platform === "win32" ? "junction" : "dir");
     for (const output of [join(dir, "symbolic.json"), join(dir, "hard.json"), join(dir, "parent/tool-contracts.json")]) {
       const result = spawnSync(process.execPath, ["scripts/capture-contracts.mjs", "--output", output], { cwd: fixture.repo, encoding: "utf8" });
       assert.equal(result.status, 1, result.stdout);

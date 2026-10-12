@@ -19,7 +19,7 @@
  */
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
+import { dirname, isAbsolute, join, posix, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { compareSnapshot } from "./snapshot-validation.mjs";
 import { compareLockfile, resolvePublicRegistryMetadata } from "./lock-validation.mjs";
@@ -53,7 +53,7 @@ export function assertSafeRelativePath(path) {
   if (segments.some((segment) => segment === "" || segment === "." || segment === "..")) {
     throw new Error(`拒绝越界/空路径段: ${path}`);
   }
-  if (normalize(path) !== path) throw new Error(`路径未规范化: ${path}`);
+  if (posix.normalize(path) !== path) throw new Error(`路径未规范化: ${path}`);
   return path;
 }
 

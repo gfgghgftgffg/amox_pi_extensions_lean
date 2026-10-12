@@ -152,7 +152,7 @@ function snapshotFrom(captures) {
     const record = {
       package: target.packageName,
       version: target.version,
-      entry: relative(repoRoot, target.entryPath),
+      entry: relative(repoRoot, target.entryPath).replaceAll("\\", "/"),
       registeredTools: result.tools.map((tool) => tool.name),
       activeToolNames: result.activeToolNames,
       totals: totals(result.tools),

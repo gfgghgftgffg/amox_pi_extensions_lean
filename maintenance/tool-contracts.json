@@ -1,0 +1,1164 @@
+{
+  "schemaVersion": 1,
+  "estimator": "fixed character proxy: ceil(characters / 4); NOT provider tokenization or billing",
+  "environment": {
+    "piVersion": "1.1.0",
+    "nodeVersion": "v22.22.1"
+  },
+  "upstream": {
+    "@tintinweb/pi-subagents": {
+      "package": "@tintinweb/pi-subagents",
+      "version": "0.20.0",
+      "entry": "node_modules/@tintinweb/pi-subagents/src/index.ts",
+      "registeredTools": [
+        "Agent",
+        "SubagentWorkflow",
+        "get_subagent_result",
+        "steer_subagent"
+      ],
+      "activeToolNames": [
+        "Agent",
+        "SubagentWorkflow",
+        "get_subagent_result",
+        "steer_subagent"
+      ],
+      "totals": {
+        "registeredProxyTokens": 8415,
+        "activeProxyTokens": 8415
+      },
+      "tools": [
+        {
+          "name": "Agent",
+          "active": true,
+          "source": "cli",
+          "description": "Launch a new agent to handle complex, multi-step tasks autonomously. Each agent type has specific capabilities and tools available to it.\n\nAvailable agent types and the tools they have access to:\n- general-purpose: General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you. (Tools: *)\n- Explore: Fast read-only search agent for locating code. Use it to find files by pattern (eg. \"src/components/**/*.tsx\"), grep for symbols or keywords (eg. \"API endpoints\"), or answer \"where is X defined / which files reference Y.\" Do NOT use it for code review, design-doc auditing, cross-file consistency checks, or open-ended analysis — it reads excerpts rather than whole files and will miss content past its read window. When calling, specify search breadth: \"quick\" for a single targeted lookup, \"medium\" for moderate exploration, or \"very thorough\" to search across multiple locations and naming conventions. (claude-haiku-4-5) (Tools: read, bash, grep, find, ls)\n- Plan: Software architect agent for designing implementation plans. Use this when you need to plan the implementation strategy for a task. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs. (Tools: read, bash, grep, find, ls)\n\nCustom agents can be defined in .pi/agents/<name>.md (project) or <agentDir>/agents/<name>.md (global) — they are picked up automatically. Project-level agents override global ones. Creating a .md file with the same name as a default agent overrides it.\n\nWhen using the Agent tool, specify a subagent_type parameter to select which agent type to use.\n\n## When not to use\n\nIf the target is already known, use a direct tool — `read` for a known path, `grep`/`find` for a specific symbol or string. Reserve this tool for open-ended questions that span the codebase, or tasks that match an available agent type.\n\n## Usage notes\n\n- Always include a short (3-5 word) description summarizing what the agent will do (shown in UI).\n- When you launch multiple agents for independent work, send them in a single message with multiple tool uses so they run concurrently. If the user specifies that they want you to run agents \"in parallel\", you MUST send a single message with multiple Agent tool use content blocks.\n- When the agent is done, it returns a single message back to you. The result is not visible to the user — to show the user, send a text message with a concise summary.\n- Trust but verify: an agent's summary describes what it intended to do, not necessarily what it did. When an agent writes or edits code, check the actual changes before reporting the work as done.\n- Agents run in the background by default. When an agent runs in the background, you will be automatically notified when it completes — do NOT sleep, poll, or proactively check on its progress. Continue with other work or respond to the user instead.\n- **Foreground vs background**: Pass `run_in_background: false` only when your very next action depends on the agent's result and nothing else could usefully happen while it runs — e.g., a research agent whose finding gates the edit you're about to make. Otherwise let it run in the background (the default) — this includes fire-and-forget work, independent investigations, and anything where the user might hand you something else in the meantime. Wanting the result \"next\" is not enough on its own.\n- **Don't race**: after launching a background agent, you know nothing about its results. Never fabricate or predict them in any format — not as prose, summary, or structured output. The completion notification arrives in a later turn; it is never something you write yourself. If the user asks before it lands, say the agent is still running — give status, not a guess.\n- Use resume with an agent ID to continue a previous agent's work. A new (non-resume) Agent call starts a fresh agent with no memory of prior runs, so the prompt must be self-contained.\n- Use steer_subagent to send mid-run messages to a running background agent.\n- Clearly tell the agent whether you expect it to write code or just to do research (search, file reads, etc.), since it is not aware of the user's intent.\n- If an agent's description says it should be used proactively, try to use it without the user having to ask for it first.\n- Use model to specify a different model (as \"provider/modelId\", or fuzzy e.g. \"haiku\", \"sonnet\").\n- Use thinking to control extended thinking level.\n- Use inherit_context if the agent needs the parent conversation history.\n- Use isolation: \"worktree\" to give the agent its own git worktree (safe parallel file modifications); leave it unset, or pass \"off\", for none. The worktree is removed when the agent finishes; if it made changes, they are committed to a branch and the branch is named in the result.\n- Use `schedule` only when the user explicitly asked for scheduled / recurring / delayed execution (e.g. \"every Monday\", \"in an hour\"). Don't auto-schedule from vague intent like \"monitor X\" — run once now or ask.\n\n## Writing the prompt\n\nBrief the agent like a smart colleague who just walked into the room — it hasn't seen this conversation, doesn't know what you've tried, doesn't understand why this task matters.\n- Explain what you're trying to accomplish and why.\n- Describe what you've already learned or ruled out.\n- Give enough context about the surrounding problem that the agent can make judgment calls rather than just following a narrow instruction.\n- If you need a short response, say so (\"report in under 200 words\").\n- Lookups: hand over the exact command. Investigations: hand over the question — prescribed steps become dead weight when the premise is wrong.\n\nTerse command-style prompts produce shallow, generic work.\n\n**Never delegate understanding.** Don't write \"based on your findings, fix the bug\" or \"based on the research, implement it.\" Those phrases push synthesis onto the agent instead of doing it yourself. Write prompts that prove you understood: include file paths, line numbers, what specifically to change.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use Agent with specialized agents when the task matches an agent type's description. Subagents are valuable for parallelizing independent queries or for protecting the main context window from excessive results, but should not be used excessively when not needed. Importantly, avoid duplicating work that subagents are already doing — if you delegate research to a subagent, do not also perform the same searches yourself.",
+            "For broad codebase exploration or research, spawn Agent with an appropriate subagent_type (e.g. Explore). Otherwise use direct tools (read, grep, find) when the target is already known.",
+            "When an agent runs in the background, you will be notified on completion — do not poll or sleep waiting for it. Continue with other work instead.",
+            "Trust but verify: an agent's summary describes intent, not outcome. When an agent writes or edits code, check the actual changes before reporting work as done."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "prompt",
+              "description",
+              "subagent_type"
+            ],
+            "properties": {
+              "prompt": {
+                "type": "string",
+                "description": "The task for the agent to perform."
+              },
+              "description": {
+                "type": "string",
+                "description": "A short (3-5 word) description of the task (shown in UI)."
+              },
+              "name": {
+                "type": "string",
+                "description": "Optional memorable name for this agent, e.g. \"auth-audit\", so it can be addressed as `@name` at the prompt and by steer_subagent / get_subagent_result. Letters, digits, `_` and `-`. Worth setting when several agents of the same type run at once; omit for one-off work. The agent stays reachable by its type either way."
+              },
+              "subagent_type": {
+                "type": "string",
+                "description": "The type of specialized agent to use. Available types: general-purpose, Explore, Plan. Custom agents from .pi/agents/*.md (project) or <agentDir>/agents/*.md (global) are also available."
+              },
+              "model": {
+                "type": "string",
+                "description": "Optional model override. Accepts \"provider/modelId\" or fuzzy name (e.g. \"haiku\", \"sonnet\"). Omit to use the agent type's default."
+              },
+              "thinking": {
+                "type": "string",
+                "description": "Thinking level: off, minimal, low, medium, high, xhigh, max. Overrides agent default."
+              },
+              "max_turns": {
+                "type": "number",
+                "description": "Maximum number of agentic turns before stopping. Omit for unlimited (default).",
+                "minimum": 1
+              },
+              "run_in_background": {
+                "type": "boolean",
+                "description": "Defaults to true — the agent runs detached, returning its ID immediately, and you are notified on completion. Set false only when your very next action depends on the result; the call then blocks and returns the agent's full output inline."
+              },
+              "resume": {
+                "type": "string",
+                "description": "Optional agent ID to resume from. Continues from previous context. Resumes detached like any other spawn; pass run_in_background: false to block and get the result inline. An agent can only be resumed once its current run has finished — use steer_subagent to reach one mid-run."
+              },
+              "isolated": {
+                "type": "boolean",
+                "description": "If true, agent gets no extension/MCP tools — only built-in tools."
+              },
+              "inherit_context": {
+                "type": "boolean",
+                "description": "If true, fork parent conversation into the agent. Default: false (fresh context)."
+              },
+              "isolation": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "const": "off"
+                  },
+                  {
+                    "type": "string",
+                    "const": "worktree"
+                  }
+                ],
+                "description": "Isolation mode. Default \"off\". \"off\" runs the agent in the current checkout, the same as omitting the field. \"worktree\" creates a temporary git worktree so the agent works on an isolated copy of the repo (a copy cannot see uncommitted or staged changes in the main checkout)."
+              },
+              "schedule": {
+                "type": "string",
+                "description": "Opt-in only — fire later instead of now. Omit to run immediately (the default, almost always correct). Formats: 6-field cron (\"0 0 9 * * 1\" = 9am Mon), interval (\"5m\"/\"1h\"), one-shot (\"+10m\" or ISO). Forces run_in_background; incompatible with inherit_context and resume. Returns job ID."
+              }
+            }
+          },
+          "chars": {
+            "description": 6234,
+            "schema": 2908,
+            "snippet": 0,
+            "guidelines": 911,
+            "total": 10053
+          },
+          "proxyTokens": 2514
+        },
+        {
+          "name": "SubagentWorkflow",
+          "active": true,
+          "source": "cli",
+          "description": "Execute a workflow script that orchestrates multiple subagents deterministically. Workflows run in the background — this tool returns immediately with a task ID, and you are notified when the workflow completes. Use /agents → Workflows to watch live progress.\n\nA workflow structures work across many agents — to be comprehensive (decompose and cover in parallel), to be confident (independent perspectives and adversarial checks before committing), or to take on scale one context can't hold (migrations, audits, broad sweeps). The script is where you encode that structure: what fans out, what verifies, what synthesizes.\n\nONLY call this tool when the user has explicitly opted into multi-agent orchestration. Workflows can spawn dozens of agents and consume a large amount of tokens; the user must request that scale, not have it inferred. Explicit opt-in means one of:\n- The user directly asked you to run a workflow or use multi-agent orchestration in their own words (\"use a workflow\", \"run a workflow\", \"fan out agents\", \"orchestrate this with subagents\"). The ask must be in the user's words — a task that would merely benefit from a workflow does not count.\n- The user invoked a skill or slash command whose instructions tell you to call SubagentWorkflow.\n- The user asked you to run a specific named or saved workflow.\n\nFor any other task — even one that would clearly benefit from parallelism — do NOT call this tool. Use the Agent tool for individual subagents, or briefly describe what a multi-agent workflow could do and how much it would roughly cost, and ask the user whether to run it. Mention they can ask for one with \"use a workflow\" in a future message to skip the ask.\n\nWhen you do call it, the right move is often **hybrid**: scout inline first (list the files, find the channels, scope the diff) to discover the work-list, then call SubagentWorkflow to pipeline over it. You don't need to know the shape before the *task* — only before the *orchestration step*.\n\nCommon single-phase workflows you can chain across turns:\n- **Understand** — parallel readers over relevant subsystems → structured map\n- **Design** — judge panel of N independent approaches → scored synthesis\n- **Review** — dimensions → find → adversarially verify (example below)\n- **Research** — multi-modal sweep → deep-read → synthesize\n- **Migrate** — discover sites → transform each (worktree isolation) → verify\n\nFor larger work, run several in sequence — read each result before deciding the next phase. You stay in the loop; each workflow is one well-scoped fan-out.\n\nPass the script inline via `script` — do not Write it to a file first. Every invocation automatically persists its script to a file under the session directory and returns the path in the tool result. To iterate on a workflow, edit that file with Write/Edit and re-invoke SubagentWorkflow with `{scriptPath: \"<path>\"}` instead of resending the full script. A script you will run more than once belongs in `.pi/workflows/<name>.js` (or `.agents/workflows/`, or `<agent dir>/workflows/` for one that follows the user everywhere); call it with `name: \"<name>\"` instead of re-sending the source.\n\nEvery script must begin with `export const meta = {...}`:\n  export const meta = {\n    name: 'find-flaky-tests',\n    description: 'Find flaky tests and propose fixes',   // one-line, shown in permission dialog\n    phases: [                                            // one entry per phase() call\n      { title: 'Scan', detail: 'grep test logs for retries' },\n      { title: 'Fix', detail: 'one agent per flaky test' },\n    ],\n  }\n  // script body starts here — use agent()/parallel()/pipeline()/phase()/log()\n  phase('Scan')\n  const flaky = await agent('grep CI logs for retry markers', {schema: FLAKY_SCHEMA})\n  ...\n\nThe `meta` object must be a PURE LITERAL — no variables, function calls, spreads, or template interpolation. Required fields: `name`, `description`. Optional: `whenToUse` (shown in the workflow list), `phases`. Use the SAME phase titles in meta.phases as in phase() calls — titles are matched exactly; a phase() call with no matching meta entry just gets its own progress group. Add `model` to a phase entry when that phase uses a specific model override.\n\nScript body hooks:\n- agent(prompt: string, opts?: {label?: string, phase?: string, schema?: object, model?: string, effort?: string, isolation?: 'worktree', agentType?: string, gate?: string, resume?: string}): Promise<any> — spawn a subagent. Without schema, returns its final text as a string. With schema (a JSON Schema), the subagent is given a StructuredOutput tool built from it and agent() returns the validated object — no parsing needed. A payload that does not match is rejected back to the child, which corrects it; a child that never answers through the tool gets one more prompt and then fails, so the call returns null — filter after every schema stage. Returns null if the user skips the agent mid-run or the subagent dies on a terminal API error after retries (filter with .filter(Boolean)). opts.label overrides the display label. opts.phase explicitly assigns this agent to a progress group (use this inside pipeline()/parallel() stages to avoid races on the global phase() state — same phase string → same group box). opts.model overrides the model for this agent call. Default to omitting it — the agent inherits the main-loop model (the resolved session model), which is almost always correct. Only set it when you're highly confident a different tier fits the task; when unsure, omit. opts.effort overrides the reasoning effort for this agent call ('minimal' | 'low' | 'medium' | 'high' | 'xhigh' | 'max') — omit to inherit the agent definition's own level, then the parent's; use 'low' for cheap mechanical stages and higher tiers only for the hardest verify/judge stages. opts.isolation: 'worktree' runs the agent in a fresh git worktree — EXPENSIVE (setup time + disk per agent), use ONLY when agents mutate files in parallel and would otherwise conflict; the worktree is removed when the agent settles, its changes preserved on a branch. opts.gate: '<command>' runs a shell command after the agent finishes and requires it to pass — a non-zero exit marks the agent failed and the command's output becomes the error; prefer gate: 'npm test' over asking another agent whether the code looks right. opts.resume: '<label>' continues the child that ran under that label instead of starting fresh, so an iterative loop keeps its context — it cannot be combined with agentType, model, effort, isolation, gate or schema. opts.agentType uses a custom subagent type instead of the default workflow subagent — resolved from the same registry as the Agent tool; composes with schema. Available types:\n- general-purpose: General-purpose agent for researching complex questions, searching for code, and executing multi-step tasks. When you are searching for a keyword or file and are not confident that you will find the right match in the first few tries use this agent to perform the search for you. (Tools: *)\n- Explore: Fast read-only search agent for locating code. Use it to find files by pattern (eg. \"src/components/**/*.tsx\"), grep for symbols or keywords (eg. \"API endpoints\"), or answer \"where is X defined / which files reference Y.\" Do NOT use it for code review, design-doc auditing, cross-file consistency checks, or open-ended analysis — it reads excerpts rather than whole files and will miss content past its read window. When calling, specify search breadth: \"quick\" for a single targeted lookup, \"medium\" for moderate exploration, or \"very thorough\" to search across multiple locations and naming conventions. (claude-haiku-4-5) (Tools: read, bash, grep, find, ls)\n- Plan: Software architect agent for designing implementation plans. Use this when you need to plan the implementation strategy for a task. Returns step-by-step plans, identifies critical files, and considers architectural trade-offs. (Tools: read, bash, grep, find, ls)\n- pipeline(items, stage1, stage2, ...): Promise<any[]> — run each item through all stages independently, NO barrier between stages. Item A can be in stage 3 while item B is still in stage 1. This is the DEFAULT for multi-stage work. Wall-clock = slowest single-item chain, not sum-of-slowest-per-stage. Every stage callback receives (prevResult, originalItem, index) — use originalItem/index in later stages to label work without threading context through stage 1's return value. A stage that throws drops that item to `null` and skips its remaining stages.\n- parallel(thunks: Array<() => Promise<any>>): Promise<any[]> — run tasks concurrently. This is a BARRIER: awaits all thunks before returning. A thunk that throws (or whose agent errors) resolves to `null` in the result array, so `.filter(Boolean)` before using the results; only a fatal run error — a cap breach, or a nested workflow that could not load — propagates instead of being folded into a null. Use ONLY when you genuinely need all results together.\n- log(message: string): void — emit a progress message to the user (shown as a narrator line above the progress tree)\n- phase(title: string): void — start a new phase; subsequent agent() calls are grouped under this title in the progress display\n- args: any — the value passed as SubagentWorkflow's `args` input, verbatim (undefined if not provided). Pass arrays/objects as actual JSON values in the tool call, NOT as a JSON-encoded string — `args: [\"a.ts\", \"b.ts\"]`, not `args: \"[\\\"a.ts\\\", ...]\"` (a stringified list reaches the script as one string, so `args.filter`/`args.map` throw). Use this to parameterize named workflows — e.g. pass a research question, target path, or config object directly instead of via a side-channel file.\n- budget: {total: number|null, spent(): number, remaining(): number} — `budget.total` is always null here: it comes from a token-target directive pi does not have, so guards like `while (budget.total && budget.remaining() > 50_000) { ... }` correctly do not fire rather than throwing on a missing global. `budget.spent()` returns output tokens spent by this run's agents. `budget.remaining()` returns `Infinity` with no target.\n- workflow(nameOrRef: string | {scriptPath: string}, args?: any): Promise<any> — run another workflow inline as a sub-step and return whatever it returns. Pass a name to invoke a saved workflow (same registry as {name: \"...\"}), or {scriptPath} to run a script file you Wrote earlier. The child shares this run's concurrency cap, agent counter, abort signal, and token budget — its agents appear under a \"▸ name\" group in /agents → Workflows and its tokens count toward budget.spent(). The args param becomes the child's `args` global. Nesting is one level only: workflow() inside a child throws. Throws on unknown name / unreadable scriptPath / child syntax error; catch to handle gracefully.\n\nAny agent() option not listed above is rejected by name at the call.\n\nSubagents are told their final text IS the return value (not a human-facing message), so they return raw data. For structured output, use the schema option — validation happens at the tool-call layer so the model retries on mismatch.\n\nScripts are plain JavaScript, NOT TypeScript — type annotations (`: string[]`), interfaces, and generics fail to parse. The script body runs in an async context — use await directly. Standard JS built-ins (JSON, Math, Array, etc.) are available — EXCEPT `Date.now()`/`Math.random()`/argless `new Date()`, which throw (they would break resume); pass timestamps in via `args`, stamp results after the workflow returns, and for randomness vary the agent prompt/label by index. `eval` and `Function(...)` throw. No filesystem or Node.js API access.\n\nDEFAULT TO pipeline(). Only reach for a barrier (parallel between stages) when you genuinely need ALL prior-stage results together.\n\nA barrier is correct ONLY when stage N needs cross-item context from all of stage N-1:\n- Dedup/merge across the full result set before expensive downstream work\n- Early-exit if the total count is zero (\"0 bugs found → skip verification entirely\")\n- Stage N's prompt references \"the other findings\" for comparison\n\nA barrier is NOT justified by:\n- \"I need to flatten/map/filter first\" — do it inside a pipeline stage: pipeline(items, stageA, r => transform([r]).flat(), stageB)\n- \"The stages are conceptually separate\" — that's what pipeline() models. Separate stages ≠ synchronized stages.\n- \"It's cleaner code\" — barrier latency is real. If 5 finders run and the slowest takes 3× the fastest, a barrier wastes 2/3 of the fast finders' idle time.\n\nSmell test: if you wrote\n  const a = await parallel(...)\n  const b = transform(a)        // flatten, map, filter — no cross-item dependency\n  const c = await parallel(b.map(...))\nthat middle transform doesn't need the barrier. Rewrite as a pipeline with the transform inside a stage. When in doubt: pipeline.\n\nConcurrent agent() calls are capped at min(16, available CPUs - 2) per workflow — excess calls queue and run as slots free up. You can still pass 100 items to parallel()/pipeline() and they all complete; only ~10 run at any moment. Total agent count across a workflow's lifetime is capped at 1000 — a runaway-loop backstop set far above any real workflow. A single parallel()/pipeline() call accepts at most 4096 items; passing more is an explicit error, not a silent truncation.\n\nThe canonical multi-stage pattern — pipeline by default, each dimension verifies as soon as its review completes:\n  export const meta = {\n    name: 'review-changes',\n    description: 'Review changed files across dimensions, verify each finding',\n    phases: [{ title: 'Review' }, { title: 'Verify' }],\n  }\n  const DIMENSIONS = [{key: 'bugs', prompt: '...'}, {key: 'perf', prompt: '...'}]\n  const results = await pipeline(\n    DIMENSIONS,\n    d => agent(d.prompt, {label: `review:${d.key}`, phase: 'Review', schema: FINDINGS_SCHEMA}),\n    review => parallel(review.findings.map(f => () =>\n      agent(`Adversarially verify: ${f.title}`, {label: `verify:${f.file}`, phase: 'Verify', schema: VERDICT_SCHEMA})\n        .then(v => ({...f, verdict: v}))\n    ))\n  )\n  const confirmed = results.flat().filter(Boolean).filter(f => f.verdict?.isReal)\n  return { confirmed }\n  // Dimension 'bugs' findings verify while dimension 'perf' is still reviewing. No wasted wall-clock.\n\nWhen a barrier IS correct — dedup across all findings before expensive verification:\n  const all = await parallel(DIMENSIONS.map(d => () => agent(d.prompt, {schema: FINDINGS_SCHEMA})))\n  const deduped = dedupeByFileAndLine(all.filter(Boolean).flatMap(r => r.findings))  // <-- genuinely needs ALL at once\n  const verified = await parallel(deduped.map(f => () => agent(verifyPrompt(f), {schema: VERDICT_SCHEMA})))\n\nLoop-until-count pattern — accumulate to a target:\n  const bugs = []\n  while (bugs.length < 10) {\n    const result = await agent(\"Find bugs in this codebase.\", {schema: BUGS_SCHEMA})\n    bugs.push(...result.bugs)\n    log(`${bugs.length}/10 found`)\n  }\n\nGate-and-retry pattern — verify by running, and keep the agent's context across attempts:\n  let fixed = await agent('Find and fix the failing test.', {label: 'fix', gate: 'npm test'})\n  if (fixed === null) {                        // a non-zero exit failed the agent\n    // Resume keeps everything the child already learned. It cannot carry the\n    // gate, so re-verification needs its own gated call, in the same tree.\n    fixed = await agent('`npm test` is still failing. Fix the cause.', {label: 'fix', resume: 'fix'})\n    const verified = await agent('Run `npm test` and report the result. Change nothing.',\n      {label: 'verify', phase: 'Verify', gate: 'npm test', effort: 'low'})\n    return { passed: verified !== null, summary: fixed }\n  }\n  return { passed: true, summary: fixed }\n  // An LLM judging whether a fix works is a weaker signal than the test suite.\n\nComposing patterns — exhaustive review (find → dedup vs seen → diverse-lens panel → loop-until-dry):\n  const seen = new Set(), confirmed = []\n  let dry = 0\n  while (dry < 2) {                                              // loop-until-dry\n    const found = (await parallel(FINDERS.map(f => () =>          // barrier: collect all finders this round\n      agent(f.prompt, {phase: 'Find', schema: BUGS})))).filter(Boolean).flatMap(r => r.bugs)\n    const fresh = found.filter(b => !seen.has(key(b)))           // dedup vs ALL seen — plain code, not an agent\n    if (!fresh.length) { dry++; continue }\n    dry = 0; fresh.forEach(b => seen.add(key(b)))\n    const judged = await parallel(fresh.map(b => () =>           // every fresh bug judged concurrently...\n      parallel(['correctness','security','repro'].map(lens => () =>   // ...each by 3 distinct lenses\n        agent(`Judge \"${b.desc}\" via the ${lens} lens — real?`, {phase: 'Verify', schema: VERDICT})))\n        .then(vs => ({ b, real: vs.filter(Boolean).filter(v => v.real).length >= 2 }))))\n    confirmed.push(...judged.filter(v => v.real).map(v => v.b))\n  }\n  return confirmed\n  // dedup vs `seen`, NOT `confirmed` — else judge-rejected findings reappear every round and it never converges.\n\nQuality patterns — common shapes; pick by task and compose freely:\n- Adversarial verify: spawn N independent skeptics per finding, each prompted to REFUTE. Kill if ≥majority refute. Prevents plausible-but-wrong findings from surviving.\n    const votes = await parallel(Array.from({length: 3}, () => () =>\n      agent(`Try to refute: ${claim}. Default to refuted=true if uncertain.`, {schema: VERDICT})))\n    const survives = votes.filter(Boolean).filter(v => !v.refuted).length >= 2\n- Verify by running, not by asking: when a claim is testable, `gate` it rather than asking another model whether it holds.\n- Perspective-diverse verify: when a finding can fail in more than one way, give each verifier a distinct lens (correctness, security, perf, does-it-reproduce) instead of N identical refuters — diversity catches failure modes redundancy can't.\n- Judge panel: generate N independent attempts from different angles (e.g. MVP-first, risk-first, user-first), score with parallel judges, synthesize from the winner while grafting the best ideas from runners-up. Beats one-attempt-iterated when the solution space is wide.\n- Loop-until-dry: for unknown-size discovery (bugs, issues, edge cases), keep spawning finders until K consecutive rounds return nothing new. Simple counters (while count < N) miss the tail.\n- Multi-modal sweep: parallel agents each searching a different way (by-container, by-content, by-entity, by-time). Each is blind to what the others surface; useful when one search angle won't find everything.\n- Completeness critic: a final agent that asks \"what's missing — modality not run, claim unverified, source unread?\" What it finds becomes the next round of work.\n- No silent caps: if a workflow bounds coverage (top-N, no-retry, sampling), `log()` what was dropped — silent truncation reads as \"covered everything\" when it didn't.\n\nScale to what the user asked for. \"find any bugs\" → a few finders, single-vote verify. \"thoroughly audit this\" or \"be comprehensive\" → larger finder pool, 3–5 vote adversarial pass, synthesis stage. When unsure, lean toward thoroughness for research/review/audit requests and toward brevity for quick checks.\n\nThese patterns aren't exhaustive — compose novel harnesses when the task calls for it (tournament brackets, self-repair loops, staged escalation, whatever fits).\n\nUse this tool for multi-step orchestration where control flow should be deterministic (loops, conditionals, fan-out) rather than model-driven.\n\n## Resume\n\nThe tool result includes a runId. To resume after a pause, kill, or script edit, relaunch with SubagentWorkflow({scriptPath, resumeFromRunId}) — the longest unchanged prefix of agent() calls returns cached results instantly; the first edited/new call and everything after it runs live. Same script + same args → 100% cache hit. It is a prefix and not a lookup: a later call that still matches is not reused once an earlier one has changed. A journaled failure ends the prefix, so resuming a run that died at agent 5 retries exactly agent 5. Same session only, and the run must have finished — stop it from /agents → Workflows first. Before diagnosing why a completed workflow returned an empty or unexpected result, Read the run's `<run id>.workflow.jsonl` beside its script — it records each agent's actual return value; do not assume cached results are non-empty. Date.now()/Math.random()/new Date() are unavailable in scripts (they would break this) — stamp results after the workflow returns, or pass timestamps via args.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use SubagentWorkflow when the number of agents depends on something discovered at runtime, when work flows through stages, or when findings should be independently verified. Use Agent for one delegated task or a handful you can name up front.",
+            "Prefer `pipeline` over `parallel` — a barrier costs wall-clock whenever the stages are unevenly sized.",
+            "A workflow runs in the background and notifies you when it finishes — do not poll or sleep waiting for it."
+          ],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "script": {
+                "type": "string",
+                "maxLength": 524288,
+                "description": "Inline workflow source. Must begin with `export const meta = { name, description }`."
+              },
+              "scriptPath": {
+                "type": "string",
+                "description": "Path to a workflow script file, absolute or relative to the project. Takes precedence over `script` — this is how you re-run an edited workflow."
+              },
+              "name": {
+                "type": "string",
+                "description": "Name of a saved workflow — `<name>.js` in .pi/workflows/, .agents/workflows/ or the user's agent dir. Lowest precedence: `scriptPath` and `script` both win over it."
+              },
+              "args": {
+                "description": "Exposed to the script as the global `args`, verbatim. Must be JSON-shaped."
+              },
+              "resumeFromRunId": {
+                "type": "string",
+                "pattern": "^wf_[a-z0-9-]{6,}$",
+                "description": "Run id of an earlier workflow in this session. Its unchanged leading agent() calls return their recorded results instantly; the first changed or failed call, and everything after it, runs live. Same script and args means nothing re-runs."
+              },
+              "title": {
+                "type": "string",
+                "description": "Ignored — set the workflow title in the script's `meta` block."
+              },
+              "description": {
+                "type": "string",
+                "description": "Ignored — set the workflow description in the script's `meta` block."
+              }
+            }
+          },
+          "chars": {
+            "description": 20664,
+            "schema": 1220,
+            "snippet": 0,
+            "guidelines": 450,
+            "total": 22334
+          },
+          "proxyTokens": 5584
+        },
+        {
+          "name": "get_subagent_result",
+          "active": true,
+          "source": "cli",
+          "description": "Check status and retrieve a background agent's full result — its completion notification carries only a preview. Use the agent ID returned by Agent.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "agent_id"
+            ],
+            "properties": {
+              "agent_id": {
+                "type": "string",
+                "description": "The agent ID to check. The agent's handle also works — its `name` if you gave it one, otherwise its type (`explore`, `explore-2`)."
+              },
+              "wait": {
+                "type": "boolean",
+                "description": "If true, wait for the agent to complete before returning. Default: false."
+              },
+              "verbose": {
+                "type": "boolean",
+                "description": "If true, include the agent's full conversation (messages + tool calls). Default: false."
+              }
+            }
+          },
+          "chars": {
+            "description": 148,
+            "schema": 481,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 629
+          },
+          "proxyTokens": 158
+        },
+        {
+          "name": "steer_subagent",
+          "active": true,
+          "source": "cli",
+          "description": "Send a steering message to a running agent. The message will interrupt the agent after its current tool execution and be injected into its conversation, allowing you to redirect its work mid-run. Only works on running agents.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "agent_id",
+              "message"
+            ],
+            "properties": {
+              "agent_id": {
+                "type": "string",
+                "description": "The agent ID to steer (must be currently running). The agent's handle also works — its `name` if you gave it one, otherwise its type (`explore`, `explore-2`)."
+              },
+              "message": {
+                "type": "string",
+                "description": "The steering message to send. This will appear as a user message in the agent's conversation."
+              }
+            }
+          },
+          "chars": {
+            "description": 225,
+            "schema": 408,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 633
+          },
+          "proxyTokens": 159
+        }
+      ]
+    },
+    "pi-web-access": {
+      "package": "pi-web-access",
+      "version": "0.39.0",
+      "entry": "node_modules/pi-web-access/dist/index.js",
+      "registeredTools": [
+        "web_search",
+        "source_check",
+        "fetch_content",
+        "get_search_content",
+        "web_enable"
+      ],
+      "activeToolNames": [
+        "web_search",
+        "source_check",
+        "fetch_content",
+        "get_search_content"
+      ],
+      "totals": {
+        "registeredProxyTokens": 2669,
+        "activeProxyTokens": 2603
+      },
+      "tools": [
+        {
+          "name": "web_search",
+          "active": true,
+          "source": "cli",
+          "description": "Search the web and return source-linked results or provider answers. Full results are stored for retrieval with get_search_content using the returned responseId. For research, prefer queries with 2-4 varied angles over a single query. Omit provider to use the configured default; set it only to override that.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "query": {
+                "type": "string",
+                "description": "Single search query. For research tasks, prefer 'queries' with multiple varied angles instead."
+              },
+              "queries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Multiple queries searched concurrently (up to three at a time), each returning source-linked search results or a provider answer. Prefer this for research — vary phrasing, scope, and angle across 2-4 queries to maximize coverage. Good: ['React vs Vue performance benchmarks 2026', 'React vs Vue developer experience comparison', 'React ecosystem size vs Vue ecosystem']. Bad: ['React vs Vue', 'React vs Vue comparison', 'React vs Vue review'] (too similar, redundant results)."
+              },
+              "numResults": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20,
+                "description": "Results per query (default: 5, max: 20)"
+              },
+              "includeContent": {
+                "type": "boolean",
+                "description": "Fetch full page content (async)"
+              },
+              "recencyFilter": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ],
+                "description": "Filter by recency"
+              },
+              "domainFilter": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Limit to domains (prefix with - to exclude)"
+              },
+              "category": {
+                "type": "string",
+                "description": "Exa only: result category, e.g. news, research paper"
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "all",
+                      "openai",
+                      "brave",
+                      "parallel",
+                      "parallel-mcp",
+                      "tinyfish",
+                      "search1api",
+                      "searchinfinity",
+                      "querit",
+                      "tavily",
+                      "you",
+                      "firecrawl",
+                      "jina",
+                      "searxng",
+                      "degoog",
+                      "duckduckgo",
+                      "perplexity",
+                      "gemini",
+                      "kimi",
+                      "exa",
+                      "serpdive",
+                      "kagi",
+                      "ollama",
+                      "anysearch",
+                      "xai",
+                      "mistral",
+                      "brightdata",
+                      "serpbase",
+                      "serpapi",
+                      "serper",
+                      "serply",
+                      "valyu",
+                      "bocha",
+                      "xcrawl",
+                      "baizhi",
+                      "zai",
+                      "keenable",
+                      "ceramic"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "openai",
+                        "brave",
+                        "parallel",
+                        "parallel-mcp",
+                        "tinyfish",
+                        "search1api",
+                        "searchinfinity",
+                        "querit",
+                        "tavily",
+                        "you",
+                        "firecrawl",
+                        "jina",
+                        "searxng",
+                        "degoog",
+                        "duckduckgo",
+                        "perplexity",
+                        "gemini",
+                        "kimi",
+                        "exa",
+                        "serpdive",
+                        "kagi",
+                        "ollama",
+                        "anysearch",
+                        "xai",
+                        "mistral",
+                        "brightdata",
+                        "serpbase",
+                        "serpapi",
+                        "serper",
+                        "serply",
+                        "valyu",
+                        "bocha",
+                        "xcrawl",
+                        "baizhi",
+                        "zai",
+                        "keenable",
+                        "ceramic"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                ],
+                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic) remain excluded; omit this field to use the configured provider, or use auto when none is configured"
+              },
+              "workflow": {
+                "type": "string",
+                "enum": [
+                  "none",
+                  "summary-review",
+                  "auto-summary"
+                ],
+                "description": "Search workflow mode: none = no curator (default), summary-review = open curator with auto summary draft, auto-summary = generate summary without opening curator"
+              },
+              "proxy": {
+                "type": "string",
+                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for every outbound request in this call (search APIs and content fetches). Node fetch ignores HTTP(S)_PROXY env vars, so set this (or `proxy` in web-search.json) when direct access is blocked; empty string forces direct access."
+              }
+            }
+          },
+          "chars": {
+            "description": 309,
+            "schema": 3293,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 3602
+          },
+          "proxyTokens": 901
+        },
+        {
+          "name": "source_check",
+          "active": true,
+          "source": "cli",
+          "description": "Gather web sources for a claim and return a bounded machine-readable research artifact with exact passage citations for manual review.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "claim"
+            ],
+            "properties": {
+              "claim": {
+                "type": "string",
+                "description": "The assertion to gather web sources for."
+              },
+              "queries": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Search queries (default: the claim)."
+              },
+              "numResults": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 20,
+                "description": "Results per query (default: 5, max: 20)."
+              },
+              "fetchContent": {
+                "type": "boolean",
+                "description": "Fetch up to 5 result pages for exact passage extraction."
+              },
+              "recencyFilter": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "week",
+                  "month",
+                  "year"
+                ],
+                "description": "Filter by recency."
+              },
+              "domainFilter": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Limit to domains; prefix with - to exclude."
+              },
+              "provider": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "enum": [
+                      "auto",
+                      "all",
+                      "openai",
+                      "brave",
+                      "parallel",
+                      "parallel-mcp",
+                      "tinyfish",
+                      "search1api",
+                      "searchinfinity",
+                      "querit",
+                      "tavily",
+                      "you",
+                      "firecrawl",
+                      "jina",
+                      "searxng",
+                      "degoog",
+                      "duckduckgo",
+                      "perplexity",
+                      "gemini",
+                      "kimi",
+                      "exa",
+                      "serpdive",
+                      "kagi",
+                      "ollama",
+                      "anysearch",
+                      "xai",
+                      "mistral",
+                      "brightdata",
+                      "serpbase",
+                      "serpapi",
+                      "serper",
+                      "serply",
+                      "valyu",
+                      "bocha",
+                      "xcrawl",
+                      "baizhi",
+                      "zai",
+                      "keenable",
+                      "ceramic"
+                    ]
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "openai",
+                        "brave",
+                        "parallel",
+                        "parallel-mcp",
+                        "tinyfish",
+                        "search1api",
+                        "searchinfinity",
+                        "querit",
+                        "tavily",
+                        "you",
+                        "firecrawl",
+                        "jina",
+                        "searxng",
+                        "degoog",
+                        "duckduckgo",
+                        "perplexity",
+                        "gemini",
+                        "kimi",
+                        "exa",
+                        "serpdive",
+                        "kagi",
+                        "ollama",
+                        "anysearch",
+                        "xai",
+                        "mistral",
+                        "brightdata",
+                        "serpbase",
+                        "serpapi",
+                        "serper",
+                        "serply",
+                        "valyu",
+                        "bocha",
+                        "xcrawl",
+                        "baizhi",
+                        "zai",
+                        "keenable",
+                        "ceramic"
+                      ]
+                    },
+                    "minItems": 1
+                  }
+                ],
+                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic) remain excluded"
+              },
+              "proxy": {
+                "type": "string",
+                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for every outbound request in this call (search APIs and result-page fetches). Empty string forces direct access."
+              }
+            }
+          },
+          "chars": {
+            "description": 134,
+            "schema": 2293,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 2427
+          },
+          "proxyTokens": 607
+        },
+        {
+          "name": "fetch_content",
+          "active": true,
+          "source": "cli",
+          "description": "Fetch URL(s). Available modes: readable (default): extract readable content as markdown; raw: return the exact textual body using direct HTTP only; answer: answer a prompt using only fetched content. Direct image URLs return resized image content when supported by the selected mode. Supports YouTube transcripts, GitHub repositories, PDFs, and local videos when supported by the selected mode. Full original content is stored for retrieval with get_search_content.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "description": "Single URL to fetch"
+              },
+              "urls": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Multiple URLs (parallel)"
+              },
+              "forceClone": {
+                "type": "boolean",
+                "description": "Force cloning large GitHub repositories that exceed the size threshold"
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Question or instruction for video analysis, or the page-local question required by answer mode."
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "readable",
+                  "raw",
+                  "answer"
+                ],
+                "description": "Fetch mode. readable (default): extract readable content as markdown; raw: return the exact textual body using direct HTTP only; answer: answer a prompt using only fetched content."
+              },
+              "answerModel": {
+                "type": "string",
+                "description": "Optional provider/model-id override for answer mode. Defaults to fetch.answerProvider + fetch.answerModel when configured, otherwise the current Pi model."
+              },
+              "timestamp": {
+                "type": "string",
+                "description": "Extract video frame(s) at a timestamp or time range. Single: '1:23:45', '23:45', or '85' (seconds). Range: '23:41-25:00' extracts evenly-spaced frames across that span (default 6). Use frames with ranges to control density; single+frames uses a fixed 5s interval. YouTube requires yt-dlp + ffmpeg; local videos require ffmpeg. Use a range when you know the approximate area but not the exact moment — you'll get a contact sheet to visually identify the right frame."
+              },
+              "frames": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 12,
+                "description": "Number of frames to extract. Use with timestamp range for custom density, with single timestamp to get N frames at 5s intervals, or alone to sample across the entire video. Requires yt-dlp + ffmpeg for YouTube, ffmpeg for local video."
+              },
+              "model": {
+                "type": "string",
+                "description": "Override the Gemini model for video/YouTube analysis (e.g. 'gemini-3.6-flash'). Defaults to config or gemini-3.6-flash."
+              },
+              "auth": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  }
+                ],
+                "description": "Opt into an authFetch profile for local browser-cookie fetching. Use a profile name, or true only when exactly one profile exists."
+              },
+              "proxy": {
+                "type": "string",
+                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for this fetch. Needed when the target is unreachable directly; localhost and NO_PROXY hosts always bypass the proxy. Empty string forces direct access."
+              }
+            }
+          },
+          "chars": {
+            "description": 465,
+            "schema": 2356,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 2821
+          },
+          "proxyTokens": 706
+        },
+        {
+          "name": "get_search_content",
+          "active": true,
+          "source": "cli",
+          "description": "Retrieve bounded pages of full stored search results or fetched content, or find matching passages, from a previous web_search, source_check, or fetch_content call.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "responseId"
+            ],
+            "properties": {
+              "responseId": {
+                "type": "string",
+                "description": "The responseId from web_search, source_check, or fetch_content"
+              },
+              "query": {
+                "type": "string",
+                "description": "Get content for this query (web_search)"
+              },
+              "queryIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Get content for query at index"
+              },
+              "url": {
+                "type": "string",
+                "description": "Get content for this URL"
+              },
+              "urlIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Get content for URL at index"
+              },
+              "offset": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Character offset in stored search or fetched URL content (default 0). Ignored when findText is supplied."
+              },
+              "limit": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 30000,
+                "description": "Requested maximum stored-content characters (default and max use maxInlineContentChars). Search-page continuation guidance shares the global output cap and may reduce returnedChars. Ignored when findText is supplied."
+              },
+              "findText": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "minItems": 1,
+                    "maxItems": 10
+                  }
+                ],
+                "description": "Text or texts to find in the selected stored content. When supplied, offset and limit are ignored."
+              },
+              "findMode": {
+                "type": "string",
+                "enum": [
+                  "exact",
+                  "case-insensitive",
+                  "fuzzy"
+                ],
+                "description": "Matching mode for findText (default: case-insensitive). Requires findText."
+              }
+            }
+          },
+          "chars": {
+            "description": 164,
+            "schema": 1392,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 1556
+          },
+          "proxyTokens": 389
+        },
+        {
+          "name": "web_enable",
+          "active": false,
+          "source": "cli",
+          "description": "Enable configured pi-web-access tools for web research and content retrieval. Does not search or fetch. Enabled tools are available on the next model request; disabled capabilities remain unavailable.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {},
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 200,
+            "schema": 62,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 262
+          },
+          "proxyTokens": 66
+        }
+      ]
+    },
+    "@juicesharp/rpiv-todo": {
+      "package": "@juicesharp/rpiv-todo",
+      "version": "2.13.5",
+      "entry": "node_modules/@juicesharp/rpiv-todo/index.ts",
+      "registeredTools": [
+        "todo"
+      ],
+      "activeToolNames": [
+        "todo"
+      ],
+      "totals": {
+        "registeredProxyTokens": 882,
+        "activeProxyTokens": 882
+      },
+      "tools": [
+        {
+          "name": "todo",
+          "active": true,
+          "source": "cli",
+          "description": "Manage a task list for tracking multi-step progress. Actions: create (new task), update (change status/fields/dependencies), list (all tasks, optionally filtered by status), get (single task details), delete (tombstone), clear (reset all). Status: pending → in_progress → completed, plus deleted tombstone. Use this to plan and track multi-step work like research, design, and implementation.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use `todo` for complex work with 3+ steps, when the user gives you a list of tasks, or immediately after receiving new instructions to capture requirements. Skip it for single trivial tasks and purely conversational requests.",
+            "When starting a task from the todo list, mark it in_progress BEFORE beginning work. Mark it completed IMMEDIATELY when done — never batch completions. Exactly one task in_progress at a time.",
+            "Never mark a task completed if tests are failing, the implementation is partial, or you hit unresolved errors — keep it in_progress and create a new task for the blocker instead.",
+            "Task status is a 4-state machine: pending → in_progress → completed, plus deleted as a tombstone. Pass activeForm (present-continuous label, e.g. 'researching existing tool') when marking in_progress.",
+            "To change a task's status, call update with the task id and the target status, e.g. {\"action\":\"update\",\"id\":3,\"status\":\"completed\"} or {\"action\":\"update\",\"id\":3,\"status\":\"in_progress\",\"activeForm\":\"writing tests\"}. status is the field that changes the task; an update without a mutable field (status or another) is rejected.",
+            "Use blockedBy to express dependencies (A is blocked by B). On create, pass blockedBy as the initial set. On update, use addBlockedBy / removeBlockedBy (additive merge — do not resend the full array). Cycles are rejected.",
+            "list hides tombstoned (deleted) tasks by default; pass includeDeleted:true to see them. Pass status to filter by a single status.",
+            "Subject must be short and imperative (e.g. 'Research existing tool'); description is for long-form detail. activeForm is a present-continuous label shown while in_progress."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "create",
+                  "update",
+                  "list",
+                  "get",
+                  "delete",
+                  "clear"
+                ]
+              },
+              "subject": {
+                "type": "string",
+                "description": "Task subject line (required for create)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Long-form task description"
+              },
+              "activeForm": {
+                "type": "string",
+                "description": "Present-continuous spinner label shown while status is in_progress (e.g. 'writing tests')"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed",
+                  "deleted"
+                ],
+                "description": "Set this task's status (update): one of pending, in_progress, completed, deleted. When action is list, filters returned tasks by this status."
+              },
+              "blockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "Initial blockedBy ids (create only)"
+              },
+              "addBlockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "Task ids to add to blockedBy (update only, additive merge)"
+              },
+              "removeBlockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "description": "Task ids to remove from blockedBy (update only, additive merge)"
+              },
+              "owner": {
+                "type": "string",
+                "description": "Agent/owner assigned to this task"
+              },
+              "metadata": {
+                "type": "object",
+                "patternProperties": {
+                  "^.*$": {}
+                },
+                "description": "Arbitrary metadata; pass null value for a key to delete that key on update"
+              },
+              "id": {
+                "type": "number",
+                "description": "Task id (required for update, get, delete)"
+              },
+              "includeDeleted": {
+                "type": "boolean",
+                "description": "If true, list action returns deleted (tombstoned) tasks as well. Default: false."
+              }
+            }
+          },
+          "chars": {
+            "description": 392,
+            "schema": 1498,
+            "snippet": 0,
+            "guidelines": 1638,
+            "total": 3528
+          },
+          "proxyTokens": 882
+        }
+      ]
+    }
+  },
+  "lean": {
+    "@gfgghgftgffg/pi-subagents-lean": {
+      "package": "@gfgghgftgffg/pi-subagents-lean",
+      "version": "0.1.0",
+      "entry": "packages/pi-subagents-lean/index.ts",
+      "registeredTools": [
+        "subagent"
+      ],
+      "activeToolNames": [
+        "subagent"
+      ],
+      "totals": {
+        "registeredProxyTokens": 270,
+        "activeProxyTokens": 270
+      },
+      "tools": [
+        {
+          "name": "subagent",
+          "active": true,
+          "source": "cli",
+          "description": "Run or inspect subagents/workflows through one tool; use help for advanced parameters.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "subagent: run requires prompt, description (3-5 words), and subagent_type; use workflow for scripted multi-agent orchestration.",
+            "subagent: Put advanced options in input as a JSON object; direct fields override duplicate JSON keys. result uses agent_id; steer uses agent_id and message. Use help only when advanced parameters are unclear.",
+            "subagent: Background completion is notified; never poll or sleep. Summarize results and verify claimed code changes."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "run",
+                  "result",
+                  "steer",
+                  "workflow",
+                  "help"
+                ]
+              },
+              "prompt": {
+                "type": "string",
+                "description": "Task for run."
+              },
+              "description": {
+                "type": "string",
+                "description": "3-5 word UI label for run."
+              },
+              "subagent_type": {
+                "type": "string",
+                "description": "Agent types at startup: general-purpose, Explore, Plan."
+              },
+              "run_in_background": {
+                "type": "boolean"
+              },
+              "agent_id": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "input": {
+                "type": "string",
+                "description": "JSON object string for advanced parameters."
+              }
+            }
+          },
+          "chars": {
+            "description": 86,
+            "schema": 543,
+            "snippet": 0,
+            "guidelines": 451,
+            "total": 1080
+          },
+          "proxyTokens": 270
+        }
+      ],
+      "upstreamPackage": "@tintinweb/pi-subagents"
+    },
+    "@gfgghgftgffg/pi-web-access-lean": {
+      "package": "@gfgghgftgffg/pi-web-access-lean",
+      "version": "0.1.0",
+      "entry": "packages/pi-web-access-lean/index.ts",
+      "registeredTools": [
+        "web_access"
+      ],
+      "activeToolNames": [
+        "web_access"
+      ],
+      "totals": {
+        "registeredProxyTokens": 149,
+        "activeProxyTokens": 149
+      },
+      "tools": [
+        {
+          "name": "web_access",
+          "active": true,
+          "source": "cli",
+          "description": "Search, verify, fetch web or local PDF content, or continue results through one router. Use help for advanced parameters.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "web_access: input is the query, claim, URL, local PDF path, or responseId for search, check, fetch, or get. Pass a JSON object string for batch or advanced parameters; use help only when fields are unclear."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "op"
+            ],
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "search",
+                  "check",
+                  "fetch",
+                  "get",
+                  "help"
+                ]
+              },
+              "input": {
+                "type": "string",
+                "description": "Main query, claim, URL, local PDF path, or responseId; use a JSON object string for advanced parameters"
+              }
+            }
+          },
+          "chars": {
+            "description": 121,
+            "schema": 266,
+            "snippet": 0,
+            "guidelines": 206,
+            "total": 593
+          },
+          "proxyTokens": 149
+        }
+      ],
+      "upstreamPackage": "pi-web-access"
+    },
+    "@gfgghgftgffg/rpiv-todo-lean": {
+      "package": "@gfgghgftgffg/rpiv-todo-lean",
+      "version": "0.1.0",
+      "entry": "packages/rpiv-todo-lean/index.ts",
+      "registeredTools": [
+        "todo"
+      ],
+      "activeToolNames": [
+        "todo"
+      ],
+      "totals": {
+        "registeredProxyTokens": 247,
+        "activeProxyTokens": 247
+      },
+      "tools": [
+        {
+          "name": "todo",
+          "active": true,
+          "source": "cli",
+          "description": "Task tracker. action is required: create|update|list|get|delete|clear; create needs subject; update/get/delete need id.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "todo: Use for multi-step tasks. update needs changed fields; list accepts status/includeDeleted; clear removes all; create supports blockedBy; update supports addBlockedBy/removeBlockedBy; keep one in_progress and complete tasks promptly."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "action"
+            ],
+            "properties": {
+              "action": {
+                "type": "string",
+                "enum": [
+                  "create",
+                  "update",
+                  "list",
+                  "get",
+                  "delete",
+                  "clear"
+                ]
+              },
+              "subject": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "activeForm": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "in_progress",
+                  "completed",
+                  "deleted"
+                ]
+              },
+              "blockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "addBlockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "removeBlockedBy": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "owner": {
+                "type": "string"
+              },
+              "metadata": {
+                "type": "object",
+                "patternProperties": {
+                  "^.*$": {}
+                }
+              },
+              "id": {
+                "type": "number"
+              },
+              "includeDeleted": {
+                "type": "boolean"
+              }
+            }
+          },
+          "chars": {
+            "description": 119,
+            "schema": 631,
+            "snippet": 0,
+            "guidelines": 238,
+            "total": 988
+          },
+          "proxyTokens": 247
+        }
+      ],
+      "upstreamPackage": "@juicesharp/rpiv-todo"
+    }
+  }
+}

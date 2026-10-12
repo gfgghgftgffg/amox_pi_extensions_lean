@@ -1,0 +1,61 @@
+{
+  "name": "amox-pi-extensions-lean",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Minimal-change monorepo maintaining three lean Pi extension facades (web access, todo, subagents) that keep full upstream features while shrinking the provider-facing tool spec.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "workspaces": [
+    "packages/*"
+  ],
+  "dependencies": {
+    "@gfgghgftgffg/pi-subagents-lean": "*",
+    "@gfgghgftgffg/pi-web-access-lean": "*",
+    "@gfgghgftgffg/rpiv-todo-lean": "*"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=1.1.0",
+    "@earendil-works/pi-coding-agent": ">=1.1.0",
+    "@earendil-works/pi-tui": ">=1.1.0",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@earendil-works/pi-tui": "1.1.0",
+    "jiti": "2.7.0",
+    "typebox": "1.3.27",
+    "typescript": "5.9.3"
+  },
+  "scripts": {
+    "check": "npm run typecheck && npm test",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "node --test --test-concurrency=1 \"packages/*/tests/*.test.mjs\" \"tests/*.test.mjs\"",
+    "contracts": "node scripts/capture-contracts.mjs --write",
+    "contracts:check": "node scripts/capture-contracts.mjs --check",
+    "verify:production": "node scripts/verify-production-install.mjs",
+    "build": "npm run typecheck"
+  },
+  "pi": {
+    "extensions": [
+      "./packages/pi-web-access-lean/index.ts",
+      "./packages/rpiv-todo-lean/index.ts",
+      "./packages/pi-subagents-lean/index.ts"
+    ]
+  },
+  "files": [
+    "packages/*/index.ts",
+    "packages/*/package.json",
+    "packages/*/tsconfig.json",
+    "packages/*/LICENSE",
+    "packages/*/README.md",
+    "packages/*/README.zh-CN.md",
+    "packages/*/MAINTENANCE.md",
+    "maintenance/",
+    "scripts/",
+    "README.md"
+  ]
+}

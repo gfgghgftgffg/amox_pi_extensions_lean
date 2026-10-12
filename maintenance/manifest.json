@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "monorepo": {
+    "name": "amox-pi-extensions-lean",
+    "repository": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git",
+    "phase": 1,
+    "piVersionTested": "1.1.0",
+    "nodeVersionTested": "22.22.1",
+    "npmVersionTested": "9.2.0"
+  },
+  "packages": [
+    {
+      "id": "pi-web-access-lean",
+      "path": "packages/pi-web-access-lean",
+      "packageName": "@gfgghgftgffg/pi-web-access-lean",
+      "version": "0.1.0",
+      "entry": "index.ts",
+      "upstreamPackage": "pi-web-access",
+      "upstreamVersion": "0.39.0",
+      "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
+      "upstreamGitHead": "8e812826269624406458531f9231b679547f5a3a",
+      "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
+      "leanCommit": "db083e9119fe5cf080d2ee8d61ef58349042239b"
+    },
+    {
+      "id": "rpiv-todo-lean",
+      "path": "packages/rpiv-todo-lean",
+      "packageName": "@gfgghgftgffg/rpiv-todo-lean",
+      "version": "0.1.0",
+      "entry": "index.ts",
+      "upstreamPackage": "@juicesharp/rpiv-todo",
+      "upstreamVersion": "2.13.5",
+      "upstreamRepository": "https://github.com/juicesharp/rpiv-mono.git",
+      "upstreamRepositoryDirectory": "packages/rpiv-todo",
+      "upstreamGitHead": "e516242c51adace38b8dd0a3c70495d24a6e9b79",
+      "leanRepository": "https://github.com/kunkun9527/rpiv-todo-lean.git",
+      "leanCommit": "ec463cd90fbae962122fff2e0619955a8f17df1a"
+    },
+    {
+      "id": "pi-subagents-lean",
+      "path": "packages/pi-subagents-lean",
+      "packageName": "@gfgghgftgffg/pi-subagents-lean",
+      "version": "0.1.0",
+      "entry": "index.ts",
+      "upstreamPackage": "@tintinweb/pi-subagents",
+      "upstreamVersion": "0.20.0",
+      "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
+      "upstreamGitHead": "13106ab6f608b3acc54185da5299ee7fbaabb6b9",
+      "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
+      "leanCommit": "83f1454b26c32dd2a674385df55955ac9d3a45c3"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+node_modules/
+npm-debug.log*
+*.log
+coverage/
+dist/
+.tmp/
+.cache/
+.DS_Store
+Thumbs.db
+.venv/
+__pycache__/

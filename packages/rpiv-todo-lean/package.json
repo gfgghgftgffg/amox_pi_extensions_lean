@@ -1,0 +1,71 @@
+{
+  "name": "@gfgghgftgffg/rpiv-todo-lean",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lean Pi todo extension: the full @juicesharp/rpiv-todo 2.13.5 runtime with a compact flat schema and per-session RPC overlay handling preserved.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "kunkun9527",
+  "contributors": [
+    {
+      "name": "juicesharp",
+      "url": "https://github.com/juicesharp/rpiv-mono"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git",
+    "directory": "packages/rpiv-todo-lean"
+  },
+  "homepage": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/tree/main/packages/rpiv-todo-lean#readme",
+  "bugs": {
+    "url": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "rpiv",
+    "todo",
+    "token-efficient"
+  ],
+  "files": [
+    "index.ts",
+    "README.md",
+    "README.zh-CN.md",
+    "MAINTENANCE.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@juicesharp/rpiv-i18n": "2.13.5",
+    "@juicesharp/rpiv-todo": "2.13.5"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=1.1.0",
+    "@earendil-works/pi-coding-agent": ">=1.1.0",
+    "@earendil-works/pi-tui": ">=1.1.0",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@earendil-works/pi-tui": "1.1.0",
+    "jiti": "2.7.0",
+    "typebox": "1.3.27",
+    "typescript": "5.9.3"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

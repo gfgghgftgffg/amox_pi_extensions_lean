@@ -1,0 +1,70 @@
+{
+  "name": "@gfgghgftgffg/pi-web-access-lean",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lean Pi web access extension: one web_access facade over the full pi-web-access 0.39.0 runtime, with advanced parameters disclosed through help.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "kunkun9527",
+  "contributors": [
+    {
+      "name": "Nico Bailon",
+      "url": "https://github.com/nicobailon/pi-web-access"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git",
+    "directory": "packages/pi-web-access-lean"
+  },
+  "homepage": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/tree/main/packages/pi-web-access-lean#readme",
+  "bugs": {
+    "url": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "web-search",
+    "web-access",
+    "token-efficient"
+  ],
+  "files": [
+    "index.ts",
+    "README.md",
+    "README.zh-CN.md",
+    "MAINTENANCE.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "pi-web-access": "0.39.0"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=1.1.0",
+    "@earendil-works/pi-coding-agent": ">=1.1.0",
+    "@earendil-works/pi-tui": ">=1.1.0",
+    "typebox": "*"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "1.1.0",
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@earendil-works/pi-tui": "1.1.0",
+    "jiti": "2.7.0",
+    "typebox": "1.3.27",
+    "typescript": "5.9.3"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

@@ -65,7 +65,7 @@ export function createMaintenanceTools({ repoRoot, contextRoot, manifest, plan }
     },
     {
       name: "maintenance_finish", label: "Finish review", description: "Report ready only after reviewing every changed package and making the minimal lean adaptations. Tests run independently afterward. Uncertainty must be ready:false. Write detailed evidence to maintenance/agent-review.md first.",
-      parameters: Type.Object({ ready: Type.Boolean(), reviewedPackages: Type.Array(Type.String()), summary: Type.String({ maxLength: 20_000 }) }),
+      parameters: Type.Object({ ready: Type.Boolean(), reviewedPackages: Type.Array(Type.String()), summary: Type.String({ maxLength: 20_000, description: "Public release changelog: actual upstream behavior/API changes, lean adaptations, regression fixes and limitations. No unexecuted test claims." }) }),
       execute: async (_id, review) => {
         if (completed) throw new Error("Already finished");
         if (!existsSync(join(repoRoot, "maintenance/agent-review.md"))) throw new Error("Write maintenance/agent-review.md first");

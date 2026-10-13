@@ -16,12 +16,14 @@ Actions 配置和工作流概览见 [README](../README.md#自动维护)。维护
 | `maintenance/manifest.json` | 包装版本、上游精确版本及发布 commit、原 lean 已审查 commit；单体仓库的源码目录和相关目录 |
 | `maintenance/tool-contracts.json` | 隔离 Pi 会话捕获的工具定义、活动工具和字符代理统计，不是实际计费 token |
 | `maintenance/agent-review.md` | 源码 revision、API/行为差异、适配理由及未解决事项 |
-| `maintenance/update-report.md` | 验证结果和候选发布版本 |
+| `maintenance/update-report.md` | 候选发布版本、绑定版本的 AI 更新摘要及验证记录 |
 | workflow artifacts | 依赖候选、源码上下文、agent 提案、独立验证日志和最终 bundle |
 
 独立验证阶段统一增加 patch 版本，同步根、三个包、manifest 和 lockfile，并重建快照和文档统计。agent 本身不能修改依赖或版本。候选绑定基线 SHA；`main` 前进后，旧基线不能应用。
 
 发布产物为三个独立包和 `assets.json`，通过 GitHub Release 提供。现有 npm 发布 job 未启用。
+
+`maintenance_finish.summary` 写成面向使用者的 Markdown 更新条目，描述实际功能／行为变化、适配、修复和限制，不只列版本或内部审查过程，也不声称尚未执行的测试已通过。独立验证器把摘要包在版本标记中写入 `maintenance/update-report.md`，Release 直接读取并补充确定的验证和安装信息，不再次调用模型。摘要缺失、重复或版本不匹配时，在使用写 token 和预留 tag 前停止。手动发布也需要匹配版本的摘要；既有 tag 和安装包不自动改写。
 
 ## 本地检查
 
@@ -53,11 +55,12 @@ npm audit --omit=dev --audit-level=high
 
 | 阶段 | 检查项 |
 | --- | --- |
+| 定时未触发 | cron 使用 UTC：Check upstream 为北京时间 10:23，CI 为 12:17。核对默认分支、workflow 启用状态及 `schedule` 运行历史。GitHub 定时事件可能延迟或被丢弃；没有记录时不能据此判断无更新。 |
 | detect | npm/git 网络、metadata 和安装诊断。安装成功但旧封装捕获失败时，保留 lockfile 与诊断交给 agent 修复。上传隐藏目录需显式设置 `include-hidden-files: true`。 |
 | adapt | `MAINTENANCE_*`、服务协议、模型 ID、额度、超时和未解决事项。detect 成功不代表模型调用成功。 |
 | verify | 下载 `maintenance-verification-logs-<OS>`，定位测试、契约、安装或审计失败。失败提案不会进入 PR job。 |
 | open-pr | PR 创建权限、bundle 校验和基线 SHA。`main` 已更新时需重新运行。 |
-| release | 包装版本、tag、审批和验证结果。已有 tag 不移动或删除；tag 预留成功但 Release 创建失败时，只恢复 Release。 |
+| release | 包装版本、tag、匹配版本的更新摘要、审批和验证结果。已有 tag 不移动或删除；tag 预留成功但 Release 创建失败时，只恢复 Release。 |
 
 修复后从最新 `main` 新建 workflow 运行；重跑旧记录仍使用旧 SHA。自动提案分支 `maintenance/upstream-update` 会被后续检测重建，手工修复应使用独立分支。若 GitHub 要求 **Approve workflows to run**，批准后确认 PR 的完整 CI 结果。
 

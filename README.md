@@ -43,12 +43,14 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 | Workflow | 触发条件 | 工作内容 |
 | --- | --- | --- |
-| Check upstream | 每天 02:23 UTC，或手动运行 | 检查上游版本和原 lean 源码；有更新时调用 agent 适配、补测试和文档，经三平台验证后生成草稿 PR |
-| CI | 推送 `main`、PR 更新、每天 04:17 UTC，或手动运行 | 在 macOS、Windows、Linux 上执行测试、契约检查、独立安装验证和安全审计 |
+| Check upstream | 每天 02:23 UTC（北京时间 10:23），或手动运行 | 检查上游版本和原 lean 源码；有更新时调用 agent 适配、补测试和文档，经三平台验证后生成草稿 PR |
+| CI | 推送 `main`、PR 更新、每天 04:17 UTC（北京时间 12:17），或手动运行 | 在 macOS、Windows、Linux 上执行测试、契约检查、独立安装验证和安全审计 |
 | Release | `main` 的发布相关文件更新，或手动运行 | 包装版本增加或指定有效 tag 时，验证并发布三个独立 `.tgz` 包和哈希清单 |
 | Dependabot Updates | 每周 | 检查开发依赖和 Actions 版本，提交依赖升级 PR |
 
-定时运行可能延迟。没有上游更新时不调用模型；CI 和 Release 也不调用模型。
+没有上游更新时不调用模型；CI 和 Release 也不调用模型。
+
+Release notes 复用适配 agent 的具体更新摘要，说明上游行为变化、lean 适配、修复和已知限制；版本、验证结果及安装信息由脚本补充。发布阶段不再调用模型。
 
 ### 配置
 

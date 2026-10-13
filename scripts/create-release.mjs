@@ -15,12 +15,12 @@
  *   GH_TOKEN          token used only for the final create call
  *
  * Flags:
- *   --verify-only     validate tag/version/SHA and exit before any token use
+ *   --verify-only     validate tag/version/SHA/summary before any token use
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { releaseNotes, validateReleaseContext } from "./lib/release-validation.mjs";
+import { extractReleaseSummary, releaseNotes, validateReleaseContext } from "./lib/release-validation.mjs";
 import { validateReleaseAssets } from "./release-assets.mjs";
 
 function git(args, options = {}) {
@@ -65,6 +65,11 @@ try {
     process.exit(1);
   }
 
+  // Never call a model here. Reject missing/stale evidence before token use
+  // or reserving a tag, including the read-only verification preflight.
+  const summary = extractReleaseSummary({ report: readFileSync(resolve("maintenance/update-report.md"), "utf8"), tag });
+  const notes = releaseNotes({ tag, repository, sha: expectedSha, summary });
+
   if (process.argv.includes("--verify-only")) {
     console.log(`Release context verified: tag=${tag} version=${packageVersion} sha=${headSha} (no token used)`);
     process.exit(0);
@@ -99,7 +104,6 @@ try {
   reservedTag = tag;
   verifyRef(reservation.stdout, tag, expectedSha);
   verifyRef(gh(["api", `repos/${repository}/git/ref/tags/${tag}`]).stdout, tag, expectedSha);
-  const notes = releaseNotes({ tag, repository, sha: expectedSha });
   const created = gh(["release", "create", tag, "--repo", repository, "--verify-tag", "--title", tag, "--notes", notes, ...assets]);
   console.log(`Created release ${tag} (tag target ${expectedSha}).`);
   if (created.stdout) console.log(created.stdout);

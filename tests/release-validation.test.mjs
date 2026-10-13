@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { delimiter, dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { releaseNotes, validateReleaseContext, validateReleaseTag } from "../scripts/lib/release-validation.mjs";
+import { extractReleaseSummary, releaseNotes, releaseSummaryBlock, validateReleaseContext, validateReleaseTag } from "../scripts/lib/release-validation.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const rootVersion = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).version;
@@ -54,7 +54,7 @@ fail(400, "Unexpected operation");
 `;
   writeFileSync(join(dir, "gh"), script);
   // A preload routes only gh calls to the offline Node fixture on every OS.
-  writeFileSync(join(dir, "loader.mjs"), `import cp from "node:child_process";\nimport { syncBuiltinESMExports } from "node:module";\nconst original = cp.execFileSync;\ncp.execFileSync = (command, args, options) => command === "gh" ? original(process.execPath, [${JSON.stringify(join(dir, "gh"))}, ...args], options) : original(command, args, options);\nsyncBuiltinESMExports();\n`);
+  writeFileSync(join(dir, "loader.mjs"), `import cp from "node:child_process";\nimport { syncBuiltinESMExports } from "node:module";\nimport fs from "node:fs";\nimport { resolve } from "node:path";\nconst originalRead = fs.readFileSync;\nfs.readFileSync = (path, ...args) => process.env.FAKE_RELEASE_REPORT !== undefined && resolve(String(path)) === resolve("maintenance/update-report.md") ? process.env.FAKE_RELEASE_REPORT : originalRead(path, ...args);\nconst original = cp.execFileSync;\ncp.execFileSync = (command, args, options) => command === "gh" ? original(process.execPath, [${JSON.stringify(join(dir, "gh"))}, ...args], options) : original(command, args, options);\nsyncBuiltinESMExports();\n`);
   chmodSync(join(dir, "gh"), 0o755);
   writeFileSync(logPath, "");
   return dir;
@@ -87,10 +87,47 @@ test("release tag and context validation rules", () => {
   assert.ok(validateReleaseContext({ tag: "v9.9.9", packageVersion: rootVersion, expectedSha: headSha, headSha }).some((error) => /不一致/.test(error)));
   assert.ok(validateReleaseContext({ tag, packageVersion: rootVersion, expectedSha: "abc", headSha }).some((error) => /EXPECTED_SHA/.test(error)));
   assert.ok(validateReleaseContext({ tag, packageVersion: rootVersion, expectedSha: "f".repeat(40), headSha }).some((error) => /checkout HEAD/.test(error)));
-  const notes = releaseNotes({ tag, repository: "test/repo", sha: headSha });
+  const summary = "- 升级上游并保留工具接口，修复 Windows workflow 测试注册表路径。";
+  const notes = releaseNotes({ tag, repository: "test/repo", sha: headSha, summary });
+  assert.ok(notes.includes(summary));
+  assert.ok(notes.indexOf(summary) < notes.indexOf("## 安装"));
   assert.ok(notes.includes(`git clone --branch ${tag} https://github.com/test/repo.git`));
   assert.ok(notes.includes("node scripts/install-extension.mjs pi-web-access-lean"));
-  assert.doesNotMatch(notes, /pi install git:/);
+  assert.doesNotMatch(notes, /pi install git:|pi install npm:|When npm publication/);
+  assert.ok(notes.includes("本项目不发布 npm 包"));
+});
+
+test("release summaries are substantive and bound to exactly one version", () => {
+  const summary = "- 后台通知使用 steer，保留 deferred 工具作用域，补充隔离回归测试。";
+  const report = `Release after human merge: ${tag}\n\n${releaseSummaryBlock({ version: rootVersion, summary })}`;
+  assert.equal(extractReleaseSummary({ report, tag }), summary);
+  assert.equal(extractReleaseSummary({ report: report.replaceAll("\n", "\r\n"), tag }), summary);
+  for (const invalid of ["", report.replace(tag, "v99.0.0"), report + "\n" + releaseSummaryBlock({ version: rootVersion, summary }), report.replace(":end -->", ":start -->")]) {
+    assert.throws(() => extractReleaseSummary({ report: invalid, tag }), /Missing or stale/);
+  }
+  for (const invalid of [undefined, "too short", "a".repeat(20_001), "- reserved <!-- amox-release-summary:v1.0.0:start --> marker"]) {
+    assert.throws(() => releaseSummaryBlock({ version: rootVersion, summary: invalid }), /summary/);
+  }
+  assert.throws(() => releaseSummaryBlock({ version: "01.0.0", summary }), /canonical/);
+  assert.throws(() => releaseNotes({ tag, repository: "test/repo", sha: headSha }), /summary/);
+});
+
+test("missing or stale summaries fail before token use, gh calls or tag reservation", () => {
+  const dir = mkdtempSync(join(tmpdir(), "amox-release-summary-test-"));
+  const logPath = join(dir, "gh.log");
+  const fakeDir = fakeGhDir(logPath);
+  try {
+    const stale = `Release after human merge: v99.0.0\n\n${releaseSummaryBlock({ version: "99.0.0", summary: "- An old update must never appear in the current release." })}`;
+    for (const report of ["", stale]) {
+      for (const args of [[], ["--verify-only"]]) {
+        const result = runReleaseScript({ fakeDir, logPath, args, env: { FAKE_RELEASE_REPORT: report, GH_TOKEN: "" } });
+        assert.equal(result.status, 1);
+        assert.match(result.stderr, /Missing or stale release summary/);
+        assert.equal(readFileSync(logPath, "utf8"), "");
+        assert.ok(!existsSync(`${logPath}.ref`));
+      }
+    }
+  } finally { rmSync(dir, { recursive: true, force: true }); rmSync(fakeDir, { recursive: true, force: true }); }
 });
 
 test("release attaches three validated archives and the integrity manifest", () => {

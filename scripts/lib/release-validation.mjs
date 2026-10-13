@@ -34,23 +34,61 @@ export function validateReleaseContext({ tag, packageVersion, expectedSha, headS
   return errors;
 }
 
-export function releaseNotes({ tag, repository, sha }) {
+export function releaseSummaryBlock({ version, summary }) {
+  if (!isExactStableVersion(version)) throw new Error("Release summary needs a canonical version");
+  if (typeof summary !== "string") throw new Error("Missing release summary");
+  const text = summary.replace(/\r\n/g, "\n").trim();
+  if (text.length < 20 || text.length > 20_000 || text.includes("<!-- amox-release-summary:")) {
+    throw new Error("Invalid release summary: provide substantive changes without reserved markers");
+  }
+  return `<!-- amox-release-summary:v${version}:start -->\n${text}\n<!-- amox-release-summary:v${version}:end -->`;
+}
+
+export function extractReleaseSummary({ report, tag }) {
+  const checked = validateReleaseTag(tag);
+  if (!checked.ok) throw new Error(checked.error);
+  const text = typeof report === "string" ? report.replace(/\r\n/g, "\n") : "";
+  const start = `<!-- amox-release-summary:${tag}:start -->`;
+  const end = `<!-- amox-release-summary:${tag}:end -->`;
+  const markers = text.match(/<!-- amox-release-summary:[^\r\n]*? -->/g) || [];
+  if (markers.length !== 2 || markers[0] !== start || markers[1] !== end
+    || !text.split("\n").includes(`Release after human merge: ${tag}`)) {
+    throw new Error(`Missing or stale release summary for ${tag}; update maintenance/update-report.md before releasing`);
+  }
+  const summary = text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim();
+  releaseSummaryBlock({ version: checked.version, summary });
+  return summary;
+}
+
+export function releaseNotes({ tag, repository, sha, summary }) {
+  const checked = validateReleaseTag(tag);
+  if (!checked.ok) throw new Error(checked.error);
+  releaseSummaryBlock({ version: checked.version, summary });
   return [
-    `Release ${tag} of amox-pi-extensions-lean.`,
+    `# ${tag}`,
     "",
-    "Install each extension separately from this tag:",
+    "## 更新内容",
+    "",
+    summary.trim(),
+    "",
+    "## 验证",
+    "",
+    "macOS、Windows、Linux 的测试、契约检查、三个独立生产安装及安全审计通过。",
+    `验证提交：\`${sha}\`。`,
+    `[详细源码审查](https://github.com/${repository}/blob/${sha}/maintenance/agent-review.md)。`,
+    "",
+    "## 安装",
+    "",
+    "每个扩展独立安装，只执行需要的命令：",
     "",
     "```bash",
     `git clone --branch ${tag} https://github.com/${repository}.git`,
     "cd amox_pi_extensions_lean",
     "node scripts/install-extension.mjs pi-web-access-lean",
-    "# Or, independently:",
     "node scripts/install-extension.mjs rpiv-todo-lean",
     "node scripts/install-extension.mjs pi-subagents-lean",
     "```",
     "",
-    "The three .tgz assets are independent npm packages. When npm publication is enabled, install only the package you want using pi install npm:@gfgghgftgffg/<extension-id>.",
-    "",
-    `Tests, contract snapshot, three independent production installs and npm audits passed at commit ${sha}. This workflow never automatically merges an adaptation PR.`,
+    "附件包含三个独立 .tgz 安装包和 assets.json 哈希清单。本项目不发布 npm 包。",
   ].join("\n");
 }

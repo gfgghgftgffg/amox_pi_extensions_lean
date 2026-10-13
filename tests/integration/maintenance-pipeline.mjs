@@ -8,6 +8,7 @@ import { buildCandidateArtifact } from "../../scripts/lib/candidate.mjs";
 import { buildUpdatePlan, buildUpdateReport } from "../../scripts/lib/upstream-plan.mjs";
 import { buildAdaptedBundle, validateAdaptedBundle } from "../../scripts/lib/adapted-candidate.mjs";
 import { jsonText, nextPatch, readJson } from "../../scripts/lib/automation-policy.mjs";
+import { extractReleaseSummary, releaseNotes } from "../../scripts/lib/release-validation.mjs";
 import { run, checkedRun } from "../../scripts/lib/process.mjs";
 
 // Opt-in CLI, deliberately outside tests/*.test.mjs: verify runs the ordinary
@@ -56,6 +57,12 @@ try {
   const bundle = readJson(join(out, "verified.json"));
   assert.equal(bundle.status, "verified");
   assert.equal(readJson(join(repo, "package.json")).version, version);
+  const summary = extractReleaseSummary({ report: readFileSync(join(repo, "maintenance/update-report.md"), "utf8"), tag: `v${version}` });
+  assert.equal(summary, review.summary, "independent verification must retain the reviewed AI summary");
+  const notes = releaseNotes({ tag: `v${version}`, repository: "test/repo", sha: base, summary });
+  assert.ok(notes.includes(review.summary), "release notes must include actual review content, not just the install template");
+  assert.throws(() => extractReleaseSummary({ report: readFileSync(join(repo, "maintenance/update-report.md"), "utf8"), tag: `v${nextPatch(version)}` }), /Missing or stale/);
+  writeFileSync(join(logs, "release-notes.md"), notes);
   console.log(checkedRun(process.execPath, ["scripts/release-assets.mjs", "--build"], { cwd: repo, env }));
   const release = checkedRun(process.execPath, ["scripts/release-plan.mjs", "--run"], { cwd: repo, env: { ...env, GITHUB_EVENT_NAME: "push", RELEASE_BEFORE_SHA: base } });
   assert.ok(release.includes("should_release=true") && release.includes(`tag=v${version}`));

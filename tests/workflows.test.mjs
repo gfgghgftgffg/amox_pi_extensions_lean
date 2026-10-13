@@ -148,6 +148,10 @@ test("public README owns installation and Actions setup; docs retain maintainer 
   }
   assert.match(readme, /02:23 UTC/);
   assert.match(readme, /04:17 UTC/);
+  assert.match(readme, /北京时间 10:23/);
+  assert.match(readme, /北京时间 12:17/);
+  assert.match(readme, /Release notes 复用适配 agent/);
+  assert.doesNotMatch(readme, /高负载|事件可能被丢弃|没有运行记录不等于/);
   assert.match(readme, /没有上游更新时不调用模型/);
   assert.match(readme, /不发布 npm 包/);
   assert.doesNotMatch(readme, /pi install npm:|NPM_TOKEN|PUBLISH_NPM/);

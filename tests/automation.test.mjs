@@ -10,7 +10,7 @@ import { buildUpdatePlan, buildUpdateReport } from "../scripts/lib/upstream-plan
 import { applyFiles, assertRegularPath, jsonText, nextPatch, readJson, sha256, validateFiles, validateReview } from "../scripts/lib/automation-policy.mjs";
 import { buildAdaptedBundle, expectedGenerated, validateAdaptedBundle } from "../scripts/lib/adapted-candidate.mjs";
 import { createMaintenanceTools } from "../scripts/lib/maintenance-tools.mjs";
-import { runMaintenanceAgent } from "../scripts/lib/maintenance-agent.mjs";
+import { formatMaintenanceModelFailure, runMaintenanceAgent } from "../scripts/lib/maintenance-agent.mjs";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 
@@ -204,6 +204,39 @@ test("restricted tools cannot read secrets, execute commands or rewrite old asse
     assert.deepEqual(controls.finish(), f.review);
     await assert.rejects(tools.get("maintenance_write").execute("1", { path: "README.md", content: "late write" }), /finished/);
   } finally { f.cleanup(); }
+});
+
+test("model failures expose only bounded diagnostic metadata, never error bodies or credentials", () => {
+  const secret = "private-key-and-transcript-must-not-appear";
+  for (const [message, category, status] of [
+    [`Request timed out. ${secret}`, "request_timeout", "unknown"],
+    [`gateway API error (401): ${secret}`, "authentication", "401"],
+    [`gateway API error (403): ${secret}`, "authorization", "403"],
+    [`HTTP 429: ${secret}`, "rate_limit", "429"],
+    [`gateway API error (402): ${secret}`, "quota", "402"],
+    [`gateway API error (400): invalid input ${secret}`, "request_rejected", "400"],
+    [`gateway API error (503): ${secret}`, "provider_server_error", "503"],
+    [`fetch failed ${secret}`, "transport", "unknown"],
+    [`Input is too long ${secret}`, "context_limit", "unknown"],
+    [`${secret}`, "provider_error", "unknown"],
+  ]) {
+    const output = formatMaintenanceModelFailure([{ stopReason: "error", errorMessage: message }], { turns: 3, elapsedMs: 600_000 });
+    assert.ok(output.includes(`category=${category}`), output);
+    assert.ok(output.includes(`status=${status}`), output);
+    assert.match(output, /turns=3, elapsed_seconds=600/);
+    assert.ok(!output.includes(secret));
+    assert.ok(!output.includes(message));
+  }
+});
+
+test("stage limits and aborts are distinct from provider request timeouts", () => {
+  const errors = [{ stopReason: "aborted", errorMessage: "never publish this" }];
+  assert.match(formatMaintenanceModelFailure(errors, { turns: 60, elapsedMs: 10_000, abortCause: "turns" }), /category=turn_limit/);
+  assert.match(formatMaintenanceModelFailure(errors, { turns: 1, elapsedMs: 1_200_000, abortCause: "time" }), /category=stage_time_limit/);
+  assert.match(formatMaintenanceModelFailure(errors, { turns: 1, elapsedMs: 1_000 }), /category=aborted/);
+  const output = formatMaintenanceModelFailure(errors, { turns: "never publish this", elapsedMs: "never publish this", abortCause: "never publish this" });
+  assert.match(output, /turns=unknown, elapsed_seconds=unknown/);
+  assert.doesNotMatch(output, /never publish this/);
 });
 
 test("real Pi SDK runs the restricted tool loop offline without loading repository extensions", async () => {

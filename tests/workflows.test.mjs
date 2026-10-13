@@ -56,7 +56,8 @@ test("hidden artifact bundles explicitly opt in without uploading the whole chec
 
 test("CI remains read-only, secret-free and covers complete verification", () => {
   const text = workflow("test.yml");
-  for (const event of ["push", "pull_request", "workflow_dispatch", "schedule"]) assert.match(text, new RegExp(`\\n {2}${event}:\\n`));
+  for (const event of ["push", "pull_request", "workflow_dispatch"]) assert.match(text, new RegExp(`\\n {2}${event}:\\n`));
+  assert.doesNotMatch(text, /\n {2}schedule:\n/);
   assert.match(text, /permissions:\n {2}contents: read/);
   assert.doesNotMatch(text, /secrets\./);
   assert.match(text, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
@@ -67,7 +68,7 @@ test("CI remains read-only, secret-free and covers complete verification", () =>
 
 test("upstream detection, restricted adaptation, independent verification and PR writing are isolated", () => {
   const text = workflow("check-upstream.yml");
-  assert.match(text, /\n {2}schedule:\n/);
+  assert.doesNotMatch(text, /\n {2}schedule:\n/);
   assert.match(text, /\n {2}workflow_dispatch:\n/);
   assert.doesNotMatch(text, /\n {2}(?:push|pull_request):\n/);
   assert.match(text, /if: github\.ref == 'refs\/heads\/main'/);
@@ -107,8 +108,7 @@ test("reviewed version bumps auto-release, privileged jobs never execute depende
   assert.match(text, /concurrency:\n {2}group: release\n {2}cancel-in-progress: false/);
   const plan = job(text, "plan", "verify");
   const verify = job(text, "verify", "release");
-  const release = job(text, "release", "npm");
-  const npm = job(text, "npm");
+  const release = job(text, "release");
   assert.match(plan, /release-plan\.mjs --run/);
   assert.match(plan, /fetch-depth: 0/);
   assert.match(verify, /needs\.plan\.outputs\.should_release == 'true'/);
@@ -121,20 +121,13 @@ test("reviewed version bumps auto-release, privileged jobs never execute depende
   assert.match(release, /ref: \$\{\{ github\.sha \}\}/);
   assert.match(release, /create-release\.mjs --assets-dir/);
   assert.doesNotMatch(release, /npm (ci|install|run|publish)/);
-  assert.match(npm, /vars\.PUBLISH_NPM == 'true'/);
-  assert.match(npm, /environment: npm-publish/);
-  assert.match(npm, /secrets\.NPM_TOKEN/);
-  assert.doesNotMatch(npm, /npm (ci|install|run)|contents: write|MAINTENANCE_API_KEY/);
-  assert.match(npm, /publish-packages\.mjs/);
-  const publisher = read("scripts/publish-packages.mjs");
-  assert.match(publisher, /"--ignore-scripts"/);
-  assert.match(publisher, /validateReleaseAssets/);
+  assert.doesNotMatch(text, /\n  npm:|PUBLISH_NPM|NPM_TOKEN|npm-publish|publish-packages/);
 });
 
-test("dependabot cannot bypass controlled upstream engine upgrades", () => {
-  const text = read(".github/dependabot.yml");
-  assert.match(text, /package-ecosystem: github-actions/);
-  for (const name of ["pi-web-access", "@juicesharp/rpiv-todo", "@juicesharp/rpiv-i18n", "@tintinweb/pi-subagents"]) assert.ok(text.includes(`dependency-name: "${name}"`));
+test("only supported workflows remain; obsolete bots, probes and npm publishing are pruned", () => {
+  assert.deepEqual(readdirSync(workflowsDir).filter((name) => name.endsWith(".yml")).sort(), ["check-upstream.yml", "release.yml", "test.yml"]);
+  assert.ok(!existsSync(join(repoRoot, ".github/dependabot.yml")));
+  assert.ok(!existsSync(join(repoRoot, "scripts/publish-packages.mjs")));
 });
 
 test("public README owns installation and Actions setup; docs retain maintainer details", () => {
@@ -147,9 +140,10 @@ test("public README owns installation and Actions setup; docs retain maintainer 
     assert.ok(readme.includes(name), `README missing ${name}`);
   }
   assert.match(readme, /02:23 UTC/);
-  assert.match(readme, /04:17 UTC/);
   assert.match(readme, /北京时间 10:23/);
-  assert.match(readme, /北京时间 12:17/);
+  assert.match(readme, /docs\/local-scheduler\.md/);
+  assert.match(readme, /dispatch-workflows\.mjs/);
+  assert.doesNotMatch(readme, /04:17 UTC|北京时间 12:17/);
   assert.match(readme, /Release notes 复用适配 agent/);
   assert.doesNotMatch(readme, /高负载|事件可能被丢弃|没有运行记录不等于/);
   assert.match(readme, /没有上游更新时不调用模型/);
@@ -200,25 +194,15 @@ test("official registry is pinned and no lockfile download uses the old mirror",
   }
 });
 
-test("daily cron stays stable and temporary probes cannot execute maintenance or full CI", () => {
-  for (const [file, daily, first] of [["check-upstream.yml", "23 2 * * *", "detect"], ["test.yml", "17 4 * * *", "check"]]) {
-    const text = workflow(file);
-    const crons = [...text.matchAll(/^    - cron: "([^"]+)"$/gm)].map((match) => match[1]);
-    assert.equal(crons[0], daily);
-    if (crons.length === 1) {
-      assert.doesNotMatch(text, /schedule-probe|Temporary registration probe/);
-      continue;
-    }
-    assert.equal(crons.length, 2, "only one bounded temporary probe is allowed");
-    const probe = job(text, "schedule-probe", first);
-    assert.ok(probe.includes(`github.event_name == 'schedule' && github.event.schedule == '${crons[1]}'`));
-    assert.match(probe, /timeout-minutes: 2/);
-    assert.match(probe, /date -u/);
-    assert.doesNotMatch(probe, /secrets\.|vars\.|uses:|npm |node |automate-maintenance/);
-    assert.ok(job(text, first, first === "detect" ? "adapt" : "all-platforms").includes(`github.event.schedule != '${crons[1]}'`));
-    if (first === "check") {
-      assert.ok(job(text, "all-platforms").includes(`github.event.schedule != '${crons[1]}'`));
-      assert.ok(text.includes("github.event.schedule || 'normal'"), "probe must not cancel a real CI run");
-    }
+test("daily scheduling has one local entry point and no native GitHub cron", () => {
+  for (const file of readdirSync(workflowsDir)) {
+    assert.doesNotMatch(workflow(file), /\n {2}schedule:|cron:|schedule-probe|trigger-diagnostic/);
   }
+  const pkg = JSON.parse(read("package.json"));
+  assert.equal(pkg.scripts["maintenance:dispatch"], "node scripts/dispatch-workflows.mjs");
+  const scheduler = read("scripts/dispatch-workflows.mjs");
+  assert.match(scheduler, /flock/);
+  assert.match(scheduler, /workflow_run_id/);
+  assert.match(scheduler, /run\.conclusion !== "success"/);
+  assert.doesNotMatch(scheduler, /pi --print|MAINTENANCE_API_KEY|secrets\./);
 });

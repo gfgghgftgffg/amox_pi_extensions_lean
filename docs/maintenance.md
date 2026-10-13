@@ -21,7 +21,7 @@ Actions 配置和工作流概览见 [README](../README.md#自动维护)。维护
 
 独立验证阶段统一增加 patch 版本，同步根、三个包、manifest 和 lockfile，并重建快照和文档统计。agent 本身不能修改依赖或版本。候选绑定基线 SHA；`main` 前进后，旧基线不能应用。
 
-发布产物为三个独立包和 `assets.json`，通过 GitHub Release 提供。现有 npm 发布 job 未启用。
+发布产物为三个独立包和 `assets.json`，仅通过 GitHub Release 提供，不包含 npm 发布 job。
 
 `maintenance_finish.summary` 写成面向使用者的 Markdown 更新条目，描述实际功能／行为变化、适配、修复和限制，不只列版本或内部审查过程，也不声称尚未执行的测试已通过。独立验证器把摘要包在版本标记中写入 `maintenance/update-report.md`，Release 直接读取并补充确定的验证和安装信息，不再次调用模型。摘要缺失、重复或版本不匹配时，在使用写 token 和预留 tag 前停止。手动发布也需要匹配版本的摘要；既有 tag 和安装包不自动改写。
 
@@ -55,9 +55,9 @@ npm audit --omit=dev --audit-level=high
 
 | 阶段 | 检查项 |
 | --- | --- |
-| 定时未触发 | cron 使用 UTC：Check upstream 为北京时间 10:23，CI 为 12:17。核对默认分支、workflow 启用状态及 `schedule` 运行历史。GitHub 定时事件可能延迟或被丢弃；没有记录时不能据此判断无更新。 |
+| 定时未触发 | 检查本机 systemd timer、GitHub token 的有效期和 Actions 权限、服务日志及实际 workflow run。详见[本机每日调度](local-scheduler.md)。API 接受触发不代表运行已成功。 |
 | detect | npm/git 网络、metadata 和安装诊断。安装成功但旧封装捕获失败时，保留 lockfile 与诊断交给 agent 修复。上传隐藏目录需显式设置 `include-hidden-files: true`。 |
-| adapt | `MAINTENANCE_*`、服务协议、模型 ID、额度、超时和未解决事项。detect 成功不代表模型调用成功。 |
+| adapt | `MAINTENANCE_*`、服务协议、模型 ID、额度及未解决事项。模型失败日志只含脱敏分类、HTTP 状态、轮次和耗时，区分请求超时、20 分钟总预算和 60 轮上限，不输出错误正文或 transcript。detect 成功不代表模型调用成功。 |
 | verify | 下载 `maintenance-verification-logs-<OS>`，定位测试、契约、安装或审计失败。失败提案不会进入 PR job。 |
 | open-pr | PR 创建权限、bundle 校验和基线 SHA。`main` 已更新时需重新运行。 |
 | release | 包装版本、tag、匹配版本的更新摘要、审批和验证结果。已有 tag 不移动或删除；tag 预留成功但 Release 创建失败时，只恢复 Release。 |
@@ -68,6 +68,6 @@ npm audit --omit=dev --audit-level=high
 
 模型仅有受限文本工具，可修改适配入口、包文档、追加测试和审查报告；不能运行 shell、加载项目扩展或 MCP、读取环境变量、修改工作流、脚本、依赖、许可证和已接受快照。模型凭据只在 adapt 的 SDK 步骤可用，不与上游执行共享。
 
-候选跨 job 传递时校验路径、大小、哈希、固定依赖来源、发布 commit 和 metadata。verify 使用独立三平台 runner，不带模型凭据或写 token；open-pr 不执行候选代码；release/npm 仅处理预构建包。隐藏产物上传限定到候选目录或发布目录，不上传整个 checkout。
+候选跨 job 传递时校验路径、大小、哈希、固定依赖来源、发布 commit 和 metadata。verify 使用独立三平台 runner，不带模型凭据或写 token；open-pr 不执行候选代码；release 仅处理预构建包。隐藏产物上传限定到候选目录或发布目录，不上传整个 checkout。
 
 路径白名单和临时 HOME 不是操作系统级沙箱，测试也不能证明所有新增行为均被覆盖。源码、生成代码和回归测试仍需代码审查；模型服务会接收被读取的公开源码和维护材料，原始 transcript 不上传。

@@ -34,6 +34,7 @@
     "verify:production": "node scripts/verify-production-install.mjs",
     "test:maintenance-pipeline": "node tests/integration/maintenance-pipeline.mjs",
     "maintenance:plan": "node scripts/check-upstream.mjs",
+    "maintenance:dispatch": "node scripts/dispatch-workflows.mjs",
     "maintenance:stage": "node scripts/check-upstream.mjs --apply",
     "build": "npm run typecheck",
     "install:extension": "node scripts/install-extension.mjs",

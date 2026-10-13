@@ -26,6 +26,31 @@ export function modelConfig(env = process.env) {
   return { provider, model, key, api, baseUrl, thinking };
 }
 
+// Only allowlisted categories and numeric metadata reach public Actions logs.
+// Provider error bodies can echo credentials or prompt contents; never print them.
+export function formatMaintenanceModelFailure(errors, { turns, elapsedMs, abortCause } = {}) {
+  const last = errors.at(-1);
+  const text = typeof last?.errorMessage === "string" ? last.errorMessage.slice(0, 4096) : "";
+  const match = text.match(/\bAPI error \(([45]\d\d)\):|\bHTTP(?: status)?\s*[:=]?\s*([45]\d\d)\b|^([45]\d\d)(?:\s|:)/i);
+  const status = Number(match?.[1] || match?.[2] || match?.[3]) || undefined;
+  let category = "provider_error";
+  if (abortCause === "time") category = "stage_time_limit";
+  else if (abortCause === "turns") category = "turn_limit";
+  else if (last?.stopReason === "aborted") category = "aborted";
+  else if (status === 401) category = "authentication";
+  else if (status === 403) category = "authorization";
+  else if (status === 402 || /insufficient_quota|quota exceeded|out of budget|billing/i.test(text)) category = "quota";
+  else if (status === 429) category = "rate_limit";
+  else if (/timed? out|timeout|deadline exceeded/i.test(text)) category = "request_timeout";
+  else if (/context.{0,20}(?:length|window)|input is too long/i.test(text)) category = "context_limit";
+  else if (status >= 500) category = "provider_server_error";
+  else if (status >= 400) category = "request_rejected";
+  else if (/fetch failed|connection|network|socket|ENOTFOUND|EAI_AGAIN|certificate|SSL|TLS/i.test(text)) category = "transport";
+  const safeTurns = Number.isSafeInteger(turns) && turns >= 0 ? turns : "unknown";
+  const elapsedSeconds = Number.isFinite(elapsedMs) && elapsedMs >= 0 ? Math.round(elapsedMs / 1000) : "unknown";
+  return `Maintenance model failed: category=${category}, status=${status || "unknown"}, stop_reason=${last?.stopReason === "aborted" ? "aborted" : "error"}, turns=${safeTurns}, elapsed_seconds=${elapsedSeconds} (no error body or transcript published)`;
+}
+
 export async function runMaintenanceAgent({ repoRoot, contextRoot, manifest, plan, feedback, runtimeFactory = ModelRuntime.create }) {
   const config = modelConfig();
   const scratch = mkdtempSync(join(tmpdir(), "amox-agent-sdk-"));
@@ -63,9 +88,12 @@ export async function runMaintenanceAgent({ repoRoot, contextRoot, manifest, pla
       settingsManager: SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: true, maxRetries: 1 } }),
     }));
     let turns = 0;
-    const timer = setTimeout(() => { void session.abort(); }, 20 * 60_000);
+    let abortCause;
+    const startedAt = Date.now();
+    const abort = (cause) => { abortCause ??= cause; void session.abort(); };
+    const timer = setTimeout(() => abort("time"), 20 * 60_000);
     session.subscribe((event) => {
-      if (event.type === "turn_end" && ++turns >= 60) void session.abort();
+      if (event.type === "turn_end" && ++turns >= 60) abort("turns");
     });
     try {
       await session.prompt(`${MAINTENANCE_PROMPT}\n\nExecution contract for this unattended stage:\n- Read package MAINTENANCE.md, old/new upstream source and changelog, and old/new lean source for each changed package. Inventory tools help discover files.\n- Dependencies are already staged by the trusted planner; you cannot edit versions, manifest, lock or snapshots.\n- Preserve existing tests and add regression tests for changed API/behavior. Do not delete assertions just to pass.\n- Update both package READMEs and MAINTENANCE.md with the actual reviewed behavior and evidence.\n- Test execution and character statistics will be performed by a separate credential-free job; do not simulate them.\n- Write detailed review to maintenance/agent-review.md, including source revisions, changes reused or rejected from the lean author, affected APIs and unresolved issues.\n- maintenance_finish.summary is the public release changelog: write concise Markdown bullets describing actual upstream behavior/API changes, adopted lean adaptations, regression fixes and user-visible limits. Do not merely list version bumps, internal process, installation commands or unexecuted verification claims. Do not invent features when reviewed source is unchanged; no reserved amox-release-summary markers. The release job reuses this summary without another model call.\n- Finish by maintenance_finish; ready:false on uncertainty.\n- Required reviewed package ids: ${reviewIds(plan).join(", ")}\n\nPlan:\n${jsonText(plan)}\n${feedback ? `\nPrevious independent verification FAILED; fix its cause without weakening tests:\n${feedback.slice(-60000)}\n` : ""}`);
@@ -73,7 +101,7 @@ export async function runMaintenanceAgent({ repoRoot, contextRoot, manifest, pla
       clearTimeout(timer);
     }
     const errors = session.messages.filter((message) => message.role === "assistant" && ["error", "aborted"].includes(message.stopReason));
-    if (errors.length) throw new Error("Maintenance model failed or exceeded its time/turn limit; see provider configuration (no transcript published)");
+    if (errors.length) throw new Error(formatMaintenanceModelFailure(errors, { turns, elapsedMs: Date.now() - startedAt, abortCause }));
     return controls.finish();
   } finally {
     session?.dispose();

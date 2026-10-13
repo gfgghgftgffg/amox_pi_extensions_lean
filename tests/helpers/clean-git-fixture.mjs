@@ -7,6 +7,9 @@ function overlay(source, target) {
   // Node's Windows copy-file fast path can fail when overwriting a Git clone.
   // Ordinary read/write preserves the exact bytes without that native path.
   const entries = readdirSync(source, { withFileTypes: true });
+  // Mirror deletions as well as additions, only inside the disposable clone.
+  // Otherwise a pruned workflow/script survives from HEAD and corrupts tests.
+  rmSync(target, { recursive: true, force: true });
   mkdirSync(target, { recursive: true });
   for (const entry of entries) {
     if (entry.name === "node_modules" || entry.isSymbolicLink()) continue;

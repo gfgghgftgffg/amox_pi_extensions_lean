@@ -13,3 +13,8 @@ __pycache__/
 # Untracked staging directory for `scripts/check-upstream.mjs --apply`.
 .maintenance-candidate/
 .release-assets/
+
+# Local credentials must never be committed; scheduler credentials live outside Git.
+.env
+.env.*
+*.env

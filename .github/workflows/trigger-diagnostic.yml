@@ -1,0 +1,32 @@
+# Temporary control experiment. Remove after collecting real trigger evidence.
+# Observation slots: October 13, 07:37-09:57 UTC; cron has no year field.
+# No actions, checkout, secrets, environment gates, matrix, or concurrency group.
+name: Trigger diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/trigger-diagnostic.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "7,17,27,37,47,57 7-9 13 10 *"
+
+permissions: {}
+
+jobs:
+  record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Record trigger and runner allocation
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          date -u
+          printf 'event=%s\nschedule=%s\nactor=%s\nref=%s\nsha=%s\nworkflow_ref=%s\n' "$EVENT" "$SCHEDULE" "$ACTOR" "$REF" "$SHA" "$WORKFLOW_REF"

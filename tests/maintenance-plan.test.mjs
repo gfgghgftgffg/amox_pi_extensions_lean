@@ -7,7 +7,6 @@ import test from "node:test";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { diffJson } from "../scripts/lib/contract-diff.mjs";
 import { applyPlanToManifest, applyPlanToWorkspacePackage, buildUpdatePlan, buildUpdateReport } from "../scripts/lib/upstream-plan.mjs";
 import { fetchUpstreamMetadata, loadInjectedMetadata } from "../scripts/lib/upstream-metadata.mjs";
 
@@ -121,15 +120,14 @@ test("newer stable version yields the exact minimal dependency-only candidate", 
   assert.deepEqual(packagePlan.dependencyChanges, [{ name: "pi-web-access", from: "0.39.0", to: "0.40.0", kind: "primary" }]);
 
   const nextPackage = applyPlanToWorkspacePackage(workspaces[0].pkg, packagePlan);
-  assert.deepEqual(diffJson(workspaces[0].pkg, nextPackage, ""), [
-    { path: "dependencies.pi-web-access", kind: "changed", from: "0.39.0", to: "0.40.0" },
-  ]);
+  assert.deepEqual(nextPackage, { ...workspaces[0].pkg,
+    dependencies: { ...workspaces[0].pkg.dependencies, "pi-web-access": "0.40.0" } });
 
   const nextManifest = applyPlanToManifest(manifest, plan);
-  const manifestDiff = manifest.packages
-    .flatMap((entry, index) => diffJson(entry, nextManifest.packages[index], `packages.${index}`).map((change) => change.path))
-    .sort();
-  assert.deepEqual(manifestDiff, ["packages.0.upstreamGitHead", "packages.0.upstreamVersion"]);
+  const expectedManifest = structuredClone(manifest);
+  expectedManifest.packages[0].upstreamVersion = "0.40.0";
+  expectedManifest.packages[0].upstreamGitHead = HEAD;
+  assert.deepEqual(nextManifest, expectedManifest, "all unrelated manifest fields remain identical");
   assert.equal(nextManifest.packages[0].upstreamVersion, "0.40.0");
   assert.equal(nextManifest.packages[0].upstreamGitHead, HEAD);
   // leanCommit baselines are never touched by a dependency candidate.
@@ -214,8 +212,8 @@ test("report is deterministic and includes the saved minimal-change prompt", () 
   const second = buildUpdateReport({ plan, status: "ready", baseCommit: "f".repeat(40) });
   assert.equal(first, second);
   assert.match(first, /node scripts\/local-maintenance\.mjs --run/);
-  assert.match(first, /只升级依赖，不改 index\.ts/);
-  assert.match(first, /不直接推 main/);
+  assert.match(first, /维护提示词：maintenance\/daily-update\.md/);
+  assert.match(readFileSync(new URL("../maintenance/daily-update.md", import.meta.url), "utf8"), /我确认后再发版/);
 });
 
 test("fetchUpstreamMetadata fails visibly on network errors and malformed payloads", async () => {

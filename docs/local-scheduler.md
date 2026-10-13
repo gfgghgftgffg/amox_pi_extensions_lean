@@ -2,6 +2,15 @@
 
 每日 02:23 UTC（北京时间 10:23），systemd 启动一个一次性 Pi SDK 进程。不依赖 GitHub cron，不复用个人会话，也没有常驻 Agent。
 
+代码位置：
+- 任务入口：[scripts/local-maintenance.mjs](../scripts/local-maintenance.mjs)
+- 独立 Pi 会话：[scripts/lib/local-pi.mjs](../scripts/lib/local-pi.mjs)
+- 实际加载的 prompt：[maintenance/daily-update.md](../maintenance/daily-update.md)
+- 定时器：[scripts/systemd/amox-pi-actions.timer](../scripts/systemd/amox-pi-actions.timer)
+- 服务：[scripts/systemd/amox-pi-actions.service](../scripts/systemd/amox-pi-actions.service)
+
+这里调用 `createAgentSession` 新开 Pi 会话，不调用 subagent、不加载 subagent 扩展或 task-routing。被维护的依赖只装进临时副本，不更新个人 Pi 或正在运行的宿主。
+
 ## 工作过程
 
 `systemd → 临时 main 副本 → 检测上游 → Pi 修改并实际检查 → 草稿 PR → 普通三平台 CI → 人工合并 → Release`
@@ -79,3 +88,5 @@ journalctl -u amox-pi-actions.service
 timer 为 `Persistent=true`。首次启用前确认最近成功运行和 timer stamp，避免补执行形成不必要的模型调用。暂停：`sudo systemctl disable --now amox-pi-actions.timer`。
 
 GitHub 不再需要维护模型 Secrets/Variables。旧值不会被新流程读取；移除旧 workflow 不等于自动删除账号里的凭据。
+
+`.github/dependabot.yml` 的版本/Action 更新配置已经删除。GitHub 的 `dynamic/dependabot/dependabot-updates` 是平台动态入口，不是仓库里的 YAML，普通 workflow disable API 不支持禁用它。Dependabot 自动安全更新由仓库安全设置控制，需具备相应仓库管理权限；移除配置不能证明安全更新已关闭。可在仓库 Settings 的安全设置中关闭 Dependabot security updates；漏洞告警与 npm audit 是独立检查，可保留。历史 Actions 入口/记录可能仍显示，不能冒充已清除。

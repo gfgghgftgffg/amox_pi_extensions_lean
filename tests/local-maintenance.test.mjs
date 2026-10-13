@@ -47,6 +47,8 @@ test("local Pi repairs the same candidate from check output with no discovery or
           models: [{ id: "offline", name: "Offline", input: ["text"], reasoning: false, contextWindow: 128000, maxTokens: 4096, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
           streamSimple: (model, context) => {
             assert.ok(!JSON.stringify(context).includes("offline-not-a-real-key"));
+            assert.match(JSON.stringify(context), /我确认后再发版/);
+            assert.match(JSON.stringify(context), /不是 subagent/);
             const step = calls[requests++]; assert.ok(requests <= calls.length + 1, "bounded conversation");
             if (requests === 4) assert.match(JSON.stringify(context), /rendered includes/);
             const message = { role: "assistant", api: model.api, provider: model.provider, model: model.id,

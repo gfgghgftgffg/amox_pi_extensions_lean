@@ -41,6 +41,13 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 安装和使用扩展不需要配置 Actions。维护入口在本机：每天 02:23 UTC（北京时间 10:23），systemd 启动一次性 Pi，在临时工作副本内检查上游、适配、实际跑检查，并根据报错修复同一份候选。没有上游更新或已有待审维护 PR 时不调用模型。
 
+日常任务的源码与配置：
+- [维护入口](scripts/local-maintenance.mjs) · [独立 Pi SDK 会话](scripts/lib/local-pi.mjs)
+- [每日更新 prompt（原作者维护段原文）](maintenance/daily-update.md)
+- [systemd service](scripts/systemd/amox-pi-actions.service) · [每日 timer](scripts/systemd/amox-pi-actions.timer)
+
+这是独立 Pi 会话，不是 subagent；维护会话不加载被维护的扩展（它们只在独立检查沙箱加载），也不更新当前个人安装。
+
 本地检查通过后创建草稿 PR，再由普通 CI 在 Linux、macOS、Windows 独立验收；人工审查合并版本升级后才进入 Release。Pi 不直接推 main、不自动合并，发布凭据与执行候选代码的环境隔离。部署和故障处理见[本机每日维护](docs/local-scheduler.md)。
 
 GitHub 只保留两个工作流：

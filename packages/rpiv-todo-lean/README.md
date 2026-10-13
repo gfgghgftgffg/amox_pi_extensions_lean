@@ -56,7 +56,7 @@ Release still requires human approval.
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.1 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.2 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -64,7 +64,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.1`
+* Wrapper: `0.1.2`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
 * Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 

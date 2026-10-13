@@ -8,7 +8,7 @@
   "upstream": {
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.21.0",
+      "version": "0.22.0",
       "entry": "node_modules/@tintinweb/pi-subagents/src/index.ts",
       "registeredTools": [
         "Agent",
@@ -247,7 +247,7 @@
     },
     "pi-web-access": {
       "package": "pi-web-access",
-      "version": "0.39.0",
+      "version": "0.40.0",
       "entry": "node_modules/pi-web-access/dist/index.js",
       "registeredTools": [
         "web_search",
@@ -263,8 +263,8 @@
         "get_search_content"
       ],
       "totals": {
-        "registeredProxyTokens": 2669,
-        "activeProxyTokens": 2603
+        "registeredProxyTokens": 2739,
+        "activeProxyTokens": 2673
       },
       "tools": [
         {
@@ -669,17 +669,24 @@
               "proxy": {
                 "type": "string",
                 "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for this fetch. Needed when the target is unreachable directly; localhost and NO_PROXY hosts always bypass the proxy. Empty string forces direct access."
+              },
+              "redirects": {
+                "type": "string",
+                "enum": [
+                  "same-origin"
+                ],
+                "description": "Refuse cross-origin redirects: every redirect target must match the requested URL's scheme, hostname and effective port, and extraction paths whose redirect chain cannot be observed are refused instead of used."
               }
             }
           },
           "chars": {
             "description": 465,
-            "schema": 2356,
+            "schema": 2636,
             "snippet": 0,
             "guidelines": 0,
-            "total": 2821
+            "total": 3101
           },
-          "proxyTokens": 706
+          "proxyTokens": 776
         },
         {
           "name": "get_search_content",
@@ -917,7 +924,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -998,7 +1005,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1056,7 +1063,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

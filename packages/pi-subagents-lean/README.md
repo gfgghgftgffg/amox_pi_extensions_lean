@@ -77,26 +77,46 @@ own MCP servers. Opt out with agent `exclude_extensions: builtin:mcp`, global `-
 `--no-mcp`. Child tool scope respects exposure/defaultActive and also gates nested `ctx.executeTool`
 calls.
 
-Source review and test scope are recorded in [MAINTENANCE.md](MAINTENANCE.md). New offline regression
-tests cover workflow isolation forwarding and child tool exposure/scope. Installation, tests, contract
-capture, and production-install verification have **not run in this agent stage**; they belong to the
-independent validation job. Release still requires human approval.
+Source review and test scope are recorded in [MAINTENANCE.md](MAINTENANCE.md).
+
+## Reviewed upgrade: 0.21.0 → 0.22.0
+
+The four tool names, fields, required parameters, execution/render signatures, and invocation
+defaults remain compatible; the lean entry is unchanged. The default `smart` join mode now
+reports completed tasks at the parent's next boundary without waiting for siblings; `async`
+has the same behavior. A busy parent receives completions from its tool batch in one message;
+an idle parent gets a turn after about 200 ms, combining completions within that window.
+Use the `group` join setting to wait for a turn's batch; a lone spawn and different parent
+turns are not grouped. A pending completion survives Esc and starts a turn after the interrupted
+run ends. Reading a finished result suppresses its notification any time before delivery.
+
+Installed Pi packages can declare agents and workflows under `pi.subagents` or `pi-subagents`.
+Package resources are enabled by default and rank below your own definitions; packages configured
+only by an untrusted project are invisible. `packageAgents` and `packageWorkflows` accept `true`,
+`false`, or a package allowlist in `subagents.json`. Package agents are read-only in `/agents`,
+with Eject/Disable actions. Reload after changing discovery/trust settings to refresh the facade's
+startup type list. Shutdown now also disposes widget, group-join, and completion-outbox state.
+
+The candidate check captures current character measurements and runs the existing facade and
+integration regressions, typechecks, production installs, and audits in a separate sandbox.
+Live model/MCP and interactive notification timing are outside those checks; release requires
+human review after three-platform CI.
 
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.1 | 270 |
-| @tintinweb/pi-subagents | 0.21.0 | 8415 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.2 | 270 |
+| @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.1`
-* Upstream runtime: pinned to `@tintinweb/pi-subagents@0.21.0` (exact)
+* Wrapper: `0.1.2`
+* Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
 * Requires Pi `>=1.1.0` (unchanged upstream peer floor). Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 
 ## Development

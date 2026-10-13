@@ -12,7 +12,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.21.0`（精确固定；`dependencies`；此前为 0.20.0）。
+- `@tintinweb/pi-subagents@0.22.0`（精确固定；`dependencies`；此前为 0.21.0）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -88,6 +88,40 @@
   独立任务须运行 npm ci、npm run check、npm run contracts、npm run contracts:check 与
   node scripts/verify-production-install.mjs。交互式 ctrl+b、真实 MCP/provider 与 trust 端到端
   行为未在本阶段实测；新增测试覆盖的是无凭据内部边界，不能替代这些场景。
+
+## 本次审查：0.21.0 → 0.22.0
+
+- 精确 before/after：`26c23bb7db7b181ff3f4233cdc4e5bc9fefb6f04` →
+  `85a704cb8f35c96c0cabfa665b572bab296942e5`，以 sources.json 与 npm stable 为准；未采用较新远端
+  `bd5980ac2fd0b12f438d964c575b0a8310e80259`。原 lean 作者仍为
+  `83f1454b26c32dd2a674385df55955ac9d3a45c3`，无新作者差异。
+- 已对比新旧 CHANGELOG、package.json、src/index.ts 的 Agent／workflow／result／steer 注册、
+  schema、五参数 execute、render、resultConsumed、join 批次、shutdown，完整 invocation-config.ts，
+  custom-agents.ts 的发现层、workflow/saved.ts 的名称解析；阅读新增 completion-outbox.ts 和
+  package-resources.ts 的声明／trust／门控／包枚举路径。不是声称审查了每个上游文件。
+- 四个工具不增删。Agent 必填 prompt/description/subagent_type，可选 name/model/thinking/max_turns/
+  run_in_background/resume/isolated/inherit_context，按设置加入 isolation/schedule；result 为
+  agent_id/wait/verbose；steer 为 agent_id/message；workflow 为 script/scriptPath/name/args/
+  resumeFromRunId/title/description。类型、required、约束与 invocation 默认不变。
+- typebox v1、instancePath、启动类型描述正则、withUsageReporting 捕获后委派、input 合并优先级、
+  render 委派与 workflow 条件注册继续成立。常驻 prompt 的“后台完成通知、不轮询”仍准确，入口未修改。
+- 默认 joinMode 字符串仍为 smart，但语义变化：smart/async 不等待同批其它任务，busy 父会话在
+  turn_end 后一次发送已完成项，idle 父会话约 200 ms 后发送窗口内项。group 按父 turn 分组，
+  单个派生与跨 turn 不分组。Esc/error turn 不 flush，agent_end/agent_settled 之后可开启新一轮。
+  result 读取完成项设 resultConsumed 并 outbox.cancel(record.id)，发送前任意时刻都能取消。
+- 包 Agent/Workflow 通过 pi.subagents 或 pi-subagents 声明。packageAgents/packageWorkflows 为
+  true/false/allowlist，默认开启；仅枚举 Pi 已配置且已安装的包，不扫描 node_modules。
+  trust 在激活时从保存决定 seed，session_start 校正；不信任项目的包列表不可见。
+  package tier 低于用户／workspace／project，包 Agent UI 只读，可 Eject／Disable。
+  这些是设置与发现行为，不是新工具参数，不加入门面 Schema。
+- 工具 schema 和门面的类型列表仍只在激活时生成；session_start 后新发现类型可能未显示，
+  改 trust／包门控后须 reload。未自行改动态名单或拦截发现行为。
+- shutdown 新增 groupJoin.dispose、widget.dispose、outbox.dispose；facade 的 pi.on 透传承接。
+- 本次不新增上游内部单元测试：既有真实集成、schema 校验、后台结果／usage／通知透传、作用域和
+  隔离断言继续执行。`check` 执行实际候选验证和字符代理统计；历史审查章节的“本阶段未运行”仅指
+  当时阶段。当前结果以 check 输出为准，不把旧 Windows/Linux 验证当新候选的证据。
+- 真实模型／MCP、键盘 UI、Esc 通知调度端到端未验证；语义变化已在中英文 README 明示，
+  不作本地规则删减或行为重写。三平台 CI 后须人工审查合并／发版。
 
 ## 升级步骤
 

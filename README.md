@@ -2,7 +2,7 @@
 
 `pi-web-access`、`rpiv-todo` 和 `pi-subagents` 的 lean 封装。缩短工具描述和 schema，合并同类工具，完整参数说明按需获取；实际执行仍调用上游代码。
 
-按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，三个扩展的工具上下文合计减少约 **94.4%**。这是字符代理统计，不是模型实际计费 token。
+按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，三个扩展的工具上下文合计减少约 **94.5%**。这是字符代理统计，不是模型实际计费 token。
 
 ## 扩展
 

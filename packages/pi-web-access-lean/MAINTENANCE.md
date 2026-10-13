@@ -12,7 +12,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.39.0`（精确固定；`dependencies`）。
+- `pi-web-access@0.40.0`（精确固定；`dependencies`；此前为 0.39.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.27、jiti 2.7.0、TypeScript 5.9.3。
@@ -39,6 +39,34 @@
   `setActiveTools`，保证工具列表整场会话不变。
 - 0.36+ 的 `web_search.prepareArguments` 归一化（本包已透传）。
 - 上游配置里 `toolNames` 可以改名（0.35 起即有）。facade 按默认名路由，改名后的配置不受支持（见限制）。
+
+## 本次审查：0.39.0 → 0.40.0
+
+- 精确 before/after 来自 `sources.json`：`8e812826269624406458531f9231b679547f5a3a` →
+  `9861ad72a11c9af419b39f9b00860708407f7025`（目标与远端 HEAD 相同）。原 lean 作者仍为
+  `db083e9119fe5cf080d2ee8d61ef58349042239b`，无新作者差异可复用；本地入口完整阅读后未改。
+- 对比新旧 CHANGELOG、package.json、index.ts 的注册／执行面、fetch-params.ts、web-tool-contract.ts、
+  web-tool-core.ts 的 fetch／structuredContent／分页切片、extract.ts 的策略入口、ssrf-protection.ts
+  配置和重定向循环、video-extract.ts 上传路径、content-find.ts 摘录格式。
+- 四个工具名与五参数 execute 不变；无工具增删。新增 fetch 可选 `redirects`，唯一合法值为
+  `same-origin`；未传时默认策略未启用，也可在配置 `fetchContent.redirects` 启用。
+  其余已审查字段／required 和 readable 默认不变；provider 与依赖／peer 范围未变化。
+- 策略比较原始 URL 的 origin（协议、主机名、有效端口），跨源跳转在联系目标前拒绝。
+  拒绝正文为空，不做 fallback；不能观察跳转的路径不可用（托管／Jina／GitHub／YouTube 等）。
+  冷门参数自动进入 help，JSON input 已完整透传，不加入常驻 Schema，不复制策略实现。
+- answer 模式不再拒绝只带 thumbnail 的文字 transcript，但仍拒绝 image mimeType／frames。
+  视频上传将返回的上传 URL 通过 rewriteUploadUrlOrigin 路由到配置网关。
+  分页初始切片改用 pageEnd；findText 摘录中的单独 surrogate 用 U+FFFD 替代。
+  修复由固定上游依赖承接，未新增与门面无关的网关／视频测试。
+- `structuredContent.urls[].content` 是完整正文／回答数据；`content` 是含存储提示等信息的工具输出块，
+  不能把整个工具文本当页面正文。返回对象仍原样透传。
+- 保留 prepareArguments hook、默认名路由、web_enable 丢弃和 setActiveTools 拦截；本地 PDF
+  仍是独立直读分支，不把远端重定向策略宣称为本地文件策略。既有 PDF／hook 测试保留。
+- 新增 tests/upstream-040-regression.test.mjs，仅覆盖本次新参数在真实门面的 help／JSON／执行路径：
+  DNS 和 fetch 在导入前 mock，使用绝对 https URL，同源成功、跨源拒绝、非法值无网络请求，
+  分别断言工具文本、structuredContent 正文与错误标记，保持 op/input Schema 和单工具身份。
+- `check` 负责当前候选的实际契约／字符代理捕获、类型与回归、生产安装及审计；不预先声称通过。
+  字符代理为 ceil(chars / 4)，不是计费 token。真实视频服务与网关端到端未验证；三平台 CI 与人工审查仍须完成。
 
 ## 升级步骤
 

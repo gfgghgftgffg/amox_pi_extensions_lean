@@ -50,21 +50,42 @@ registrations.
 Pass a JSON object string as `input` for batch/advanced parameters. Use `help` only when the field
 names are unclear.
 
+## Reviewed upgrade: 0.39.0 → 0.40.0
+
+For an opt-in redirect restriction, pass advanced JSON through `input`:
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
+```
+
+`help` for `fetch` exposes this option; the compact schema remains `op` + `input`.
+Alternatively set `fetchContent.redirects: "same-origin"` in `web-search.json`.
+Every redirect must keep the requested scheme, hostname, and effective port. A refused
+redirect returns no page body and triggers no provider fallback. Paths whose redirect chain
+cannot be observed (including hosted extraction, Jina, GitHub, and YouTube) are unavailable
+while this policy is enabled. The default remains unrestricted by this opt-in policy.
+
+The dependency also fixes video answer mode with transcript thumbnails, routes Gemini video
+uploads through the configured gateway, and preserves Unicode characters at stored-page
+boundaries (split excerpt edges use a replacement character). The lean entry needs no change.
+The focused offline facade regression covers redirect help, JSON forwarding, refusal, success,
+and invalid values. Live gateways/video providers are outside that test's scope.
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.1 | 149 |
-| pi-web-access | 0.39.0 | 2669 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.2 | 149 |
+| pi-web-access | 0.40.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.1`
-* Upstream runtime: pinned to `pi-web-access@0.39.0` (exact)
+* Wrapper: `0.1.2`
+* Upstream runtime: pinned to `pi-web-access@0.40.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 
 ## Development

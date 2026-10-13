@@ -45,21 +45,39 @@ node scripts/install-extension.mjs pi-web-access-lean
 
 批量或高级参数请将 JSON 对象序列化为 `input` 字符串传入；仅在不清楚字段时调用 `help`。
 
+## 本次审查：0.39.0 → 0.40.0
+
+按需限制重定向时，将高级 JSON 放入 `input`：
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
+```
+
+`help` 的 `fetch` 会展示新参数，精简 Schema 仍只有 `op` 与 `input`。
+也可在 `web-search.json` 设置 `fetchContent.redirects: "same-origin"`。
+每次重定向都必须保持原始 URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也不尝试
+Provider 回退。启用策略后，无法观察重定向链的提取路径（包括托管提取、Jina、GitHub、YouTube）
+不可用。默认未启用该策略。
+
+上游还修复了带缩略图的视频文字回答、Gemini 视频上传经配置网关发送，以及存储内容分页的 Unicode
+边界（摘录边缘的半个字符用替代字符表示）。lean 入口无需改动。新增离线门面回归覆盖 help、JSON
+透传、跨源拒绝、同源成功和非法参数；真实网关／视频 Provider 不在该测试范围内。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.1 | 149 |
-| pi-web-access | 0.39.0 | 2669 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.2 | 149 |
+| pi-web-access | 0.40.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.1`
-* 上游运行时：锁定 `pi-web-access@0.39.0`（精确版本）
+* 包装层：`0.1.2`
+* 上游运行时：锁定 `pi-web-access@0.40.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 
 ## 开发

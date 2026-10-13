@@ -67,24 +67,40 @@ Workflow 的 worktree 仍只由脚本选项决定。子会话继承父会话项�
 服务器；可用 Agent 的 `exclude_extensions: builtin:mcp`、全局 `-builtin:mcp` 或 `--no-mcp` 关闭。
 子工具作用域尊重 exposure/defaultActive，并检查嵌套的 `ctx.executeTool` 调用。
 
-源码证据与测试边界见 [MAINTENANCE.md](MAINTENANCE.md)。新增离线回归覆盖 Workflow 隔离透传和子工具
-暴露／作用域。本 agent 阶段**未运行**安装、测试、契约捕获或生产安装验证，交给独立任务执行；发版仍需人工确认。
+源码证据与测试边界见 [MAINTENANCE.md](MAINTENANCE.md)。
+
+## 本次审查：0.21.0 → 0.22.0
+
+四个工具的名称、字段、required、执行／渲染签名与调用默认值继续兼容，lean 入口无需改动。
+默认 `smart` join 现在在父会话下一边界报告已完成任务，不等待其它同批任务；`async` 语义相同。
+忙碌父会话在工具批次后一次收到已完成任务；空闲父会话约 200 ms 后启动一轮，并合并窗口内的完成。
+需要等待整批时使用 `group` join 设置：按父会话 turn 分组，单个任务和跨 turn 的任务不再分组。
+Esc 时待发完成通知会保留，在被中断的运行结束后启动新一轮；完成结果在发送前被读取即可取消通知。
+
+已安装 Pi 包可用 `pi.subagents` 或 `pi-subagents` 声明 Agent 与 Workflow；默认启用，优先级低于
+用户自己的定义。仅由不受信任项目配置的包不可见。`subagents.json` 中 `packageAgents` 与
+`packageWorkflows` 支持 `true`、`false` 或包白名单。包 Agent 在 `/agents` 中只读，可 Eject／Disable。
+发现／trust 设置变更后重新加载扩展以更新门面的启动名单。Shutdown 现在也释放 widget、group-join
+与 completion-outbox 状态。
+
+候选检查在独立沙箱捕获新字符统计并运行既有门面／集成回归、类型检查、生产安装和审计。
+真实模型／MCP 与交互通知时序不在这些检查范围；三平台 CI 后仍需人工审查发版。
 
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.1 | 270 |
-| @tintinweb/pi-subagents | 0.21.0 | 8415 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.2 | 270 |
+| @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.1`
-* 上游运行时：锁定 `@tintinweb/pi-subagents@0.21.0`（精确版本）
+* 包装层：`0.1.2`
+* 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
 * 要求 Pi `>=1.1.0`（上游 peer 下限不变）；此前基线测试使用 Pi `1.1.0`、Node `22.22.1`，本次候选等待独立任务验证。
 
 ## 开发

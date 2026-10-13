@@ -48,7 +48,7 @@ create 仍默认 `pending`；list 默认排除 deleted tombstone，`includeDelet
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.1 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.2 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -56,7 +56,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.1`
+* 包装层：`0.1.2`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.8` 与 `@juicesharp/rpiv-i18n@2.13.8`（精确版本）
 * 此前基线测试使用 Pi `1.1.0`、Node `22.22.1`；本次候选等待独立任务验证。
 

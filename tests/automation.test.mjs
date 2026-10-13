@@ -10,7 +10,7 @@ import { buildUpdatePlan, buildUpdateReport } from "../scripts/lib/upstream-plan
 import { applyFiles, assertRegularPath, jsonText, nextPatch, readJson, sha256, validateFiles, validateReview } from "../scripts/lib/automation-policy.mjs";
 import { buildAdaptedBundle, expectedGenerated, validateAdaptedBundle } from "../scripts/lib/adapted-candidate.mjs";
 import { createMaintenanceTools } from "../scripts/lib/maintenance-tools.mjs";
-import { formatMaintenanceModelFailure, runMaintenanceAgent } from "../scripts/lib/maintenance-agent.mjs";
+import { formatMaintenanceModelFailure, probeMaintenanceModel, runMaintenanceAgent } from "../scripts/lib/maintenance-agent.mjs";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 
@@ -237,6 +237,67 @@ test("stage limits and aborts are distinct from provider request timeouts", () =
   const output = formatMaintenanceModelFailure(errors, { turns: "never publish this", elapsedMs: "never publish this", abortCause: "never publish this" });
   assert.match(output, /turns=unknown, elapsed_seconds=unknown/);
   assert.doesNotMatch(output, /never publish this/);
+});
+
+test("short model probe makes one bounded request without tools, source context or response disclosure", async () => {
+  const names = ["MAINTENANCE_PROVIDER", "MAINTENANCE_MODEL", "MAINTENANCE_API_KEY", "MAINTENANCE_BASE_URL", "MAINTENANCE_THINKING"];
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  const secret = "offline-probe-key-not-a-real-credential";
+  try {
+    process.env.MAINTENANCE_PROVIDER = "offline-probe";
+    process.env.MAINTENANCE_MODEL = "offline-model";
+    process.env.MAINTENANCE_API_KEY = secret;
+    process.env.MAINTENANCE_THINKING = "off";
+    delete process.env.MAINTENANCE_BASE_URL;
+    for (const result of ["stop", "length", "error", "timeout"]) {
+      let requests = 0;
+      let signal;
+      const logs = [];
+      const runtimeFactory = async (options) => {
+        assert.equal(options.modelsPath, null);
+        assert.equal(options.refreshOnCreate, false);
+        const runtime = await ModelRuntime.create(options);
+        runtime.registerProvider("offline-probe", {
+          api: "openai-completions", baseUrl: "https://unused.invalid/v1",
+          models: [{ id: "offline-model", name: "Offline probe", input: ["text"], reasoning: false, contextWindow: 128000, maxTokens: 4096, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
+          streamSimple: (model, context, opts) => {
+            requests++;
+            signal = opts.signal;
+            assert.equal(opts.maxRetries, 0);
+            assert.equal(opts.maxTokens, 128);
+            assert.ok(opts.timeoutMs <= 60_000);
+            assert.equal(opts.apiKey, secret);
+            assert.equal(context.messages.filter((message) => message.role === "user").length, 1);
+            assert.ok(!JSON.stringify(context).includes(secret));
+            assert.ok(!context.messages.some((message) => message.toolsAdded?.length || message.role === "toolResult"));
+            const stream = createAssistantMessageEventStream();
+            if (result === "timeout") return stream; // Deliberately ignore signal: the deadline still wins.
+            const message = { role: "assistant", api: model.api, provider: model.provider, model: model.id,
+              content: [{ type: "text", text: "private model output must not be logged" }], stopReason: result,
+              ...(result === "error" ? { errorMessage: `offline-probe API error (401): ${secret}` } : {}), timestamp: Date.now(),
+              usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } } };
+            queueMicrotask(() => {
+              if (result === "error") stream.push({ type: "error", reason: "error", error: message });
+              else { opts.onResponse?.({ status: 200, headers: {} }, model); stream.push({ type: "done", reason: result, message }); }
+            });
+            return stream;
+          },
+        });
+        return runtime;
+      };
+      const invoke = () => probeMaintenanceModel({ runtimeFactory, timeoutMs: result === "timeout" ? 50 : 2_000, log: (text) => logs.push(text) });
+      if (result === "error") await assert.rejects(invoke(), (error) => /category=authentication, status=401/.test(error.message) && !error.message.includes(secret));
+      else if (result === "timeout") await assert.rejects(invoke(), /category=stage_time_limit/);
+      else { const response = await invoke(); assert.equal(response.httpStatus, 200); assert.equal(response.stopReason, result); }
+      assert.equal(requests, 1);
+      assert.ok(signal.aborted, "request resources must be released");
+      assert.ok(!logs.join("\n").includes(secret));
+      assert.doesNotMatch(logs.join("\n"), /private model output/);
+    }
+    await assert.rejects(probeMaintenanceModel({ timeoutMs: 60_001 }), /timeout must be/);
+  } finally {
+    for (const name of names) previous[name] === undefined ? delete process.env[name] : process.env[name] = previous[name];
+  }
 });
 
 test("real Pi SDK runs the restricted tool loop offline without loading repository extensions", async () => {

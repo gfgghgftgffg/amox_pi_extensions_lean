@@ -63,7 +63,10 @@ function measureDocs(manifest, version, baseline) {
 }
 
 try {
-  if (phase === "prepare") {
+  if (phase === "probe-model") {
+    const { probeMaintenanceModel } = await import("./lib/maintenance-agent.mjs");
+    await probeMaintenanceModel();
+  } else if (phase === "prepare") {
     baselineClean();
     mkdirSync(outDir, { recursive: true });
     const output = checkedRun(process.execPath, [join(repoRoot, "scripts/check-upstream.mjs"), "--apply", "--out-dir", outDir], { cwd: repoRoot, timeout: 35 * 60_000 });
@@ -145,7 +148,7 @@ try {
     const checked = await validateAdaptedBundle({ bundle: readJson(join(outDir, "verified.json")), repoRoot, headSha: head(), verified: true });
     applyAdaptedBundle(repoRoot, checked, { verified: true });
     setOutput("version", checked.version);
-  } else throw new Error("Usage: node scripts/automate-maintenance.mjs prepare|adapt|verify|apply [--dir <artifact-dir>]");
+  } else throw new Error("Usage: node scripts/automate-maintenance.mjs prepare|adapt|verify|apply|probe-model [--dir <artifact-dir>]");
 } catch (error) {
   console.error(`Maintenance ${phase} failed: ${error.message}`);
   process.exitCode = 1;

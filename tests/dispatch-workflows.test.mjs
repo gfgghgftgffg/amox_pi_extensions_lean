@@ -69,6 +69,14 @@ test("tracks only the exact returned run ID until success, never a guessed lates
   f.done();
 });
 
+test("model probe dispatch is explicit and cannot activate a daily probe timer", async () => {
+  const f = fixture([active, dispatch, { path: "/actions/runs/42", body: run(42, "completed", "success") }]);
+  await dispatchWorkflows(options(["--workflow", "model-probe"]), { ...f, token, log: () => {} });
+  assert.deepEqual(JSON.parse(f.calls[1].body), { ref: "main", inputs: { model_probe_only: true } });
+  assert.throws(() => options(["--install-timer", "--workflow", "model-probe"]));
+  f.done();
+});
+
 test("inactive workflow stops before dispatch", async () => {
   const f = fixture([{ path: workflowPath, body: { state: "disabled_manually" } }]);
   await assert.rejects(dispatchWorkflows(options(), { ...f, token, log: () => {} }), /not active/);

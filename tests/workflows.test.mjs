@@ -72,10 +72,18 @@ test("upstream detection, restricted adaptation, independent verification and PR
   assert.match(text, /\n {2}workflow_dispatch:\n/);
   assert.doesNotMatch(text, /\n {2}(?:push|pull_request):\n/);
   assert.match(text, /if: github\.ref == 'refs\/heads\/main'/);
+  const probe = job(text, "model-probe", "detect");
+  assert.match(text, /model_probe_only:[\s\S]{0,200}default: false/);
+  assert.match(probe, /inputs\.model_probe_only == true/);
+  assert.match(probe, /timeout-minutes: 3/);
+  assert.match(probe, /automate-maintenance\.mjs probe-model/);
+  assert.match(probe, /secrets\.MAINTENANCE_API_KEY/);
+  assert.doesNotMatch(probe, /secrets\.GITHUB_TOKEN|contents: write|pull-requests: write|upload-artifact/);
   const detect = job(text, "detect", "adapt");
   const adapt = job(text, "adapt", "verify");
   const verify = job(text, "verify", "open-pr");
   const privileged = job(text, "open-pr");
+  assert.match(detect, /inputs\.model_probe_only != true/);
   assert.match(detect, /automate-maintenance\.mjs prepare/);
   assert.doesNotMatch(detect, /secrets\.|contents: write|pull-requests: write/);
   assert.match(adapt, /secrets\.MAINTENANCE_API_KEY/);

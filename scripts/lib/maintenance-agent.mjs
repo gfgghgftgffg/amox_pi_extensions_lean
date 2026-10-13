@@ -51,6 +51,77 @@ export function formatMaintenanceModelFailure(errors, { turns, elapsedMs, abortC
   return `Maintenance model failed: category=${category}, status=${status || "unknown"}, stop_reason=${last?.stopReason === "aborted" ? "aborted" : "error"}, turns=${safeTurns}, elapsed_seconds=${elapsedSeconds} (no error body or transcript published)`;
 }
 
+async function maintenanceRuntime(config, scratch, runtimeFactory) {
+  const runtime = await runtimeFactory({
+    credentials: new InMemoryCredentialStore(), modelsPath: null, refreshOnCreate: false,
+    modelsStorePath: join(scratch, "models-store.json"),
+  });
+  if (config.baseUrl) {
+    runtime.registerProvider(config.provider, {
+      baseUrl: config.baseUrl, api: config.api,
+      models: [{ id: config.model, name: config.model, reasoning: config.thinking !== "off", input: ["text"], contextWindow: 128000, maxTokens: 16384,
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
+    });
+  }
+  await runtime.setRuntimeApiKey(config.provider, config.key);
+  const model = runtime.getModel(config.provider, config.model);
+  if (!model) throw new Error("Configured maintenance model not found; custom providers also require MAINTENANCE_BASE_URL and MAINTENANCE_API");
+  return { runtime, model };
+}
+
+// Explicit diagnostic only: one tiny request, no tools, source files or agent loop.
+export async function probeMaintenanceModel({ runtimeFactory = ModelRuntime.create, timeoutMs = 60_000, log = console.log } = {}) {
+  if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) throw new Error("Model probe timeout must be 1..60000 milliseconds");
+  const config = modelConfig();
+  const scratch = mkdtempSync(join(tmpdir(), "amox-model-probe-"));
+  const controller = new AbortController();
+  let timer;
+  let timedOut = false;
+  let httpStatus;
+  let streamEvents = 0;
+  let startedAt;
+  let diagnostic;
+  try {
+    const { runtime, model } = await maintenanceRuntime(config, scratch, runtimeFactory);
+    startedAt = Date.now();
+    const deadline = new Promise((_, reject) => {
+      timer = setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+        reject(new Error("Model probe deadline exceeded"));
+      }, timeoutMs);
+    });
+    const message = await Promise.race([
+      runtime.completeSimple(model, {
+        messages: [{ role: "user", content: "Reply with OK.", timestamp: Date.now() }],
+      }, {
+        signal: controller.signal, timeoutMs, maxRetries: 0, maxTokens: 128,
+        reasoning: config.thinking === "off" ? undefined : config.thinking, cacheRetention: "none",
+        onProviderStreamEvent: () => { streamEvents++; },
+        onResponse: (response) => {
+          if (Number.isInteger(response.status) && response.status >= 100 && response.status <= 599) httpStatus = response.status;
+        },
+      }),
+      deadline,
+    ]);
+    if (!["stop", "length"].includes(message.stopReason)) {
+      diagnostic = formatMaintenanceModelFailure([message], { turns: 1, elapsedMs: Date.now() - startedAt });
+      throw new Error("Model probe received a failed or incomplete response");
+    }
+    const result = { httpStatus: httpStatus ?? "unknown", stopReason: message.stopReason, streamEvents, elapsedSeconds: Math.round((Date.now() - startedAt) / 1000) };
+    log(`Model probe success: http_status=${result.httpStatus}, stop_reason=${result.stopReason}, stream_events=${streamEvents}, elapsed_seconds=${result.elapsedSeconds}; one request, no response content published`);
+    return result;
+  } catch (error) {
+    // Never print external exceptions, which can echo credentials or request data.
+    diagnostic ??= formatMaintenanceModelFailure([{ stopReason: timedOut ? "aborted" : "error", errorMessage: error instanceof Error ? error.message : "" }], { turns: 1, elapsedMs: startedAt === undefined ? 0 : Date.now() - startedAt, abortCause: timedOut ? "time" : undefined });
+    throw new Error(`Model probe failed: http_status=${httpStatus ?? "unknown"}, stream_events=${streamEvents}, deadline_ms=${timeoutMs}; ${diagnostic}`);
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+    rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
 export async function runMaintenanceAgent({ repoRoot, contextRoot, manifest, plan, feedback, runtimeFactory = ModelRuntime.create }) {
   const config = modelConfig();
   const scratch = mkdtempSync(join(tmpdir(), "amox-agent-sdk-"));
@@ -58,20 +129,7 @@ export async function runMaintenanceAgent({ repoRoot, contextRoot, manifest, pla
   try {
     // No file-backed credentials/catalog, project resources, default tools,
     // extension discovery, MCP, sessions or context-file discovery.
-    const runtime = await runtimeFactory({
-      credentials: new InMemoryCredentialStore(), modelsPath: null, refreshOnCreate: false,
-      modelsStorePath: join(scratch, "models-store.json"),
-    });
-    if (config.baseUrl) {
-      runtime.registerProvider(config.provider, {
-        baseUrl: config.baseUrl, api: config.api,
-        models: [{ id: config.model, name: config.model, reasoning: config.thinking !== "off", input: ["text"], contextWindow: 128000, maxTokens: 16384,
-          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
-      });
-    }
-    await runtime.setRuntimeApiKey(config.provider, config.key);
-    const model = runtime.getModel(config.provider, config.model);
-    if (!model) throw new Error("Configured maintenance model not found; custom providers also require MAINTENANCE_BASE_URL and MAINTENANCE_API");
+    const { runtime, model } = await maintenanceRuntime(config, scratch, runtimeFactory);
     const controls = createMaintenanceTools({ repoRoot, contextRoot, manifest, plan });
     const resourceLoader = {
       getExtensions: () => ({ extensions: [], errors: [], runtime: createExtensionRuntime() }),

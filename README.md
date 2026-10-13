@@ -70,7 +70,7 @@ Release notes 复用适配 agent 的具体更新摘要，说明上游行为变�
 
 API key 只放入 Secret，端点不可包含凭据或查询参数。模型调用按服务计费，单次适配最多 20 分钟、60 个 turn。
 
-手动运行入口为 `Actions → Check upstream → Run workflow → main`。无更新时后续步骤跳过是正常结果。手动首次发布使用 `Release` 的 `tag` 输入，版本必须与根 `package.json`、三个包及 manifest 一致。
+手动运行入口为 `Actions → Check upstream → Run workflow → main`。无更新时后续步骤跳过是正常结果。排查模型服务可勾选 `model_probe_only`，只发一次短请求，不执行完整维护；请求成功不等于完整适配已经通过。手动首次发布使用 `Release` 的 `tag` 输入，版本必须与根 `package.json`、三个包及 manifest 一致。
 
 发布使用 `release` environment，可限制到 `main` 并配置审批。
 

@@ -2,6 +2,12 @@ name: Check upstream
 
 on:
   workflow_dispatch:
+    inputs:
+      model_probe_only:
+        description: "One short model request only; skip detection, adaptation and PR creation"
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -11,9 +17,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  model-probe:
+    name: One bounded model connectivity request (explicit opt-in)
+    if: github.ref == 'refs/heads/main' && inputs.model_probe_only == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.22.1"
+      - run: npm ci --ignore-scripts
+      - name: One request, 60 seconds, no source context, no tools or retries
+        env:
+          MAINTENANCE_API_KEY: ${{ secrets.MAINTENANCE_API_KEY }}
+          MAINTENANCE_PROVIDER: ${{ vars.MAINTENANCE_PROVIDER }}
+          MAINTENANCE_MODEL: ${{ vars.MAINTENANCE_MODEL }}
+          MAINTENANCE_BASE_URL: ${{ vars.MAINTENANCE_BASE_URL }}
+          MAINTENANCE_API: ${{ vars.MAINTENANCE_API }}
+          MAINTENANCE_THINKING: ${{ vars.MAINTENANCE_THINKING }}
+        run: node scripts/automate-maintenance.mjs probe-model
+
   detect:
     name: Detect + collect exact source context (no secrets)
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && inputs.model_probe_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 55
     outputs:

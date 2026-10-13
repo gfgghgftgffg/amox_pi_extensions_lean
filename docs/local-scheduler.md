@@ -62,7 +62,9 @@ node scripts/dispatch-workflows.mjs --workflow upstream --workflow ci
 unset GH_TOKEN
 ```
 
-只跑 CI 使用 `--workflow ci`。多个目标顺序执行，任意一个失败后停止。脚本默认仓库为本项目，fork 使用 `--repo OWNER/REPO`；定时器安装同样接受该选项。总等待期限可用 `--timeout-minutes N` 缩短，范围为 1..180。
+只跑 CI 使用 `--workflow ci`。排查模型连通性使用 `--workflow model-probe`：在 GitHub 上只发一条固定短文本请求，最多 128 个输出 token、60 秒请求期限，不重试，不读取源码或调用工具，也不进入适配、验证或 PR 阶段；响应正文不记录。它仍可能按模型服务计费。探针通过只说明这个小请求可用，不代表完整适配已经通过。
+
+多个目标顺序执行，任意一个失败后停止。脚本默认仓库为本项目，fork 使用 `--repo OWNER/REPO`；定时器安装同样接受该选项。总等待期限可用 `--timeout-minutes N` 缩短，范围为 1..180。
 
 发布不属于每日任务。需要初次或重试发布时，继续使用 GitHub `Release → Run workflow`，填写与包版本一致的 tag，不绕过验证和审批。
 

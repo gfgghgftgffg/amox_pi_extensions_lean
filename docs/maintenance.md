@@ -45,6 +45,7 @@ npm audit --omit=dev --audit-level=high
 | --- | --- |
 | `npm run maintenance:plan` | 只读检查版本与源码 revision |
 | `npm run maintenance:prepare` | 准备依赖候选并收集精确源码上下文，要求干净的 tracked checkout |
+| `node scripts/automate-maintenance.mjs probe-model` | 只发一次固定短模型请求，60 秒／128 输出 token／不重试；需要模型凭据，不生成适配、PR 或发布 |
 | `npm run maintenance:adapt` | 使用模型配置生成适配提案 |
 | `npm run maintenance:verify` | 应用提案、生成版本和快照、测试并创建本地验证提交；仅用于临时 clone 或 runner |
 | `node scripts/automate-maintenance.mjs apply` | 校验并应用已验证 bundle，供 PR job 使用 |

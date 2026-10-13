@@ -10,7 +10,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 const scriptPath = fileURLToPath(import.meta.url);
 const projectRoot = resolve(dirname(scriptPath), "..");
 const unitName = "amox-pi-actions";
-const workflows = { upstream: "check-upstream.yml", ci: "test.yml" };
+const workflows = { upstream: "check-upstream.yml", ci: "test.yml", "model-probe": "check-upstream.yml" };
 export const API_VERSION = "2026-03-10";
 export const DEFAULT_REPO = "gfgghgftgffg/amox_pi_extensions_lean";
 
@@ -26,7 +26,7 @@ export function parseArgs(args) {
       if (!value || value.startsWith("--")) throw new Error(`Missing value for ${arg}`);
       if (arg === "--repo") options.repo = value;
       if (arg === "--workflow") {
-        if (!Object.hasOwn(workflows, value)) throw new Error("--workflow must be upstream or ci; releases stay version-gated in Actions");
+        if (!Object.hasOwn(workflows, value)) throw new Error("--workflow must be upstream, ci or model-probe; releases stay version-gated in Actions");
         options.workflows.push(value);
       }
       if (arg === "--timeout-minutes") options.timeoutMinutes = Number(value);
@@ -85,9 +85,9 @@ export async function dispatchWorkflows(options, {
     const path = `/actions/workflows/${workflows[name]}`;
     const workflow = await api(path);
     if (workflow.state !== "active") throw new Error(`${workflows[name]} is not active; enable it in GitHub Actions`);
-    log(`Dispatch ${workflows[name]} on ${options.repo}@main`);
+    log(`Dispatch ${workflows[name]} mode=${name} on ${options.repo}@main`);
     // Never automatically retry POST: a lost response must not create duplicate runs.
-    const dispatch = await api(`${path}/dispatches`, "POST", { ref: "main" });
+    const dispatch = await api(`${path}/dispatches`, "POST", { ref: "main", ...(name === "model-probe" ? { inputs: { model_probe_only: true } } : {}) });
     const id = dispatch.workflow_run_id;
     if (!Number.isSafeInteger(id) || id < 1) throw new Error("Dispatch returned no valid run ID; inspect Actions before retrying");
     const url = `https://github.com/${options.repo}/actions/runs/${id}`;
@@ -185,7 +185,7 @@ function installTimer(options) {
 }
 
 function help() {
-  console.log(`Usage: node scripts/dispatch-workflows.mjs [--workflow upstream|ci] [--repo OWNER/REPO]
+  console.log(`Usage: node scripts/dispatch-workflows.mjs [--workflow upstream|ci|model-probe] [--repo OWNER/REPO]
   Default: dispatch Check upstream on main and wait for its actual conclusion.
   --workflow may be repeated; workflows run sequentially, stopping on failure.
   --timeout-minutes N   Total API/monitoring deadline, 1..180 (default 180).
@@ -200,7 +200,7 @@ function main() {
   if (options.help) return help();
   if (options.install) return installTimer(options);
   if (options.dryRun) {
-    for (const name of options.workflows) console.log(`Would dispatch ${workflows[name]} on ${options.repo}@main; wait for completion (no network/model calls).`);
+    for (const name of options.workflows) console.log(`Would dispatch ${workflows[name]} mode=${name} on ${options.repo}@main; wait for completion (no network/model calls).`);
     return;
   }
   if (process.platform !== "linux") throw new Error("The local scheduler uses Linux flock; use GitHub's manual Run workflow on other platforms");

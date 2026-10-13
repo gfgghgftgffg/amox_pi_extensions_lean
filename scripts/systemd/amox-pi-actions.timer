@@ -1,0 +1,11 @@
+[Unit]
+Description=Run local Pi maintenance once daily
+
+[Timer]
+OnCalendar=*-*-* 02:23:00 UTC
+Persistent=true
+AccuracySec=1min
+Unit=amox-pi-actions.service
+
+[Install]
+WantedBy=timers.target

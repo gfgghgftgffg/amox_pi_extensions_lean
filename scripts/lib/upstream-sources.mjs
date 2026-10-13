@@ -2,8 +2,7 @@ import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, r
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkedRun } from "./process.mjs";
-import { assertSafeRelativePath } from "./candidate.mjs";
-import { HEX40, jsonText } from "./automation-policy.mjs";
+import { assertSafeRelativePath, HEX40, jsonText } from "./files.mjs";
 
 // Resolve source revisions from trusted manifest repositories only. Nothing
 // from these repositories is installed, imported, or run in the agent job.

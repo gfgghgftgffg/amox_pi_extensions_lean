@@ -1,74 +1,41 @@
 # 维护者文档
 
-Actions 配置和工作流概览见 [README](../README.md#自动维护)。维护遵循[原 lean 指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md)：依赖锁定精确版本，按上游 API 和行为变化做最小改动，执行继续委托上游。
+本项目的 runtime 仍是三个独立 lean 门面。维护流程采用本地一次性 Pi，GitHub 只做普通 CI 和 Release，不再拆分检测、模型、候选 artifact、独立 verify 和 PR-writing jobs。
 
-## 适配约束
+## 原则
 
-- 每个包的 `MAINTENANCE.md` 记录内部接口、生命周期和升级注意事项；升级前对照新旧源码与 changelog。
-- 常用参数保留在 schema，完整参数和说明通过 help 提供。新增工具、默认值或行为变化需要同步适配说明与测试。
-- 原 lean 仓库的改动逐项评估，不整仓覆盖；通过审查和独立验证后才更新 `leanCommit`。
-- 适配代码变化必须增加回归测试，自动 agent 不能删除或改写既有断言。无法确认兼容性时，提案应列出未解决事项并停止。
+- 阅读精确前后版本的源码和 CHANGELOG，按最小改动适配；不要复制上游运行时代码。
+- 原 lean 作者的新 revision 只是待逐项审查的数据，不直接覆盖本项目。
+- 保留现有断言；只补本次变化相关的门面回归。新增测试需要依据真实响应结构，不把展示文本当原始数据。
+- 实际执行检查，失败后修复同一份候选。主干 CI 成功不能证明新增候选成功，Linux 本地成功不能冒充三平台成功。
+- 依赖固定稳定版本；上游元数据失败、预发布和降级都明确报错。Pi 开发 SDK 与 Action SHA 仍由维护者单独更新，不跟随扩展上游自动升级。
+- 测试保留在原目录，不发布到三个 lean 包；不靠删除运行时测试获得绿灯。
 
-## 版本与产物
-
-| 文件或产物 | 内容 |
-| --- | --- |
-| `maintenance/manifest.json` | 包装版本、上游精确版本及发布 commit、原 lean 已审查 commit；单体仓库的源码目录和相关目录 |
-| `maintenance/tool-contracts.json` | 隔离 Pi 会话捕获的工具定义、活动工具和字符代理统计，不是实际计费 token |
-| `maintenance/agent-review.md` | 源码 revision、API/行为差异、适配理由及未解决事项 |
-| `maintenance/update-report.md` | 候选发布版本、绑定版本的 AI 更新摘要及验证记录 |
-| workflow artifacts | 依赖候选、源码上下文、agent 提案、独立验证日志和最终 bundle |
-
-独立验证阶段统一增加 patch 版本，同步根、三个包、manifest 和 lockfile，并重建快照和文档统计。agent 本身不能修改依赖或版本。候选绑定基线 SHA；`main` 前进后，旧基线不能应用。
-
-发布产物为三个独立包和 `assets.json`，仅通过 GitHub Release 提供，不包含 npm 发布 job。
-
-`maintenance_finish.summary` 写成面向使用者的 Markdown 更新条目，描述实际功能／行为变化、适配、修复和限制，不只列版本或内部审查过程，也不声称尚未执行的测试已通过。独立验证器把摘要包在版本标记中写入 `maintenance/update-report.md`，Release 直接读取并补充确定的验证和安装信息，不再次调用模型。摘要缺失、重复或版本不匹配时，在使用写 token 和预留 tag 前停止。手动发布也需要匹配版本的摘要；既有 tag 和安装包不自动改写。
-
-## 本地检查
+## 本地开发
 
 ```bash
 npm ci --ignore-scripts
 npm run check
 npm run contracts:check
 npm run verify:production
-npm run test:maintenance-pipeline
 npm audit --audit-level=high
 npm audit --omit=dev --audit-level=high
 ```
 
-离线 pipeline 在临时 clone 中检查适配、版本生成、打包和数据应用，不调用真实模型或发布服务。接受适配后的工具定义变化时，用 `npm run contracts` 重建快照，再执行上述检查。
+适配或版本变动后用 `npm run contracts` 重新捕获 `maintenance/tool-contracts.json`，对照源码审查实际变化，并同步 README 中的字符代理统计。该统计不是计费 token。
 
-### 阶段命令
+只读检测：`npm run maintenance:plan`。自动维护：`npm run maintenance:local`。只读本机诊断：`npm run maintenance:dry-run`。调度、凭据隔离和失败副本说明见[本机每日维护](local-scheduler.md)。
 
-| 命令 | 作用 |
-| --- | --- |
-| `npm run maintenance:plan` | 只读检查版本与源码 revision |
-| `npm run maintenance:prepare` | 准备依赖候选并收集精确源码上下文，要求干净的 tracked checkout |
-| `node scripts/automate-maintenance.mjs probe-model` | 只发一次固定短模型请求，60 秒／128 输出 token／不重试；需要模型凭据，不生成适配、PR 或发布 |
-| `npm run maintenance:adapt` | 使用模型配置生成适配提案 |
-| `npm run maintenance:verify` | 应用提案、生成版本和快照、测试并创建本地验证提交；仅用于临时 clone 或 runner |
-| `node scripts/automate-maintenance.mjs apply` | 校验并应用已验证 bundle，供 PR job 使用 |
+Pi 的文件权限限制不是操作系统级沙箱。新流程另外把真正执行候选代码的检查放进 bubblewrap；不加载个人扩展、MCP、项目 AGENTS 或保存个人会话。主机固定代码仍需信任，不能把它当作对 VPS 管理员的隔离。
 
-`maintenance:stage` 和 `scripts/check-upstream.mjs --apply` 是底层候选生成工具，不执行完整 agent 适配。其 `ready/drift/failed/lean-review/snapshot-refresh` 状态不能替代独立验证。
+## GitHub
 
-## 故障诊断
+普通 CI 在 PR 和 main 更新后，独立运行 Linux、macOS、Windows 检查；`all-platforms-pass` 必须成功。PR checkout 固定候选 head SHA，不用可能变化的合并树。Fork PR 可能需要维护者 Approve workflows to run。
 
-| 阶段 | 检查项 |
-| --- | --- |
-| 定时未触发 | 检查本机 systemd timer、GitHub token 的有效期和 Actions 权限、服务日志及实际 workflow run。详见[本机每日调度](local-scheduler.md)。API 接受触发不代表运行已成功。 |
-| detect | npm/git 网络、metadata 和安装诊断。安装成功但旧封装捕获失败时，保留 lockfile 与诊断交给 agent 修复。上传隐藏目录需显式设置 `include-hidden-files: true`。 |
-| adapt | `MAINTENANCE_*`、服务协议、模型 ID、额度及未解决事项。模型失败日志只含脱敏分类、HTTP 状态、轮次和耗时，区分请求超时、20 分钟总预算和 60 轮上限，不输出错误正文或 transcript。detect 成功不代表模型调用成功。 |
-| verify | 下载 `maintenance-verification-logs-<OS>`，定位测试、契约、安装或审计失败。失败提案不会进入 PR job。 |
-| open-pr | PR 创建权限、bundle 校验和基线 SHA。`main` 已更新时需重新运行。 |
-| release | 包装版本、tag、匹配版本的更新摘要、审批和验证结果。已有 tag 不移动或删除；tag 预留成功但 Release 创建失败时，只恢复 Release。 |
+维护脚本创建 draft PR，三平台通过后仍等待人工审查合并。没有自动合并。发布模型摘要由固定脚本写入版本绑定的 `maintenance/update-report.md`；Release 不再调用模型。
 
-修复后从最新 `main` 新建 workflow 运行；重跑旧记录仍使用旧 SHA。自动提案分支 `maintenance/upstream-update` 会被后续检测重建，手工修复应使用独立分支。若 GitHub 要求 **Approve workflows to run**，批准后确认 PR 的完整 CI 结果。
+Release 仅接受 main 上的统一包装版本增加，或手动输入与根 package.json、三个包和 manifest 一致的 `vX.Y.Z`。三个系统重新验证不可变提交；写权限 job 只校验附件并创建 tag/Release，不执行 npm 或候选依赖。发布三个 `.tgz` 和哈希清单，不发布 npm 包。
 
-## 执行与凭据边界
+建议在仓库规则中要求 `all-platforms-pass`、禁止直接写 main，并配置 `release` environment 的 main 限制与必要审批。修改规则是账号管理操作，不由维护 Agent 自动完成。
 
-模型仅有受限文本工具，可修改适配入口、包文档、追加测试和审查报告；不能运行 shell、加载项目扩展或 MCP、读取环境变量、修改工作流、脚本、依赖、许可证和已接受快照。模型凭据只在 adapt 的 SDK 步骤可用，不与上游执行共享。
-
-候选跨 job 传递时校验路径、大小、哈希、固定依赖来源、发布 commit 和 metadata。verify 使用独立三平台 runner，不带模型凭据或写 token；open-pr 不执行候选代码；release 仅处理预构建包。隐藏产物上传限定到候选目录或发布目录，不上传整个 checkout。
-
-路径白名单和临时 HOME 不是操作系统级沙箱，测试也不能证明所有新增行为均被覆盖。源码、生成代码和回归测试仍需代码审查；模型服务会接收被读取的公开源码和维护材料，原始 transcript 不上传。
+所有 Actions 使用完整 SHA；CI 只读、不注入 Secrets，checkout 不保留凭据。仓库不再有维护 workflow、原生 cron、模型探针、Dependabot 配置或 npm publishing job。

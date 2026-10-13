@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { packageEntries, packExtension } from "./lib/extension-package.mjs";
-import { jsonText, readJson } from "./lib/automation-policy.mjs";
+import { jsonText, readJson } from "./lib/files.mjs";
 
 // Built in the read-only verification job; write jobs only validate/upload.
 export function validateReleaseAssets({ repoRoot, dir }) {

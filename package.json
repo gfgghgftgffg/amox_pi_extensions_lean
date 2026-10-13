@@ -32,15 +32,11 @@
     "contracts": "node scripts/capture-contracts.mjs --write",
     "contracts:check": "node scripts/capture-contracts.mjs --check",
     "verify:production": "node scripts/verify-production-install.mjs",
-    "test:maintenance-pipeline": "node tests/integration/maintenance-pipeline.mjs",
     "maintenance:plan": "node scripts/check-upstream.mjs",
-    "maintenance:dispatch": "node scripts/dispatch-workflows.mjs",
-    "maintenance:stage": "node scripts/check-upstream.mjs --apply",
+    "maintenance:local": "node scripts/local-maintenance.mjs --run",
+    "maintenance:dry-run": "node scripts/local-maintenance.mjs --dry-run",
     "build": "npm run typecheck",
-    "install:extension": "node scripts/install-extension.mjs",
-    "maintenance:prepare": "node scripts/automate-maintenance.mjs prepare",
-    "maintenance:adapt": "node scripts/automate-maintenance.mjs adapt",
-    "maintenance:verify": "node scripts/automate-maintenance.mjs verify"
+    "install:extension": "node scripts/install-extension.mjs"
   },
   "files": [
     "packages/*/index.ts",

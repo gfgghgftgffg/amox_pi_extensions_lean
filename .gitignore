@@ -10,8 +10,7 @@ Thumbs.db
 .venv/
 __pycache__/
 
-# Untracked staging directory for `scripts/check-upstream.mjs --apply`.
-.maintenance-candidate/
+# Local maintenance workspaces and credentials live outside Git.
 .release-assets/
 
 # Local credentials must never be committed; scheduler credentials live outside Git.

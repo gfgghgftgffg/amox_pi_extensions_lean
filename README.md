@@ -39,42 +39,22 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 ## 自动维护
 
-安装和使用扩展不需要配置 Actions。以下设置用于维护本仓库或 fork。
+安装和使用扩展不需要配置 Actions。维护入口在本机：每天 02:23 UTC（北京时间 10:23），systemd 启动一次性 Pi，在临时工作副本内检查上游、适配、实际跑检查，并根据报错修复同一份候选。没有上游更新或已有待审维护 PR 时不调用模型。
+
+本地检查通过后创建草稿 PR，再由普通 CI 在 Linux、macOS、Windows 独立验收；人工审查合并版本升级后才进入 Release。Pi 不直接推 main、不自动合并，发布凭据与执行候选代码的环境隔离。部署和故障处理见[本机每日维护](docs/local-scheduler.md)。
+
+GitHub 只保留两个工作流：
 
 | Workflow | 触发条件 | 工作内容 |
 | --- | --- | --- |
-| Check upstream | 外部定时器每天调用，或手动运行 | 检查上游版本和原 lean 源码；有更新时调用 agent 适配、补测试和文档，经三平台验证后生成草稿 PR |
-| CI | 推送 `main`、PR 更新，或手动运行 | 在 macOS、Windows、Linux 上执行测试、契约检查、独立安装验证和安全审计 |
-| Release | `main` 的发布相关文件更新，或手动运行 | 包装版本增加或指定有效 tag 时，验证并发布三个独立 `.tgz` 包和哈希清单 |
+| CI | 推送 `main`、PR 更新，或手动运行 | 三平台测试、契约检查、独立安装验证和安全审计 |
+| Release | `main` 的发布相关文件更新，或手动运行 | 统一包装版本增加或指定有效 tag 时，三平台验证并发布三个独立 `.tgz` 和哈希清单 |
 
-项目内的 `scripts/dispatch-workflows.mjs` 可安装本机每日定时器，默认每天 02:23 UTC（北京时间 10:23）只触发 Check upstream，不依赖 GitHub `schedule` 或常驻 Pi 会话。部署和凭据设置见[本机每日调度](docs/local-scheduler.md)。
+CI 和 Release 不调用模型，也没有 GitHub cron。模型配置与 GitHub/SSH 凭据保存在维护主机，不需要维护模型 Actions Secrets/Variables。Release notes 复用本地 Pi 的具体更新摘要，发布阶段不再调用模型。
 
-没有上游更新时不调用模型，也不另行启动 CI 或 Release；CI 和 Release 本身不调用模型。Dependabot 版本更新配置已移除，开发依赖和 Action SHA 由维护者更新，CI 继续执行安全审计。
+首次或重试发布可手动运行 Release，`tag` 必须与根 package.json、三个包和 manifest 的版本一致。发布使用 `release` environment，可限制到 `main` 并配置审批。
 
-Release notes 复用适配 agent 的具体更新摘要，说明上游行为变化、lean 适配、修复和已知限制；版本、验证结果及安装信息由脚本补充。发布阶段不再调用模型。
-
-### 配置
-
-在仓库 `Settings → Actions → General` 启用 Actions，允许工作流创建 PR。默认 token 权限保持只读，所需写权限已在工作流中单独声明。PR 和 GitHub Release 使用内置 `GITHUB_TOKEN`。
-
-在 `Settings → Secrets and variables → Actions` 添加：
-
-| 类型 | 名称 | 内容 |
-| --- | --- | --- |
-| Secret | `MAINTENANCE_API_KEY` | 模型服务的 API key |
-| Variable | `MAINTENANCE_PROVIDER` | Pi provider id，如 `openai`、`anthropic`；自定义服务可用 `gateway` |
-| Variable | `MAINTENANCE_MODEL` | 服务支持的模型 ID |
-| Variable | `MAINTENANCE_BASE_URL` | 自定义服务的 HTTPS API 基址，如 `https://api.example.com/v1`；内置 provider 留空 |
-| Variable | `MAINTENANCE_API` | 自定义服务选 `openai-completions`、`openai-responses` 或 `anthropic-messages`；内置 provider 留空 |
-| Variable | `MAINTENANCE_THINKING` | 默认 `high`；支持 `off`、`minimal`、`low`、`medium`、`high`、`xhigh`，非推理模型用 `off` |
-
-API key 只放入 Secret，端点不可包含凭据或查询参数。模型调用按服务计费，单次适配最多 20 分钟、60 个 turn。
-
-手动运行入口为 `Actions → Check upstream → Run workflow → main`。无更新时后续步骤跳过是正常结果。排查模型服务可勾选 `model_probe_only`，只发一次短请求，不执行完整维护；请求成功不等于完整适配已经通过。手动首次发布使用 `Release` 的 `tag` 输入，版本必须与根 `package.json`、三个包及 manifest 一致。
-
-发布使用 `release` environment，可限制到 `main` 并配置审批。
-
-实现约束、开发命令和故障诊断见[维护者文档](docs/maintenance.md)。
+开发 SDK 和 Action SHA 由维护者单独更新；安全审计保留。开发命令与人工审查要求见[维护者文档](docs/maintenance.md)。
 
 ## 来源
 

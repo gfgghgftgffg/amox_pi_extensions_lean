@@ -202,10 +202,10 @@ test("lean-only newer HEAD is reported for manual reuse review and preserves lea
   const nextManifest = applyPlanToManifest(manifest, plan);
   assert.deepEqual(nextManifest, manifest);
   const report = buildUpdateReport({ plan, status: "lean-review", baseCommit: "f".repeat(40) });
-  assert.match(report, /manual reuse review/);
+  assert.match(report, /只读检测不生成候选 artifact/);
   assert.match(report, /leanCommit 基线未改动/);
   assert.match(report, /维护提示词/);
-  assert.match(report, /<!-- amox-maintenance-candidate; status: lean-review -->/);
+  assert.match(report, /status: lean-only/);
 });
 
 test("report is deterministic and includes the saved minimal-change prompt", () => {
@@ -213,9 +213,9 @@ test("report is deterministic and includes the saved minimal-change prompt", () 
   const first = buildUpdateReport({ plan, status: "ready", baseCommit: "f".repeat(40) });
   const second = buildUpdateReport({ plan, status: "ready", baseCommit: "f".repeat(40) });
   assert.equal(first, second);
-  assert.match(first, /node scripts\/check-upstream\.mjs --apply/);
+  assert.match(first, /node scripts\/local-maintenance\.mjs --run/);
   assert.match(first, /只升级依赖，不改 index\.ts/);
-  assert.match(first, /不会自动合并|不会自动合并或发布/);
+  assert.match(first, /不直接推 main/);
 });
 
 test("fetchUpstreamMetadata fails visibly on network errors and malformed payloads", async () => {

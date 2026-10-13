@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
-import { readJson } from "./lib/automation-policy.mjs";
+import { readJson } from "./lib/files.mjs";
 import { compareExactStableVersions, isExactStableVersion } from "./lib/semver.mjs";
 import { validateReleaseTag } from "./lib/release-validation.mjs";
 

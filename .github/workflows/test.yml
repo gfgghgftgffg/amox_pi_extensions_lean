@@ -29,6 +29,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          # Verify the exact candidate SHA, not a changing synthetic merge tree.
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -47,12 +49,6 @@ jobs:
         run: |
           set -o pipefail
           npm run check 2>&1 | tee diagnostics/check.log
-
-      - name: Offline maintenance pipeline (temporary clone, no model key)
-        shell: bash
-        run: |
-          set -o pipefail
-          npm run test:maintenance-pipeline -- diagnostics/maintenance-pipeline 2>&1 | tee diagnostics/maintenance-pipeline.log
 
       - name: Verify tracked tool-contract snapshot
         shell: bash

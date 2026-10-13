@@ -7,8 +7,8 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { chooseRelease } from "../scripts/release-plan.mjs";
 import { validateReleaseAssets } from "../scripts/release-assets.mjs";
-import { jsonText, readJson } from "../scripts/lib/automation-policy.mjs";
-import { modelConfig } from "../scripts/lib/maintenance-agent.mjs";
+import { jsonText, readJson } from "../scripts/lib/files.mjs";
+import { modelConfig } from "../scripts/lib/local-pi.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 test("automatic release requires a version bump, manual release must match", () => {
@@ -23,13 +23,13 @@ test("automatic release requires a version bump, manual release must match", () 
 
 test("model credentials are required and compatible endpoint config never executes commands", () => {
   assert.throws(() => modelConfig({}), /Configure/);
-  const env = { MAINTENANCE_PROVIDER: "custom", MAINTENANCE_MODEL: "model-id", MAINTENANCE_API_KEY: "dummy-key", MAINTENANCE_BASE_URL: "https://example.com/v1", MAINTENANCE_API: "openai-responses" };
-  assert.equal(modelConfig(env).thinking, "high");
+  const config = { provider: "custom", model: "model-id", apiKey: "dummy-key", baseUrl: "https://example.com/v1", api: "openai-responses" };
+  assert.equal(modelConfig(config).thinking, "medium");
   for (const base of ["http://example.com", "https://user:secret@example.com", "!curl https://example.com", "https://example.com?key=secret"]) {
-    assert.throws(() => modelConfig({ ...env, MAINTENANCE_BASE_URL: base }));
+    assert.throws(() => modelConfig({ ...config, baseUrl: base }));
   }
-  assert.throws(() => modelConfig({ ...env, MAINTENANCE_THINKING: "guess" }), /thinking/);
-  assert.throws(() => modelConfig({ ...env, MAINTENANCE_API: "arbitrary-program" }), /API/);
+  assert.throws(() => modelConfig({ ...config, thinking: "guess" }), /thinking/);
+  assert.throws(() => modelConfig({ ...config, api: "arbitrary-program" }), /API/);
 });
 
 test("release assets accept exactly the three identity-bound archives and reject tampering", () => {

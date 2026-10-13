@@ -1,0 +1,31 @@
+# Temporary control experiment; remove together with trigger-diagnostic.yml.
+# Same bounded UTC cron as the zero-permission control.
+# Deliberately omit permissions so this run inherits the repository default.
+# No actions, checkout, secrets, environment gates, matrix, or concurrency group.
+name: Trigger diagnostic - repository permissions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/trigger-diagnostic-inherited.yml
+  workflow_dispatch:
+  schedule:
+    - cron: "7,17,27,37,47,57 7-9 13 10 *"
+
+jobs:
+  record:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Record trigger with repository-default token permissions
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+          WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          date -u
+          printf 'permissions_policy=repository-default\nevent=%s\nschedule=%s\nactor=%s\nref=%s\nsha=%s\nworkflow_ref=%s\n' "$EVENT" "$SCHEDULE" "$ACTOR" "$REF" "$SHA" "$WORKFLOW_REF"

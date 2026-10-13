@@ -7,8 +7,6 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "17 4 * * *"
-    # Temporary registration probe; removed after real schedule evidence.
-    - cron: "7,17,27,37,47,57 4,5,6 13 10 *"
 
 # Read-only for every event (including PRs from forks). No secrets are used
 # for pull request builds and no write permission is requested.
@@ -16,29 +14,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}-${{ github.event.schedule || 'normal' }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  schedule-probe:
-    name: Temporary scheduler probe (no dependencies or model)
-    if: github.event_name == 'schedule' && github.event.schedule == '7,17,27,37,47,57 4,5,6 13 10 *'
-    runs-on: ubuntu-latest
-    timeout-minutes: 2
-    steps:
-      - name: Record a real schedule event
-        env:
-          EVENT: ${{ github.event_name }}
-          SCHEDULE: ${{ github.event.schedule }}
-          ACTOR: ${{ github.actor }}
-          REF: ${{ github.ref }}
-          SHA: ${{ github.sha }}
-        run: |
-          date -u
-          printf 'event=%s\nschedule=%s\nactor=%s\nref=%s\nsha=%s\n' "$EVENT" "$SCHEDULE" "$ACTOR" "$REF" "$SHA"
-
   check:
-    if: github.event_name != 'schedule' || github.event.schedule != '7,17,27,37,47,57 4,5,6 13 10 *'
     name: check + contracts + production + audit (${{ matrix.os }})
     strategy:
       fail-fast: false
@@ -113,7 +93,7 @@ jobs:
   all-platforms:
     name: all-platforms-pass
     needs: check
-    if: always() && (github.event_name != 'schedule' || github.event.schedule != '7,17,27,37,47,57 4,5,6 13 10 *')
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Fail unless every platform passed

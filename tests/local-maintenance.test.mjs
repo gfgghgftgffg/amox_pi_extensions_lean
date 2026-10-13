@@ -7,6 +7,7 @@ import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { createLocalTools, openLocalPi } from "../scripts/lib/local-pi.mjs";
 import { githubClient } from "../scripts/lib/github-maintenance.mjs";
+import { launcherEnvironment } from "../scripts/local-maintenance.mjs";
 import { sandboxRun } from "../scripts/lib/local-sandbox.mjs";
 
 // One real SDK conversation exercises failure -> repair -> recheck on the same
@@ -86,6 +87,9 @@ test("execution sandbox has no host credentials or host home and cannot rewrite 
   const secret = join(root, "private-credential"); writeFileSync(secret, "fake-host-only-key");
   const previous = process.env.GH_TOKEN; process.env.GH_TOKEN = "fake-host-only-key";
   try {
+    const launch = launcherEnvironment(root);
+    assert.equal(launch.TMPDIR, join(root, "tmp")); assert.ok(existsSync(launch.TMPDIR));
+    assert.equal(launch.GH_TOKEN, undefined, "launcher passes disk-backed TMP, not publication credentials");
     const code = `const a=require('node:assert/strict'),f=require('node:fs');a.equal(process.env.GH_TOKEN,undefined);a.equal(f.existsSync(${JSON.stringify(secret)}),false);a.equal(f.existsSync('/home/ubuntu/.ssh'),false);a.throws(()=>f.writeFileSync('/workspace/README.md','changed'),{code:'EROFS'});console.log('isolated-check-ok');`;
     const checked = await sandboxRun({ repo, scratch: join(root, "sandbox"), command: "/usr/bin/node", args: ["-e", code], network: false, timeoutMs: 15000 });
     assert.equal(checked.ok, true, checked.output); assert.match(checked.output, /isolated-check-ok/);

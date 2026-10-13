@@ -14,6 +14,12 @@ import { githubClient, loadPublishToken } from "./lib/github-maintenance.mjs";
 
 export const DEFAULT_REPO = "gfgghgftgffg/amox_pi_extensions_lean";
 const script = fileURLToPath(import.meta.url), sourceRoot = resolve(dirname(script), "..");
+export function launcherEnvironment(stateRoot) {
+  const temp = join(stateRoot, "tmp"); mkdirSync(temp, { recursive: true, mode: 0o700 });
+  return { PATH: "/usr/bin:/bin", HOME: homedir(), LANG: "C.UTF-8", TMPDIR: temp, AMOX_MAINTENANCE_STATE: stateRoot,
+    ...(process.env.AMOX_MODEL_CONFIG ? { AMOX_MODEL_CONFIG: process.env.AMOX_MODEL_CONFIG } : {}),
+    ...(process.env.AMOX_PUBLISH_ENV ? { AMOX_PUBLISH_ENV: process.env.AMOX_PUBLISH_ENV } : {}) };
+}
 export async function stageVersions({ work, state, scratch, execute = sandboxRun }) {
   const { manifest, workspaces, plan } = state;
   const root = JSON.parse(readFileSync(join(work, "package.json"), "utf8"));
@@ -69,6 +75,7 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
       status({ status: "pending-human-review", pr: pending.html_url, baseCommit }); keep = false;
       log(`Existing maintenance PR; no new model run: ${pending.html_url}`); return;
     }
+    status({ status: "collecting-source", baseCommit });
     const baseline = protectedBaseline(work, state.manifest);
     collectSources({ repoRoot: work, outDir: runDir, plan: state.plan, manifest: state.manifest });
     const { manifest, generated, version } = await stageVersions({ work, state, scratch });
@@ -124,9 +131,7 @@ if (process.argv[1] && resolve(process.argv[1]) === script) {
     mkdirSync(stateRoot, { recursive: true, mode: 0o700 });
     if (!args.includes("--locked")) {
       const child = spawnSync("timeout", ["--kill-after=30s", "120m", "flock", "-n", join(stateRoot, "maintenance.lock"), process.execPath, script, ...args, "--locked"],
-        { stdio: "inherit", env: { PATH: "/usr/bin:/bin", HOME: homedir(), LANG: "C.UTF-8", AMOX_MAINTENANCE_STATE: stateRoot,
-          ...(process.env.AMOX_MODEL_CONFIG ? { AMOX_MODEL_CONFIG: process.env.AMOX_MODEL_CONFIG } : {}),
-          ...(process.env.AMOX_PUBLISH_ENV ? { AMOX_PUBLISH_ENV: process.env.AMOX_PUBLISH_ENV } : {}) }, timeout: 125 * 60_000 });
+        { stdio: "inherit", env: launcherEnvironment(stateRoot), timeout: 125 * 60_000 });
       if (child.error) throw new Error("Local maintenance process exceeded its limit or could not start; inspect state before retrying");
       process.exitCode = child.status ?? 1;
     } else await maintain({ stateRoot, configPath: process.env.AMOX_MODEL_CONFIG || undefined,

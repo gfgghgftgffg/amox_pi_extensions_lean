@@ -1,5 +1,4 @@
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { checkedRun } from "./process.mjs";
 import { assertSafeRelativePath, HEX40, jsonText } from "./files.mjs";
@@ -7,7 +6,8 @@ import { assertSafeRelativePath, HEX40, jsonText } from "./files.mjs";
 // Resolve source revisions from trusted manifest repositories only. Nothing
 // from these repositories is installed, imported, or run in the agent job.
 export function collectSources({ repoRoot, outDir, plan, manifest, runGit = (args, options) => checkedRun("git", args, options) }) {
-  const scratch = mkdtempSync(join(tmpdir(), "amox-upstream-sources-"));
+  mkdirSync(outDir, { recursive: true });
+  const scratch = mkdtempSync(join(outDir, ".source-work-"));
   let total = 0;
   const records = [];
   function materialize(repository, revision, destination, subdir, relatedDirectories = []) {

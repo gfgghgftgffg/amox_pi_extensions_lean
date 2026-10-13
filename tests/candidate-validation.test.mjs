@@ -40,7 +40,7 @@ function fixtureRepo() {
     filter(source) {
       if (source === repoRoot) return true;
       const top = source.slice(repoRoot.length + 1).split(/[\\/]/)[0];
-      return !["node_modules", ".git", ".maintenance-candidate"].includes(top);
+      return !["node_modules", ".git", ".maintenance-candidate", ".tmp"].includes(top);
     },
   });
   return dir;
@@ -96,21 +96,33 @@ function validReadyArtifact({ repo, id, version = "99.0.0" }) {
 }
 
 test("a valid ready candidate validates and applies", async () => {
-  const repo = fixtureRepo();
-  try {
-    const { artifact } = validReadyArtifact({ repo });
-    const result = (await validateCandidateArtifact({ artifact, repoRoot: repo, headSha: baseCommit }));
-    assert.deepEqual(result.errors, []);
-    assert.equal(result.ok, true);
-    // baseline files untouched before apply
-    assert.equal(JSON.parse(readFileSync(join(repo, "packages/pi-web-access-lean/package.json"), "utf8")).dependencies["pi-web-access"], "0.39.0");
-    const applied = applyCandidateFiles({ repoRoot: repo, writes: result.writes });
-    assert.equal(applied.length, 5);
-    const after = JSON.parse(readFileSync(join(repo, "packages/pi-web-access-lean/package.json"), "utf8"));
-    assert.equal(after.dependencies["pi-web-access"], "99.0.0");
-    assert.equal(lstatSync(join(repo, "maintenance/update-report.md")).isFile(), true);
-  } finally {
-    rmSync(repo, { recursive: true, force: true });
+  // Exercise the unchanged-baseline guarantee both on main and after the
+  // next dependency upgrade, without assuming a particular pinned version.
+  for (const upgradedBaseline of [false, true]) {
+    const repo = fixtureRepo();
+    try {
+      if (upgradedBaseline) {
+        const bumped = bumpFiles({ repo, newVersion: "0.40.0" });
+        for (const [path, value] of [[bumped.packagePath, bumped.pkg], ["maintenance/manifest.json", bumped.nextManifest], ["maintenance/tool-contracts.json", bumped.snapshot], ["package-lock.json", bumped.lock]]) {
+          writeFileSync(join(repo, path), serializeJson(value));
+        }
+      }
+      const packagePath = join(repo, "packages/pi-web-access-lean/package.json");
+      const before = readFileSync(packagePath, "utf8");
+      const { artifact } = validReadyArtifact({ repo });
+      const result = (await validateCandidateArtifact({ artifact, repoRoot: repo, headSha: baseCommit }));
+      assert.deepEqual(result.errors, []);
+      assert.equal(result.ok, true);
+      // Validation must not change any package bytes, not just its version.
+      assert.equal(readFileSync(packagePath, "utf8"), before);
+      const applied = applyCandidateFiles({ repoRoot: repo, writes: result.writes });
+      assert.equal(applied.length, 5);
+      const after = JSON.parse(readFileSync(packagePath, "utf8"));
+      assert.equal(after.dependencies["pi-web-access"], "99.0.0");
+      assert.equal(lstatSync(join(repo, "maintenance/update-report.md")).isFile(), true);
+    } finally {
+      rmSync(repo, { recursive: true, force: true });
+    }
   }
 });
 
@@ -283,11 +295,12 @@ test("coupled i18n cannot move without the todo primary bump", async () => {
 test("manifest leanCommit/monorepo/extra-field edits are rejected", async () => {
   const repo = fixtureRepo();
   try {
+    const unchangedVersion = JSON.parse(readFileSync(join(repo, "maintenance/manifest.json"), "utf8")).packages[0].upstreamVersion;
     const variants = [
       (manifest) => { manifest.packages[0].leanCommit = manifest.packages[0].leanCommit === "f".repeat(40) ? "e".repeat(40) : "f".repeat(40); },
       (manifest) => { manifest.monorepo = { evil: true }; },
       (manifest) => { manifest.packages[0].extra = true; },
-      (manifest) => { manifest.packages[0].upstreamVersion = "0.39.0"; manifest.packages[0].upstreamGitHead = "e".repeat(40); }, // head without version
+      (manifest) => { manifest.packages[0].upstreamVersion = unchangedVersion; manifest.packages[0].upstreamGitHead = "e".repeat(40); }, // head without version
       (manifest) => { manifest.packages[0].upstreamVersion = "0.38.0"; manifest.packages[0].upstreamGitHead = "e".repeat(40); },
     ];
     for (const mutate of variants) {

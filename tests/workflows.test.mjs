@@ -68,6 +68,7 @@ test("CI remains read-only, secret-free and covers complete verification", () =>
 
 test("upstream detection, restricted adaptation, independent verification and PR writing are isolated", () => {
   const text = workflow("check-upstream.yml");
+  assert.match(text, /run-name:.*Model probe only \(no maintenance\).*Upstream maintenance \(full pipeline\)/);
   assert.doesNotMatch(text, /\n {2}schedule:\n/);
   assert.match(text, /\n {2}workflow_dispatch:\n/);
   assert.doesNotMatch(text, /\n {2}(?:push|pull_request):\n/);

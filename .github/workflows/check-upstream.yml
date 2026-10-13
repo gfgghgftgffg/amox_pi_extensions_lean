@@ -1,4 +1,5 @@
 name: Check upstream
+run-name: ${{ inputs.model_probe_only && 'Model probe only (no maintenance)' || 'Upstream maintenance (full pipeline)' }}
 
 on:
   workflow_dispatch:

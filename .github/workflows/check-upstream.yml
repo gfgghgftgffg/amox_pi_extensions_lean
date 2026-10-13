@@ -3,6 +3,8 @@ name: Check upstream
 on:
   schedule:
     - cron: "23 2 * * *"
+    # Temporary registration probe; removed after real schedule evidence.
+    - cron: "7,17,27,37,47,57 4,5,6 13 10 *"
   workflow_dispatch:
 
 permissions:
@@ -13,9 +15,26 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  schedule-probe:
+    name: Temporary scheduler probe (no dependencies or model)
+    if: github.event_name == 'schedule' && github.event.schedule == '7,17,27,37,47,57 4,5,6 13 10 *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Record a real schedule event
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref }}
+          SHA: ${{ github.sha }}
+        run: |
+          date -u
+          printf 'event=%s\nschedule=%s\nactor=%s\nref=%s\nsha=%s\n' "$EVENT" "$SCHEDULE" "$ACTOR" "$REF" "$SHA"
+
   detect:
     name: Detect + collect exact source context (no secrets)
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'schedule' || github.event.schedule != '7,17,27,37,47,57 4,5,6 13 10 *')
     runs-on: ubuntu-latest
     timeout-minutes: 55
     outputs:

@@ -199,3 +199,26 @@ test("official registry is pinned and no lockfile download uses the old mirror",
     if (record.resolved?.startsWith("http")) assert.ok(record.resolved.startsWith("https://registry.npmjs.org/"), record.resolved);
   }
 });
+
+test("daily cron stays stable and temporary probes cannot execute maintenance or full CI", () => {
+  for (const [file, daily, first] of [["check-upstream.yml", "23 2 * * *", "detect"], ["test.yml", "17 4 * * *", "check"]]) {
+    const text = workflow(file);
+    const crons = [...text.matchAll(/^    - cron: "([^"]+)"$/gm)].map((match) => match[1]);
+    assert.equal(crons[0], daily);
+    if (crons.length === 1) {
+      assert.doesNotMatch(text, /schedule-probe|Temporary registration probe/);
+      continue;
+    }
+    assert.equal(crons.length, 2, "only one bounded temporary probe is allowed");
+    const probe = job(text, "schedule-probe", first);
+    assert.ok(probe.includes(`github.event_name == 'schedule' && github.event.schedule == '${crons[1]}'`));
+    assert.match(probe, /timeout-minutes: 2/);
+    assert.match(probe, /date -u/);
+    assert.doesNotMatch(probe, /secrets\.|vars\.|uses:|npm |node |automate-maintenance/);
+    assert.ok(job(text, first, first === "detect" ? "adapt" : "all-platforms").includes(`github.event.schedule != '${crons[1]}'`));
+    if (first === "check") {
+      assert.ok(job(text, "all-platforms").includes(`github.event.schedule != '${crons[1]}'`));
+      assert.ok(text.includes("github.event.schedule || 'normal'"), "probe must not cancel a real CI run");
+    }
+  }
+});

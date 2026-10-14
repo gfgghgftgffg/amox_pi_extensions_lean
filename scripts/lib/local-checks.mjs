@@ -59,8 +59,10 @@ export function measureDocs(repo, manifest, baseline) {
       writeFileSync(path, text);
     }
   }
-  const root = join(repo, "README.md");
-  writeFileSync(root, readFileSync(root, "utf8").replace(/\*\*\d+(?:\.\d+)?%\*\*/, `**${((1 - leanTotal / upstreamTotal) * 100).toFixed(1)}%**`));
+  for (const file of ["README.md", "README.zh-CN.md"]) {
+    const root = join(repo, file);
+    if (existsSync(root)) writeFileSync(root, readFileSync(root, "utf8").replace(/\*\*\d+(?:\.\d+)?%\*\*/, `**${((1 - leanTotal / upstreamTotal) * 100).toFixed(1)}%**`));
+  }
 }
 
 // The same candidate is checkpointed and executed every time. Failed checks

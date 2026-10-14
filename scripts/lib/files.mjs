@@ -45,7 +45,7 @@ export function fileInventory(root) {
 }
 export function adapterWritable(path, manifest) {
   assertSafeRelativePath(path);
-  if (["README.md", "maintenance/agent-review.md"].includes(path)) return true;
+  if (["README.md", "README.zh-CN.md", "maintenance/agent-review.md"].includes(path)) return true;
   return manifest.packages.some((entry) => {
     const rest = path.startsWith(`${entry.path}/`) ? path.slice(entry.path.length + 1) : "";
     return rest === entry.entry || ["README.md", "README.zh-CN.md", "MAINTENANCE.md"].includes(rest)

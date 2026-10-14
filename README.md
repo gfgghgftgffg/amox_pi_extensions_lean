@@ -1,29 +1,31 @@
 # amox-pi-extensions-lean
 
-`pi-web-access`、`rpiv-todo` 和 `pi-subagents` 的 lean 封装。缩短工具描述和 schema，合并同类工具，完整参数说明按需获取；实际执行仍调用上游代码。
+[简体中文](README.zh-CN.md)
 
-按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，三个扩展的工具上下文合计减少约 **94.5%**。这是字符代理统计，不是模型实际计费 token。
+Lean wrappers for `pi-web-access`, `rpiv-todo`, and `pi-subagents`. They shorten tool descriptions and schemas, combine related tools, and provide full parameter documentation on demand. Execution still uses upstream code.
 
-## 扩展
+Based on character counts in the current [tool snapshot](maintenance/tool-contracts.json), the three extensions reduce total tool-context size by about **94.5%**. This is a character-based estimate, not actual billed model tokens.
 
-| 扩展 | 工具 | 用途 |
+## Extensions
+
+| Extension | Tool | Purpose |
 | --- | --- | --- |
-| [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | 网页搜索、说法核实、页面和 PDF 抓取、结果分页 |
-| [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | 任务、依赖关系和进度管理 |
-| [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | 启动子代理、获取结果、调整任务方向和运行 workflow |
+| [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | Web search, claim verification, web page and PDF fetching, result pagination |
+| [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | Tasks, dependencies, and progress tracking |
+| [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | Launch subagents, retrieve results, steer tasks, and run workflows |
 
-各扩展独立安装。上游服务的凭据要求、外部依赖和使用限制仍适用，具体说明见各扩展 README。
+Each extension installs independently. Upstream service credentials, external dependencies, and usage limits still apply; see each extension's README for details.
 
-## 安装
+## Installation
 
-支持 macOS、Windows 和 Linux。需要 Pi `>=1.1.0`、Node `>=22.19.0`、npm 和 Git。
+Supports macOS, Windows, and Linux. Requires Pi `>=1.1.0`, Node `>=22.19.0`, npm, and Git.
 
 ```bash
 git clone https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git
 cd amox_pi_extensions_lean
 ```
 
-按需执行对应命令，每条只安装一个扩展：
+Run the commands for the extensions you want. Each command installs one extension:
 
 ```bash
 node scripts/install-extension.mjs pi-web-access-lean
@@ -31,40 +33,40 @@ node scripts/install-extension.mjs rpiv-todo-lean
 node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-不需要在根目录运行 `npm ci`。升级时执行 `git pull --ff-only`，再运行对应的安装命令；固定版本可切换到已发布的 tag。
+You do not need to run `npm ci` at the repository root. To update, run `git pull --ff-only`, then rerun the relevant install command. For a fixed version, check out a published tag.
 
-本项目不发布 npm 包，安装使用上述仓库脚本。
+This project does not publish npm packages. Use the repository scripts above to install.
 
-同一个扩展只保留一种安装来源，避免与上游或旧的 `@ssk_dev/*-lean` 重复注册。旧来源可通过 `pi list` 查找，再用 `pi remove <旧来源>` 移除。
+Keep only one installation source for each extension to avoid duplicate registration with upstream packages or older `@ssk_dev/*-lean` installations. Find old sources with `pi list` and remove them with `pi remove <旧来源>`.
 
-## 自动维护
+## Automated maintenance
 
-安装和使用扩展不需要配置 Actions。维护入口在本机：每天 02:23 UTC（北京时间 10:23），systemd 启动一次性 Pi，在临时工作副本内检查上游、适配、实际跑检查，并根据报错修复同一份候选。没有上游更新或已有待审维护 PR 时不调用模型。
+You do not need to configure Actions to install or use these extensions. Maintenance runs locally: every day at 02:23 UTC (10:23 Beijing time), systemd starts a one-shot Pi process. In a temporary working copy, Pi checks upstream updates, adapts the wrappers, runs actual checks, and fixes the same candidate using failure output. It makes no model calls when there are no upstream updates or a maintenance PR is already awaiting review.
 
-日常任务的源码与配置：
-- [维护入口](scripts/local-maintenance.mjs) · [独立 Pi SDK 会话](scripts/lib/local-pi.mjs)
-- [每日更新 prompt（原作者维护段原文）](maintenance/daily-update.md)
-- [systemd service](scripts/systemd/amox-pi-actions.service) · [每日 timer](scripts/systemd/amox-pi-actions.timer)
+Source code and configuration for the daily task:
+- [Maintenance entry point](scripts/local-maintenance.mjs) · [Independent Pi SDK session](scripts/lib/local-pi.mjs)
+- [Daily update prompt (the original author's maintenance text)](maintenance/daily-update.md)
+- [systemd service](scripts/systemd/amox-pi-actions.service) · [Daily timer](scripts/systemd/amox-pi-actions.timer)
 
-这是独立 Pi 会话，不是 subagent；维护会话不加载被维护的扩展（它们只在独立检查沙箱加载），也不更新当前个人安装。
+The task uses an independent Pi session, not a subagent. That session does not load the extensions it maintains; only the separate check sandbox loads them. It does not update your current personal installation.
 
-本地检查通过后创建草稿 PR，再由普通 CI 在 Linux、macOS、Windows 独立验收；人工审查合并版本升级后才进入 Release。Pi 不直接推 main、不自动合并，发布凭据与执行候选代码的环境隔离。部署和故障处理见[本机每日维护](docs/local-scheduler.md)。
+Once local checks pass, the script creates a draft PR. Ordinary CI then checks it independently on Linux, macOS, and Windows. Release runs only after a maintainer reviews and merges the version bump. Pi does not push directly to main or merge PRs automatically. Publication credentials are isolated from the environment that executes candidate code. See [local daily maintenance](docs/local-scheduler.md) for deployment and troubleshooting.
 
-GitHub 只保留两个工作流：
+The repository keeps two GitHub workflows:
 
-| Workflow | 触发条件 | 工作内容 |
+| Workflow | Trigger | Work |
 | --- | --- | --- |
-| CI | 推送 `main`、PR 更新，或手动运行 | 三平台测试、契约检查、独立安装验证和安全审计 |
-| Release | `main` 的发布相关文件更新，或手动运行 | 统一包装版本增加或指定有效 tag 时，三平台验证并发布三个独立 `.tgz` 和哈希清单 |
+| CI | Pushes to `main`, PR updates, or manual runs | Tests, contract checks, independent installation verification, and security audits on all three platforms |
+| Release | Release-related files change on `main`, or a manual run | When the shared wrapper version increases or a valid tag is specified, verify on all three platforms and publish three separate `.tgz` archives and a hash manifest |
 
-CI 和 Release 不调用模型，也没有 GitHub cron。模型配置与 GitHub/SSH 凭据保存在维护主机，不需要维护模型 Actions Secrets/Variables。Release notes 复用本地 Pi 的具体更新摘要，发布阶段不再调用模型。
+CI and Release do not call a model, and there is no GitHub cron. Model configuration and GitHub/SSH credentials stay on the maintenance host; maintenance-model Actions Secrets/Variables are not required. Release notes reuse the local Pi session's specific change summary, with no further model call during publication.
 
-首次或重试发布可手动运行 Release，`tag` 必须与根 package.json、三个包和 manifest 的版本一致。发布使用 `release` environment，可限制到 `main` 并配置审批。
+For an initial release or a retry, you can run Release manually. The `tag` must match the versions in the root package.json, all three packages, and the manifest. Publishing uses the `release` environment, which can be restricted to `main` and configured to require approval.
 
-开发 SDK 和 Action SHA 由维护者单独更新；安全审计保留。开发命令与人工审查要求见[维护者文档](docs/maintenance.md)。
+Maintainers update the development SDK and Action SHAs separately; security audits remain enabled. See the [maintainer documentation](docs/maintenance.md) for development commands and human review requirements.
 
-## 来源
+## Sources
 
-基于 kunkun9527 的 [pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean)、[rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean) 和 [pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean)，制作方法参考[原 lean 指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md)。上游以精确版本依赖引入，不复制实现或修改 `node_modules`。
+Based on kunkun9527's [pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean), [rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean), and [pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean). The wrapping method follows the [original lean guide](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md). Upstream implementations are pinned as exact-version dependencies; they are not copied, and `node_modules` is not modified.
 
-许可证：[MIT](LICENSE)。
+License: [MIT](LICENSE).

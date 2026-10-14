@@ -62,15 +62,21 @@ test("retired maintenance workflows, artifacts, probes and dispatcher are remove
   for (const file of readdirSync(workflowsDir)) assert.doesNotMatch(workflow(file), /\n {2}schedule:|cron:|MAINTENANCE_API_KEY|model_probe_only/);
 });
 test("public docs describe local Pi, honest verification and unchanged independent installation", () => {
-  const readme = read("README.md"), maintenance = read("docs/maintenance.md"), scheduler = read("docs/local-scheduler.md");
+  const readme = read("README.zh-CN.md"), english = read("README.md"), maintenance = read("docs/maintenance.md"), scheduler = read("docs/local-scheduler.md");
+  assert.match(english, /\[简体中文\]\(README\.zh-CN\.md\)/);
+  assert.match(readme, /\[English\]\(README\.md\)/);
+  assert.match(english, /no model calls when there are no upstream updates/);
+  assert.match(english, /02:23 UTC \(10:23 Beijing time\)/);
+  assert.match(english, /does not publish npm packages/);
   assert.match(readme, /安装和使用扩展不需要配置 Actions/); assert.match(readme, /没有上游更新.*不调用模型/);
   assert.match(readme, /02:23 UTC/); assert.match(readme, /北京时间 10:23/); assert.match(readme, /docs\/local-scheduler\.md/);
   assert.match(readme, /Release notes 复用本地 Pi/); assert.match(readme, /不发布 npm 包/);
-  assert.doesNotMatch(readme, /sub2api\.amox\.cc|gpt-6\.1-sol|MAINTENANCE_API_KEY|dispatch-workflows/);
+  for (const doc of [readme, english]) assert.doesNotMatch(doc, /sub2api\.amox\.cc|gpt-6\.1-sol|MAINTENANCE_API_KEY|dispatch-workflows/);
   assert.match(maintenance, /最小改动/); assert.match(maintenance, /Approve workflows to run/);
   assert.match(maintenance, /不是操作系统级沙箱/); assert.match(scheduler, /bubblewrap/);
   assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /人工合并/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
+    assert.ok(english.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`${entry.path}/README.zh-CN.md`));
     for (const file of ["README.md", "README.zh-CN.md"]) {
@@ -80,7 +86,7 @@ test("public docs describe local Pi, honest verification and unchanged independe
   }
 });
 test("README and maintainer docs keep local links and anchors valid", () => {
-  const documents = ["README.md", ...readdirSync(join(repoRoot, "docs")).filter((file) => file.endsWith(".md")).map((file) => `docs/${file}`)];
+  const documents = ["README.md", "README.zh-CN.md", ...readdirSync(join(repoRoot, "docs")).filter((file) => file.endsWith(".md")).map((file) => `docs/${file}`)];
   for (const file of documents) for (const [, href] of read(file).matchAll(/\]\(([^)]+)\)/g)) {
     if (/^[a-z]+:\/\//i.test(href)) continue;
     const [target, anchor] = href.split("#"), path = target ? resolve(repoRoot, dirname(file), decodeURIComponent(target)) : join(repoRoot, file);

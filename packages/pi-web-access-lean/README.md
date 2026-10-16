@@ -50,7 +50,28 @@ registrations.
 Pass a JSON object string as `input` for batch/advanced parameters. Use `help` only when the field
 names are unclear.
 
-## Reviewed upgrade: 0.39.0 → 0.40.0
+## Reviewed upgrade: 0.40.0 → 0.41.0
+
+Set `fetchContent.userAgent` in `web-search.json` to use your own User-Agent for direct page HTTP fetches:
+
+```json
+{ "fetchContent": { "userAgent": "My Reader/1.0" } }
+```
+
+Leaving it unset (or null) keeps `OpenAI File Downloader, XaiImageApiFetch/1.0`. Valid strings are trimmed;
+blank, non-string, non-ASCII, or CR/LF values fail before any remote fetch or provider fallback.
+This is a configuration setting, not a new tool argument; the compact schema and operation help stay unchanged.
+A configured SearXNG endpoint on `localhost`, `127.0.0.0/8`, or `::1` now works without globally allowing
+loopback in `ssrf.allowRanges`. That exemption does not allow redirects to another local origin or ordinary
+page fetches to local services. These behaviors are covered through the real facade with offline DNS/fetch mocks.
+
+The lean-author update was reviewed separately. Its argument hook and subagents typebox fixes are already
+present here. Blanket result-text rewriting and RPC todo plan snapshots were not adopted; see each
+MAINTENANCE file for the specific reasons. Upstream tool hints retain their original names: translate
+`get_search_content({ ... })` to `web_access` with `op: "get"` and the same argument object serialized as
+`input`. Likewise use `op: "search"` or `"fetch"` for upstream search/fetch guidance. Page bodies remain literal.
+
+## Previous upgrade: 0.39.0 → 0.40.0
 
 For an opt-in redirect restriction, pass advanced JSON through `input`:
 
@@ -76,16 +97,16 @@ and invalid values. Live gateways/video providers are outside that test's scope.
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.2 | 149 |
-| pi-web-access | 0.40.0 | 2739 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.3 | 149 |
+| pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.2`
-* Upstream runtime: pinned to `pi-web-access@0.40.0` (exact)
+* Wrapper: `0.1.3`
+* Upstream runtime: pinned to `pi-web-access@0.41.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 
 ## Development

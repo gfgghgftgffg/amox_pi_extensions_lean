@@ -1,16 +1,16 @@
 # Local upstream maintenance
 
-Base: 8f570374a8be98a0e27ab8903f0997b4ffefc5f1
-Release after human merge: v0.1.2
+Base: 35b6f1b5766f95883c26dd32eab12395f71d0212
+Release after human merge: v0.1.3
 
-<!-- amox-release-summary:v0.1.2:start -->
-- Update the pinned web engine from pi-web-access 0.39.0 to 0.40.0. Fetch help now exposes the optional redirects: "same-origin" setting through existing advanced JSON input; enabling it refuses cross-origin redirects before contacting the target, returns no page body on refusal, and disables extraction paths whose redirect chain cannot be observed. The compact web_access schema remains op/input.
-- Inherit upstream fixes for Gemini video uploads through a configured gateway, answer mode on video transcripts with thumbnails, Unicode-safe stored-content pagination, and valid findText excerpt edges. Document the behavior and limitations without duplicating upstream implementation.
-- Update the pinned subagent engine from 0.21.0 to npm stable 0.22.0. Document that smart/async completion delivery no longer waits for siblings, busy-parent completions combine at the tool-batch boundary, idle completions combine over about 200 ms, group joins use parent-turn batches, pending completions survive Esc, and reading a finished result cancels a notification before delivery.
-- Document default-enabled installed-package agents/workflows, user-definition precedence, project-trust filtering, packageAgents/packageWorkflows allowlists, read-only package-agent management, and shutdown cleanup. Keep the subagent adapter and existing schema/usage/render delegation intact; rpiv-todo and rpiv-i18n remain pinned to 2.13.8.
-- Add one focused offline real-facade regression for redirect help and JSON forwarding, same-origin success, cross-origin refusal with no target request, invalid values with no request, structured page bodies versus rendered tool text, and stable compact tool identity. DNS/fetch mocks are installed before imports and use absolute HTTPS URLs; all baseline assertions are preserved.
-- Record exact release-source revisions and unchanged lean-author commits, refresh README/MAINTENANCE/source review and capture character proxies (ceil(chars/4), not billing tokens). Run actual candidate typechecks, regression tests, contract verification, three fresh production installs, and both audits. Live provider/video/gateway/MCP and interactive notification timing remain outside offline coverage; release awaits three-platform CI and human review.
-<!-- amox-release-summary:v0.1.2:end -->
+<!-- amox-release-summary:v0.1.3:start -->
+- Upgrade the pinned web engine from pi-web-access 0.40.0 to 0.41.0. Document fetchContent.userAgent configuration, its unchanged default, trimming and validation, and failure before any remote provider request when configuration is invalid. Keep configuration out of the compact op/input tool schema.
+- Inherit scoped access to explicitly configured loopback SearXNG endpoints without globally opening ssrf.allowRanges. Verify through the real facade that search succeeds, redirects to another local origin are refused before contact, and ordinary loopback page fetches remain blocked.
+- Review exact before/after lean-author entries for all three packages. Retain the already-present prepareArguments and typebox v1/instancePath compatibility fixes. Do not import blanket web result-text rewrites that can alter literal page examples, or host-specific todo RPC plan snapshots with new unguarded post-execution context reads. Document manual facade routing of upstream retrieval hints and preserve existing adapters, stale-context protections and result envelopes.
+- Add focused offline web 0.41 facade regressions for default/custom/invalid User-Agent behavior, zero requests on invalid configuration, scoped local SearXNG behavior, literal page content, and rendered tool text versus structured content. Install DNS/fetch mocks before upstream imports and use absolute URLs; preserve every baseline assertion and avoid unrelated upstream tests.
+- Keep todo/i18n at npm stable 2.13.8 and subagents at 0.22.0, excluding unpublished remote HEADs. Update bilingual package READMEs, maintenance notes and the itemized source review with exact revisions, reuse decisions and validation limits; capture current character proxies as ceil(chars/4), not billing tokens.
+- Run actual candidate typechecks, regression tests, contract verification, three fresh production installs and both audits in the credential-free Linux sandbox. Live websites/SearXNG services, models/MCP and interactive host integrations remain outside offline coverage; three-platform CI and human merge/release review are still required.
+<!-- amox-release-summary:v0.1.3:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

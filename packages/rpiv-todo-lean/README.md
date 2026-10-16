@@ -47,16 +47,20 @@ The persistence key remains `rpiv-todo-state`, with legacy tool-result replay re
 
 The coupled i18n pin advances to 2.13.8; upstream's transitive rpiv-config range advances to
 `^2.13.8`. See [MAINTENANCE.md](MAINTENANCE.md) for source revisions and review limits. All existing
-regression assertions are preserved. Installation, tests, contract capture, and production-install
-verification have **not run in this agent stage**; they belong to the independent validation job.
-Release still requires human approval.
+regression assertions are preserved. The current candidate check runs installation, tests, contract capture,
+production-install verification and audits; its output is the validation record. Release requires human review.
+
+The new lean-author RPC plan-output feature was reviewed and not adopted: it appends full task snapshots
+to model-visible results for all RPC hosts and adds unguarded context reads after execution. The existing
+Pi 1.1 stale guards, command ordering, result envelope and overlays are retained. Pins remain 2.13.8;
+unpublished engine HEAD changes are not consumed. See the itemized review in MAINTENANCE.md.
 
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.2 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.3 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -64,7 +68,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.2`
+* Wrapper: `0.1.3`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
 * Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 

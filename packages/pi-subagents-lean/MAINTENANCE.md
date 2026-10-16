@@ -123,6 +123,24 @@
 - 真实模型／MCP、键盘 UI、Esc 通知调度端到端未验证；语义变化已在中英文 README 明示，
   不作本地规则删减或行为重写。三平台 CI 后须人工审查合并／发版。
 
+## 本次 lean 作者更新审查（引擎仍为 0.22.0）
+
+- 完整对比作者 index.ts：`83f1454b26c32dd2a674385df55955ac9d3a45c3` →
+  `777b853f83c03d303f4618747a529c9b89bc290e`，并阅读本地入口。
+  Type/Value 从 @sinclair/typebox 换到 typebox v1、error.path 改为 instancePath、提取
+  SUBAGENT_TYPE_HELP 常量：本地已有相同修复（常量名 FALLBACK_SUBAGENT_TYPE_DESCRIPTION），
+  不为命名一致而重写。工具／字段／默认值、正则名单解析、JSON 合并／校验、execute/render 委派不变。
+- 作者 facade 测试切换 typebox 导入并保留启动名单／fallback／schema 隔离覆盖；本仓已有这些断言
+  和真实集成、通知／usage 透传测试，无需复制作者测试或增加引擎内部测试。
+- 作者 package.json 包装 0.19.4 → 0.22.1、引擎 → 0.22.0、peer 下限 → 1.1.0，
+  改用 typebox peer/dev、Pi dev → 1.2.0，files 去掉中文 README，README 改名 README_zh-CN.md
+  并更新字符代理。这些运行时兼容点本仓已覆盖；保留固定脚本管理的包装版本、开发依赖和打包文档。
+  不复用作者锁文件或 Pi 1.2.0 测量。
+- npm stable 仍为 `85a704cb8f35c96c0cabfa665b572bab296942e5`；新远端
+  `ca93a5247e72e7053fcd10bea7125d6c4205f949` 未发布，不替换 stable。库存没有本次
+  subagents 引擎 before/after，不声称读取了未提供的远端实现。既有 0.22 内部依赖记录继续适用；
+  check 用固定依赖运行当前真实集成与契约验证，没有启动维护 subagent 或真实模型任务。
+
 ## 升级步骤
 
 1. `npm view @tintinweb/pi-subagents version`，阅读上游 `CHANGELOG.md`，对比 0.19.0 基线源码。

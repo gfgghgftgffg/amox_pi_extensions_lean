@@ -12,10 +12,10 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.40.0`（精确固定；`dependencies`；此前为 0.39.0）。
+- `pi-web-access@0.41.0`（精确固定；`dependencies`；此前为 0.40.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
-- 开发/测试依赖：Pi 1.1.0、typebox 1.3.27、jiti 2.7.0、TypeScript 5.9.3。
+- 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2（当前暂存候选）。
 
 ## 相对基线的精确改动（最小适配）
 
@@ -67,6 +67,37 @@
   分别断言工具文本、structuredContent 正文与错误标记，保持 op/input Schema 和单工具身份。
 - `check` 负责当前候选的实际契约／字符代理捕获、类型与回归、生产安装及审计；不预先声称通过。
   字符代理为 ceil(chars / 4)，不是计费 token。真实视频服务与网关端到端未验证；三平台 CI 与人工审查仍须完成。
+
+## 本次审查：0.40.0 → 0.41.0 与 lean 作者更新
+
+- 精确引擎 before/after：`9861ad72a11c9af419b39f9b00860708407f7025` →
+  `d47dc040552505e3b135d0136a0b15eaf4bdba52`（npm stable 与远端相同）。对比两版
+  CHANGELOG、package.json、fetch-params.ts、index.ts 的 source/fetch/get 注册执行面，
+  extract.ts 的远端预检及 HTTP header 路径、ssrf-protection.ts 配置与 redirect 循环、完整 searxng.ts；
+  阅读 web-tool-contract.ts 与 web-tool-core.ts 的返回对象。不是全仓安全审计。
+- 无新增／删除工具、调用参数或调用默认值；fetch 参数归一化不变。新增的是配置
+  `fetchContent.userAgent`，不是工具参数，不加入常驻 Schema 或宣称 help 会列出它。
+  未设／null 保留 `OpenAI File Downloader, XaiImageApiFetch/1.0`，字符串 trim 后用于 HTTP header；
+  空白、非字符串、非 ASCII 或 CR/LF 被拒绝（实际校验也允许 tab）。远端预检在所有 provider
+  routing 前验证配置，因此非法配置返回空正文、isError，不尝试其它 provider。
+- SearXNG 对显式 loopback endpoint 启用既有 allowLoopback；localhost、127/8、::1 由
+  utils.isLoopbackHostname 判断。跨 origin redirect 移除该豁免，普通页面 fetch 仍拒绝本地服务。
+  不需要 ssrf.allowRanges 全局放行。依赖／peer 范围不变。
+- 内部契约继续成立：五参数 execute、prepareArguments、四默认路由、loader 丢弃、setActiveTools
+  拦截与本地 PDF 独立分支保留。配置变更不要求修改本地 index.ts。
+- 逐项审查作者入口 `db083e9119fe5cf080d2ee8d61ef58349042239b` →
+  `ae54d0db6a3332744b0c20df7f15a25210b1b434`：prepareArguments 透传已在本仓实现；
+  新 retrieval/404 文本重写未复用，因为 withFacadeHints 对所有 content 文本做正则替换，
+  也会改写页面里合法的 `get_search_content({ responseId: "x", urlIndex: 0 })` 示例。
+  保留现有原样返回，续取仍可手动用 op=get + input JSON（已知限制见 README）。
+  作者新增的 hint rewrite 测试未引入；其 prepareArguments 回归已有本地等效覆盖。
+- 作者 package.json 升至 0.40.1／引擎 0.40.0、README 改名 README_zh-CN.md 并更新测量，
+  不复用其版本、打包列表、锁文件或 Pi 1.2 测量；本仓使用固定脚本和自己的中英文文档。
+- 新增 tests/upstream-041-regression.test.mjs，仅测真实门面的 UA 配置／错误、默认值、
+  页面字面内容保留、SearXNG 搜索及本地服务拒绝。导入前 mock DNS/fetch，使用绝对 URL，
+  分别断言 rendered content、structuredContent、error 与请求集合，不增加引擎内部单元测试。
+- check 实际生成当前字符代理／契约并执行验证，结果以其输出为准。字符代理为 ceil(chars/4)，
+  非计费 token；真实网站与 SearXNG 服务未联网实测。历史审查章节的版本／未运行说明仅指当时阶段。
 
 ## 升级步骤
 

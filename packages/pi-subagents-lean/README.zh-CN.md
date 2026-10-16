@@ -86,12 +86,18 @@ Esc 时待发完成通知会保留，在被中断的运行结束后启动新一�
 候选检查在独立沙箱捕获新字符统计并运行既有门面／集成回归、类型检查、生产安装和审计。
 真实模型／MCP 与交互通知时序不在这些检查范围；三平台 CI 后仍需人工审查发版。
 
+## 本次 lean 作者审查
+
+作者更新的 typebox v1 导入、`instancePath` 错误位置与共享 fallback 描述本仓已实现；路由、
+字段优先级、校验与渲染继续兼容，无需重写入口。引擎保持 npm stable 0.22.0，不采用较新的未发布
+远端 HEAD。作者 Pi 1.2 的测量与打包变化不替代本仓捕获；精确 revision 和逐项复用决定见 MAINTENANCE.md。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.2 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.3 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -99,7 +105,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.2`
+* 包装层：`0.1.3`
 * 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
 * 要求 Pi `>=1.1.0`（上游 peer 下限不变）；此前基线测试使用 Pi `1.1.0`、Node `22.22.1`，本次候选等待独立任务验证。
 

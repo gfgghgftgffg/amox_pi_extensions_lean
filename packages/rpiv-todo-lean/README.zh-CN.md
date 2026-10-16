@@ -41,14 +41,18 @@ create 仍默认 `pending`；list 默认排除 deleted tombstone，`includeDelet
 
 配套 i18n 固定版本同步到 2.13.8，上游传递依赖 rpiv-config 范围同步到 `^2.13.8`。
 源码 revision 与审查边界见 [MAINTENANCE.md](MAINTENANCE.md)，既有回归断言全部保留。
-本 agent 阶段**未运行**安装、测试、契约捕获或生产安装验证，交给独立任务执行；发版仍需人工确认。
+本次候选 check 实际执行安装、测试、契约捕获、生产安装与审计，结果以工具输出为准；发版仍需人工审查。
+
+已审查作者新增 RPC Plan 输出但未复用：它向所有 RPC host 的模型可见结果追加全量任务快照，且在执行后
+新增未保护的上下文读取。本仓保留 Pi 1.1 stale guard、命令等待顺序、结果封装与覆盖层。
+引擎 pins 仍为 2.13.8，不消费未发布的远端 HEAD；逐项决定见 MAINTENANCE.md。
 
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.2 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.3 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -56,7 +60,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.2`
+* 包装层：`0.1.3`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.8` 与 `@juicesharp/rpiv-i18n@2.13.8`（精确版本）
 * 此前基线测试使用 Pi `1.1.0`、Node `22.22.1`；本次候选等待独立任务验证。
 

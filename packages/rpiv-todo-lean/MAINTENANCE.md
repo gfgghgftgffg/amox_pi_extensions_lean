@@ -84,6 +84,27 @@
   node scripts/verify-production-install.mjs 或字符统计。README 保留 2.13.5 历史测量并标明
   基线；独立任务生成新统计/快照/包装版本，manifest 的目标版本/revision 已由规划阶段暂存。
 
+## 本次 lean 作者更新审查（引擎仍为 2.13.8）
+
+- 精确作者入口：`ec463cd90fbae962122fff2e0619955a8f17df1a` →
+  `6c748317321725563c803504283f0f036de385e3`，两版 index.ts 完整阅读并与本地入口比较。
+- 唯一新增执行功能为 withHostPlan：RPC create/update/delete 后读取 getState(sid(ctx))，
+  把 pending/in_progress/completed 的全量快照追加为 Plan checklist；过滤 deleted，空列表不追加。
+  clear 不在触发集合内；所有 RPC host 都会收到这些模型可见 content 文本，不仅 Codex Desktop。
+  本次不复用这项 host 专用输出扩展：它不是当前依赖兼容所需，且新增的 await 后 ctx.mode/sid 读取
+  未防失效上下文。本地保留既有 Pi 1.1 stale guard、异步命令等待和原始结果委派。
+- 原有 schema 去描述、action 推断、RPC session map、overlay 私有字段访问、事件／命令逻辑在
+  作者两版入口中未变；本地已有更完整 stale 修复，不整体替换作者入口。无工具／字段／默认值变化。
+- 审查作者 package.json：2.12.1 → 2.13.10，todo/i18n pins → 2.13.8；这些引擎 pins 本仓已有。
+  作者移除 files 中中文 README、改用 README_zh-CN.md、增加 RPC host plan 文档与更新 Pi 1.2
+  字符代理，不复用其打包清单、包装版本、锁文件或测量。阅读作者 wrapper 测试，已有 schema/
+  action/envelope/预算断言由本仓基线保留，不引入重复测试。
+- npm stable gitHead 仍为 `afc21bc25f7d07cae9fb3103dc309240a16b9f49`，较新远端
+  `1ffa165c224b5489fb5774a6652ef2e1c3bc6b2a` 不替代发布源码。本次库存没有 todo 引擎
+  before/after，故不声称重审了远端引擎；已记录的内部依赖由当前 pin 与既有真实集成回归验证。
+- check 执行本候选类型／测试／契约、生产安装、审计与字符代理；结果以工具输出为准，历史未运行
+  说明仅对应历史阶段。没有本次门面变化，不新增 todo 测试。
+
 ## 升级步骤
 
 1. `npm view @juicesharp/rpiv-todo version`，对比 2.12.0 基线与目标版本源码（`tool/types.ts`、

@@ -45,7 +45,26 @@ node scripts/install-extension.mjs pi-web-access-lean
 
 批量或高级参数请将 JSON 对象序列化为 `input` 字符串传入；仅在不清楚字段时调用 `help`。
 
-## 本次审查：0.39.0 → 0.40.0
+## 本次审查：0.40.0 → 0.41.0
+
+在 `web-search.json` 设置 `fetchContent.userAgent` 可指定直接 HTTP 页面抓取的 User-Agent：
+
+```json
+{ "fetchContent": { "userAgent": "My Reader/1.0" } }
+```
+
+未设或 null 保留 `OpenAI File Downloader, XaiImageApiFetch/1.0`。合法字符串会 trim；空白、非字符串、
+非 ASCII 或 CR/LF 会在远端请求及 Provider 回退前报错。这是配置项，不是工具参数，常驻 Schema 与
+操作 help 无需扩充。配置在 `localhost`、`127.0.0.0/8` 或 `::1` 的 SearXNG 现在不必全局放行
+`ssrf.allowRanges`；豁免不允许跳转到其它本地 origin，也不允许普通页面 fetch 访问本地服务。
+新增真实门面回归使用离线 DNS/fetch mock 覆盖这些行为。
+
+另已逐项审查 lean 作者更新：argument hook 和 subagents typebox 修复本仓已有；未采用全量结果文本
+正则重写或 RPC todo Plan 快照，具体理由见各包 MAINTENANCE。上游输出提示保留原工具名：将
+`get_search_content({ ... })` 换为 `web_access` 的 `op: "get"`，同一参数对象序列化进 `input`；
+search/fetch 提示分别使用 `op: "search"`／`"fetch"`。页面字面正文保持原样。
+
+## 历史审查：0.39.0 → 0.40.0
 
 按需限制重定向时，将高级 JSON 放入 `input`：
 
@@ -68,16 +87,16 @@ Provider 回退。启用策略后，无法观察重定向链的提取路径（�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.2 | 149 |
-| pi-web-access | 0.40.0 | 2739 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.3 | 149 |
+| pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.2`
-* 上游运行时：锁定 `pi-web-access@0.40.0`（精确版本）
+* 包装层：`0.1.3`
+* 上游运行时：锁定 `pi-web-access@0.41.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 
 ## 开发

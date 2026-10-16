@@ -102,12 +102,20 @@ integration regressions, typechecks, production installs, and audits in a separa
 Live model/MCP and interactive notification timing are outside those checks; release requires
 human review after three-platform CI.
 
+## Current lean-author review
+
+The author update's typebox v1 imports, `instancePath` error locations and shared fallback description
+are already implemented here. Routes, field precedence, validation and rendering stay compatible;
+no adapter rewrite is needed. The engine remains npm stable 0.22.0; newer unpublished remote HEAD is
+not adopted. Author Pi 1.2 benchmarks and packaging changes are kept separate from this repository's
+own capture. Exact revisions and itemized reuse decisions are in MAINTENANCE.md.
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.2 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.3 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -115,7 +123,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.2`
+* Wrapper: `0.1.3`
 * Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
 * Requires Pi `>=1.1.0` (unchanged upstream peer floor). Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 

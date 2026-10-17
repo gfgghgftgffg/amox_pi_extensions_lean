@@ -55,12 +55,21 @@ to model-visible results for all RPC hosts and adds unguarded context reads afte
 Pi 1.1 stale guards, command ordering, result envelope and overlays are retained. Pins remain 2.13.8;
 unpublished engine HEAD changes are not consumed. See the itemized review in MAINTENANCE.md.
 
+## Latest lean-author review
+
+Reviewed author revisions `6c74831` → `50e485d`. The complete adapter and package metadata are identical;
+only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
+No tools, parameters, defaults or runtime behavior change. Our todo/i18n pins stay 2.13.8 and our own
+character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
+The plan-output decision above is from the previous review and remains applicable to both snapshots.
+Exact source evidence is in [MAINTENANCE.md](MAINTENANCE.md).
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.3 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.4 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -68,7 +77,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.3`
+* Wrapper: `0.1.4`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
 * Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 

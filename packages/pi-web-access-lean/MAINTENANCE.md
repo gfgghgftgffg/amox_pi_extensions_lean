@@ -99,6 +99,18 @@
 - check 实际生成当前字符代理／契约并执行验证，结果以其输出为准。字符代理为 ceil(chars/4)，
   非计费 token；真实网站与 SearXNG 服务未联网实测。历史审查章节的版本／未运行说明仅指当时阶段。
 
+## 本次 lean-only 审查：基准环境文档更新
+
+- 精确作者 before/after：`ae54d0db6a3332744b0c20df7f15a25210b1b434` →
+  `c2beefc20ff6ed52a376d5ddaf9a91bcf3a7a09a`。完整对比 index.ts、package.json 和中英文 README；
+  入口及包元数据一致，README 仅将测量环境 Pi 1.2.0 改为 1.3.0，数值未变。
+- 无工具、参数、默认值或行为变化；prepareArguments、默认名路由、loader 拦截和 PDF 分支记录继续适用。
+  两版都已有文本重写实现，先前不复用该实现的决定保留；本次没有新增该功能。
+- 引擎仍为 0.41.0 / `d47dc040552505e3b135d0136a0b15eaf4bdba52`；远端
+  `b3f676d8448ede197d8cd22589beeb9e44f1cf44` 未采用。本次库存仅有 lean 源码，不声称重审远端引擎。
+- 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
+  无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view pi-web-access version` 确认新版本，阅读 0.35.0→目标版本的 `CHANGELOG.md`。

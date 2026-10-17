@@ -92,12 +92,19 @@ Esc 时待发完成通知会保留，在被中断的运行结束后启动新一�
 字段优先级、校验与渲染继续兼容，无需重写入口。引擎保持 npm stable 0.22.0，不采用较新的未发布
 远端 HEAD。作者 Pi 1.2 的测量与打包变化不替代本仓捕获；精确 revision 和逐项复用决定见 MAINTENANCE.md。
 
+## 最新 lean 作者审查
+
+已审查作者 `777b853` → `3082c5f`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
+改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；引擎仍锁定 0.22.0。
+上文 typebox 修复早于本次源码对。本仓字符代理由候选 check 重新统计，这不代表已验证 Pi 1.3
+兼容性；精确源码证据见 [MAINTENANCE.md](MAINTENANCE.md)。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.3 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.4 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -105,7 +112,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.3`
+* 包装层：`0.1.4`
 * 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
 * 要求 Pi `>=1.1.0`（上游 peer 下限不变）；此前基线测试使用 Pi `1.1.0`、Node `22.22.1`，本次候选等待独立任务验证。
 

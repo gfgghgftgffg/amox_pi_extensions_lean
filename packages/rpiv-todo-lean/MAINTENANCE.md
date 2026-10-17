@@ -105,6 +105,18 @@
 - check 执行本候选类型／测试／契约、生产安装、审计与字符代理；结果以工具输出为准，历史未运行
   说明仅对应历史阶段。没有本次门面变化，不新增 todo 测试。
 
+## 本次 lean-only 审查：基准环境文档更新
+
+- 精确作者 before/after：`6c748317321725563c803504283f0f036de385e3` →
+  `50e485d82809009213e21c93c564f4eaf33a650c`。完整对比 index.ts、package.json 和中英文 README；
+  入口及包元数据一致，README 仅将测量环境 Pi 1.2.0 改为 1.3.0，数值未变。
+- 无工具、参数、默认值或行为变化；schema 去描述、action 推断和 RPC overlay 内部依赖继续适用。
+  withHostPlan 在两版均已存在，先前不复用该输出扩展的决定保留；本地 stale guard 与命令等待不变。
+- todo/i18n 仍为 2.13.8 / `afc21bc25f7d07cae9fb3103dc309240a16b9f49`；远端
+  `fc951b8d2628ccbd5dc706d07df329e85daf1edd` 未采用。本次库存仅有 lean 源码，不声称重审远端引擎。
+- 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
+  无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view @juicesharp/rpiv-todo version`，对比 2.12.0 基线与目标版本源码（`tool/types.ts`、

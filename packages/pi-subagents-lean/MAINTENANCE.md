@@ -141,6 +141,18 @@
   subagents 引擎 before/after，不声称读取了未提供的远端实现。既有 0.22 内部依赖记录继续适用；
   check 用固定依赖运行当前真实集成与契约验证，没有启动维护 subagent 或真实模型任务。
 
+## 本次 lean-only 审查：基准环境文档更新
+
+- 精确作者 before/after：`777b853f83c03d303f4618747a529c9b89bc290e` →
+  `3082c5fb3dada95f2dabffa6a20db0bf43e03a62`。完整对比 index.ts、package.json 和中英文 README；
+  入口及包元数据一致，README 仅将测量环境 Pi 1.2.0 改为 1.3.0，数值未变。
+- 无工具、参数、默认值或行为变化；typebox v1、instancePath、启动名单解析、字段优先级与
+  execute/render 委派记录继续适用。本地共享 fallback 常量保持原名，无需源码适配。
+- 引擎仍为 0.22.0 / `85a704cb8f35c96c0cabfa665b572bab296942e5`；远端
+  `ca93a5247e72e7053fcd10bea7125d6c4205f949` 未采用。本次库存仅有 lean 源码，不声称重审远端引擎。
+- 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
+  无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view @tintinweb/pi-subagents version`，阅读上游 `CHANGELOG.md`，对比 0.19.0 基线源码。

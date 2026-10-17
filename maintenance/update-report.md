@@ -1,16 +1,15 @@
 # Local upstream maintenance
 
-Base: 35b6f1b5766f95883c26dd32eab12395f71d0212
-Release after human merge: v0.1.3
+Base: 7e64c51cfc5c679e6201680400ed0bd9825d4417
+Release after human merge: v0.1.4
 
-<!-- amox-release-summary:v0.1.3:start -->
-- Upgrade the pinned web engine from pi-web-access 0.40.0 to 0.41.0. Document fetchContent.userAgent configuration, its unchanged default, trimming and validation, and failure before any remote provider request when configuration is invalid. Keep configuration out of the compact op/input tool schema.
-- Inherit scoped access to explicitly configured loopback SearXNG endpoints without globally opening ssrf.allowRanges. Verify through the real facade that search succeeds, redirects to another local origin are refused before contact, and ordinary loopback page fetches remain blocked.
-- Review exact before/after lean-author entries for all three packages. Retain the already-present prepareArguments and typebox v1/instancePath compatibility fixes. Do not import blanket web result-text rewrites that can alter literal page examples, or host-specific todo RPC plan snapshots with new unguarded post-execution context reads. Document manual facade routing of upstream retrieval hints and preserve existing adapters, stale-context protections and result envelopes.
-- Add focused offline web 0.41 facade regressions for default/custom/invalid User-Agent behavior, zero requests on invalid configuration, scoped local SearXNG behavior, literal page content, and rendered tool text versus structured content. Install DNS/fetch mocks before upstream imports and use absolute URLs; preserve every baseline assertion and avoid unrelated upstream tests.
-- Keep todo/i18n at npm stable 2.13.8 and subagents at 0.22.0, excluding unpublished remote HEADs. Update bilingual package READMEs, maintenance notes and the itemized source review with exact revisions, reuse decisions and validation limits; capture current character proxies as ceil(chars/4), not billing tokens.
-- Run actual candidate typechecks, regression tests, contract verification, three fresh production installs and both audits in the credential-free Linux sandbox. Live websites/SearXNG services, models/MCP and interactive host integrations remain outside offline coverage; three-platform CI and human merge/release review are still required.
-<!-- amox-release-summary:v0.1.3:end -->
+<!-- amox-release-summary:v0.1.4:start -->
+- Review all three lean-author revision pairs: web ae54d0d → c2beefc, todo 6c74831 → 50e485d, and subagents 777b853 → 3082c5f. Their complete adapters and package metadata are identical; the bilingual READMEs only change the stated benchmark host from Pi 1.2.0 to 1.3.0 while retaining the estimates.
+- Update each package's bilingual README and MAINTENANCE with the current documentation-only review, exact source revisions, unchanged tool/parameter/default/behavior findings, and retained compatibility decisions. Replace the stale source-review report with evidence for this candidate.
+- Preserve web argument normalization and literal result bodies, todo stale-context guards and command ordering, and subagents typebox validation and rendering delegation. Keep npm engine pins at web 0.41.0, todo/i18n 2.13.8 and subagents 0.22.0; unpublished engine HEADs are outside the supplied source review.
+- Refresh this candidate's contracts and character-proxy measurements through check instead of importing the author's benchmark environment claims. No Pi 1.3 compatibility claim, adapter rewrite or unrelated upstream regression is introduced; baseline assertions remain intact.
+- Validate the same candidate with actual typechecks/tests, contract checks, three fresh standalone production installs and both audits. Existing web network regressions use offline mocks before imports and distinguish rendered blocks from structured bodies. Human review and three-platform CI remain required before release.
+<!-- amox-release-summary:v0.1.4:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

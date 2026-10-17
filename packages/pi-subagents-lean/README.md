@@ -110,12 +110,20 @@ no adapter rewrite is needed. The engine remains npm stable 0.22.0; newer unpubl
 not adopted. Author Pi 1.2 benchmarks and packaging changes are kept separate from this repository's
 own capture. Exact revisions and itemized reuse decisions are in MAINTENANCE.md.
 
+## Latest lean-author review
+
+Reviewed author revisions `777b853` → `3082c5f`. The complete adapter and package metadata are identical;
+only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
+No tools, parameters, defaults or runtime behavior change. Our engine pin stays 0.22.0 and our own
+character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
+The typebox fixes described above predate this pair. Exact evidence is in [MAINTENANCE.md](MAINTENANCE.md).
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.3 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.4 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -123,7 +131,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.3`
+* Wrapper: `0.1.4`
 * Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
 * Requires Pi `>=1.1.0` (unchanged upstream peer floor). Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
 

@@ -92,12 +92,20 @@ boundaries (split excerpt edges use a replacement character). The lean entry nee
 The focused offline facade regression covers redirect help, JSON forwarding, refusal, success,
 and invalid values. Live gateways/video providers are outside that test's scope.
 
+## Latest lean-author review
+
+Reviewed author revisions `ae54d0d` → `c2beefc`. The complete adapter and package metadata are identical;
+only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
+No tools, parameters, defaults or runtime behavior change. Our engine pin stays 0.41.0 and our own
+character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
+Exact source evidence and retained adaptation decisions are in [MAINTENANCE.md](MAINTENANCE.md).
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.3 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.4 | 149 |
 | pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -105,7 +113,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.3`
+* Wrapper: `0.1.4`
 * Upstream runtime: pinned to `pi-web-access@0.41.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

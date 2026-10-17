@@ -82,12 +82,19 @@ Provider 回退。启用策略后，无法观察重定向链的提取路径（�
 边界（摘录边缘的半个字符用替代字符表示）。lean 入口无需改动。新增离线门面回归覆盖 help、JSON
 透传、跨源拒绝、同源成功和非法参数；真实网关／视频 Provider 不在该测试范围内。
 
+## 最新 lean 作者审查
+
+已审查作者 `ae54d0d` → `c2beefc`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
+改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；引擎仍锁定 0.41.0。
+本仓字符代理由候选 check 重新统计，这不代表已验证 Pi 1.3 兼容性。
+精确源码证据和保留的适配决定见 [MAINTENANCE.md](MAINTENANCE.md)。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.3 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.4 | 149 |
 | pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -95,7 +102,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.3`
+* 包装层：`0.1.4`
 * 上游运行时：锁定 `pi-web-access@0.41.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

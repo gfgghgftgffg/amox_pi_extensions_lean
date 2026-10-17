@@ -47,12 +47,19 @@ create 仍默认 `pending`；list 默认排除 deleted tombstone，`includeDelet
 新增未保护的上下文读取。本仓保留 Pi 1.1 stale guard、命令等待顺序、结果封装与覆盖层。
 引擎 pins 仍为 2.13.8，不消费未发布的远端 HEAD；逐项决定见 MAINTENANCE.md。
 
+## 最新 lean 作者审查
+
+已审查作者 `6c74831` → `50e485d`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
+改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；todo/i18n 仍锁定 2.13.8。
+上文 Plan 输出决定属于此前审查，两版均已包含该实现。本仓字符代理由候选 check 重新统计，
+这不代表已验证 Pi 1.3 兼容性；精确源码证据见 [MAINTENANCE.md](MAINTENANCE.md)。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.3 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.4 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -60,7 +67,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.3`
+* 包装层：`0.1.4`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.8` 与 `@juicesharp/rpiv-i18n@2.13.8`（精确版本）
 * 此前基线测试使用 Pi `1.1.0`、Node `22.22.1`；本次候选等待独立任务验证。
 

@@ -29,7 +29,7 @@ Install only this extension from the repository root (clone as shown in the root
 node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-Once published to npm, `pi install npm:@gfgghgftgffg/pi-subagents-lean` is also available. Choose one installation method; do not load another `pi-subagents` wrapper alongside it.
+Once published to npm, install with `pi install npm:@gfgghgftgffg/pi-subagents-lean` (no version pin), then update with `pi update --extensions`. Before first publication (npm 404), use the Git installer above. Local installs are updated by pulling the checkout and rerunning that installer, not by `pi update`. To migrate, back up settings and remove only the exact old source shown by `pi list` before installing the npm source. Choose one installation method; do not load another `pi-subagents` wrapper alongside it.
 
 ## Usage
 

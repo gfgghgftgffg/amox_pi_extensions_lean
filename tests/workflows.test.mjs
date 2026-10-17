@@ -40,12 +40,12 @@ test("CI remains read-only, secret-free and verifies the exact candidate on all 
   for (const command of ["npm ci --ignore-scripts", "npm run check", "npm run contracts:check", "npm run verify:production", "npm audit --audit-level=high", "npm audit --omit=dev --audit-level=high"]) assert.ok(text.includes(command));
   assert.doesNotMatch(text, /maintenance-pipeline|maintenance-candidate|adapted\.json|verified\.json/);
 });
-test("reviewed version bumps auto-release, privileged jobs never execute dependencies", () => {
+test("reviewed version bumps auto-release with isolated GitHub-write and npm-OIDC jobs", () => {
   const text = workflow("release.yml");
   assert.match(text, /\n {2}push:\n {4}branches: \[main\]/); assert.match(text, /\n {2}workflow_dispatch:\n/);
   assert.doesNotMatch(text, /\n {2}(?:pull_request|schedule):\n/);
   assert.match(text, /concurrency:\n {2}group: release\n {2}cancel-in-progress: false/);
-  const plan = job(text, "plan", "verify"), verify = job(text, "verify", "release"), release = job(text, "release");
+  const plan = job(text, "plan", "verify"), verify = job(text, "verify", "release"), release = job(text, "release", "npm"), npm = job(text, "npm");
   assert.match(plan, /release-plan\.mjs --run/); assert.match(plan, /fetch-depth: 0/);
   assert.match(verify, /needs\.plan\.outputs\.should_release == 'true'/);
   assert.match(verify, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
@@ -53,35 +53,52 @@ test("reviewed version bumps auto-release, privileged jobs never execute depende
   assert.doesNotMatch(verify, /secrets\./);
   assert.match(release, /environment: release/); assert.match(release, /contents: write/);
   assert.match(release, /ref: \$\{\{ github\.sha \}\}/); assert.match(release, /create-release\.mjs --assets-dir/);
-  assert.doesNotMatch(release, /npm (ci|install|run|publish)/);
-  assert.doesNotMatch(text, /\n  npm:|PUBLISH_NPM|NPM_TOKEN|publish-packages/);
+  assert.doesNotMatch(release, /npm (ci|install|run|publish)|id-token:/);
+  assert.match(npm, /needs: \[plan, verify, release\]/);
+  assert.match(npm, /runs-on: ubuntu-latest/); assert.match(npm, /environment: release/);
+  assert.match(npm, /contents: read/); assert.doesNotMatch(npm, /contents: write|secrets\./);
+  assert.match(npm, /id-token: write/); assert.equal((text.match(/id-token: write/g) || []).length, 1);
+  assert.match(npm, /ref: \$\{\{ github\.sha \}\}/); assert.match(npm, /EXPECTED_SHA: \$\{\{ github\.sha \}\}/);
+  assert.match(npm, /node-version: "22\.22\.1"/); assert.match(npm, /package-manager-cache: false/);
+  assert.match(npm, /npm install --global --ignore-scripts --registry=https:\/\/registry\.npmjs\.org\/ npm@11\.15\.0/);
+  assert.match(npm, /name: release-assets/); assert.match(npm, /publish-npm\.mjs --assets-dir \.release-assets --publish/);
+  assert.doesNotMatch(npm, /npm (ci|run|publish)|npm install --(?:prefix|workspace)/);
+  assert.doesNotMatch(text, /PUBLISH_NPM|NPM_TOKEN|NODE_AUTH_TOKEN|publish-packages/);
 });
 test("retired maintenance workflows, artifacts, probes and dispatcher are removed", () => {
   assert.deepEqual(readdirSync(workflowsDir).filter((name) => name.endsWith(".yml")).sort(), ["release.yml", "test.yml"]);
   for (const file of [".github/dependabot.yml", "scripts/dispatch-workflows.mjs", "scripts/automate-maintenance.mjs", "scripts/validate-candidate.mjs", "scripts/lib/adapted-candidate.mjs", "scripts/publish-packages.mjs"]) assert.ok(!existsSync(join(repoRoot, file)));
   for (const file of readdirSync(workflowsDir)) assert.doesNotMatch(workflow(file), /\n {2}schedule:|cron:|MAINTENANCE_API_KEY|model_probe_only/);
 });
-test("public docs describe local Pi, honest verification and unchanged independent installation", () => {
+test("public docs describe local Pi, reviewed npm publication and independent installation", () => {
   const readme = read("README.zh-CN.md"), english = read("README.md"), maintenance = read("docs/maintenance.md"), scheduler = read("docs/local-scheduler.md");
   assert.match(english, /\[简体中文\]\(README\.zh-CN\.md\)/);
   assert.match(readme, /\[English\]\(README\.md\)/);
   assert.match(english, /no model calls when there are no upstream updates/);
   assert.match(english, /02:23 UTC \(10:23 Beijing time\)/);
-  assert.match(english, /does not publish npm packages/);
+  assert.match(english, /pi update --extensions/); assert.match(english, /one-time npm setup/);
+  assert.match(english, /docs\/npm-publishing\.md/);
   assert.match(readme, /安装和使用扩展不需要配置 Actions/); assert.match(readme, /没有上游更新.*不调用模型/);
   assert.match(readme, /02:23 UTC/); assert.match(readme, /北京时间 10:23/); assert.match(readme, /docs\/local-scheduler\.md/);
-  assert.match(readme, /Release notes 复用本地 Pi/); assert.match(readme, /不发布 npm 包/);
+  assert.match(readme, /Release notes 复用本地 Pi/); assert.match(readme, /首次 npm 配置/);
+  assert.match(readme, /pi update --extensions/); assert.match(readme, /docs\/npm-publishing\.zh-CN\.md/);
+  for (const file of ["docs/npm-publishing.md", "docs/npm-publishing.zh-CN.md"]) {
+    const guide = read(file); assert.match(guide, /release\.yml/); assert.match(guide, /Re-run failed jobs/);
+    assert.match(guide, /--fetch-retries=0/); assert.match(guide, /npm publish/); assert.match(guide, /2 (days|天)/);
+  }
   for (const doc of [readme, english]) assert.doesNotMatch(doc, /sub2api\.amox\.cc|gpt-6\.1-sol|MAINTENANCE_API_KEY|dispatch-workflows/);
   assert.match(maintenance, /最小改动/); assert.match(maintenance, /Approve workflows to run/);
   assert.match(maintenance, /不是操作系统级沙箱/); assert.match(scheduler, /bubblewrap/);
   assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /人工合并/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
+    for (const doc of [english, readme]) assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
     assert.ok(english.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`${entry.path}/README.zh-CN.md`));
     for (const file of ["README.md", "README.zh-CN.md"]) {
       const doc = read(`${entry.path}/${file}`); assert.doesNotMatch(doc, /pi install git:|phase 1/);
       assert.ok(doc.includes(`node scripts/install-extension.mjs ${entry.id}`));
+      assert.ok(doc.includes(`pi install npm:${entry.packageName}`)); assert.ok(doc.includes("pi update --extensions"));
     }
   }
 });

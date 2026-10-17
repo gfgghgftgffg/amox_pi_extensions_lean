@@ -93,8 +93,12 @@ test("release tag and context validation rules", () => {
   assert.ok(notes.indexOf(summary) < notes.indexOf("## 安装"));
   assert.ok(notes.includes(`git clone --branch ${tag} https://github.com/test/repo.git`));
   assert.ok(notes.includes("node scripts/install-extension.mjs pi-web-access-lean"));
-  assert.doesNotMatch(notes, /pi install git:|pi install npm:|When npm publication/);
-  assert.ok(notes.includes("本项目不发布 npm 包"));
+  assert.doesNotMatch(notes, /pi install git:|When npm publication|本项目不发布 npm 包/);
+  assert.ok(notes.includes("pi install npm:@gfgghgftgffg/pi-web-access-lean"));
+  assert.ok(notes.includes("pi update --extensions"));
+  assert.ok(notes.includes("npm job 未成功"));
+  assert.ok(notes.includes("npm 发布是后续独立 job"));
+  assert.ok(notes.includes("docs/npm-publishing.zh-CN.md"));
 });
 
 test("release summaries are substantive and bound to exactly one version", () => {

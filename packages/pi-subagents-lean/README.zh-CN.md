@@ -25,7 +25,7 @@
 node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-已发布到 npm 后，也可用 `pi install npm:@gfgghgftgffg/pi-subagents-lean`。两种方式只选一种，请勿与其它 `pi-subagents` 包装扩展同时加载。
+发布到 npm 后，用 `pi install npm:@gfgghgftgffg/pi-subagents-lean` 安装，不固定版本，再用 `pi update --extensions` 更新。首次发布前（npm 404）使用上述 Git 安装脚本。本地安装需拉取 checkout 并重跑脚本，不由 `pi update` 更新。迁移时先备份 settings，通过 `pi list` 找到并仅移除精确的旧来源，再安装 npm 来源。两种方式只选一种，请勿与其它 `pi-subagents` 包装扩展同时加载。
 
 ## 使用方法
 

@@ -18,7 +18,24 @@
 
 ## 安装
 
-支持 macOS、Windows 和 Linux。需要 Pi `>=1.1.0`、Node `>=22.19.0`、npm 和 Git。
+支持 macOS、Windows 和 Linux。需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm；Git 回退安装还需要 Git。
+
+### npm 安装和更新
+
+维护者完成[首次 npm 配置](docs/npm-publishing.zh-CN.md)后，按需安装，不固定版本：
+
+```bash
+pi install npm:@gfgghgftgffg/pi-web-access-lean
+pi install npm:@gfgghgftgffg/rpiv-todo-lean
+pi install npm:@gfgghgftgffg/pi-subagents-lean
+pi update --extensions
+```
+
+如果包尚未发布（npm 返回 404），使用下面的 Git 回退方式；认证或网络错误不代表包不存在。`pi update --extensions` 更新未固定版本的 npm 来源，不更新本地目录内容。已有本地安装时，先备份 settings，通过 `pi list` 找到旧来源，仅用 `pi remove <old-source>` 移除对应项，再安装 npm 来源。重启 Pi 并确认每个工具只加载一次，不要同时注册两种来源。
+
+新 VPS 可按 [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md) 安装。[迁移检查表](docs/npm-publishing.zh-CN.md#新-vps-检查表)区分扩展安装和可选的维护主机部署。
+
+### Git 回退安装
 
 ```bash
 git clone https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git
@@ -35,7 +52,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 不需要在根目录运行 `npm ci`。升级时执行 `git pull --ff-only`，再运行对应的安装命令；固定版本可切换到已发布的 tag。
 
-本项目不发布 npm 包，安装使用上述仓库脚本。
+首次 npm 配置完成前，以及需要固定 tag 时，仍可使用 Git 安装脚本。
 
 同一个扩展只保留一种安装来源，避免与上游或旧的 `@ssk_dev/*-lean` 重复注册。旧来源可通过 `pi list` 查找，再用 `pi remove <旧来源>` 移除。
 
@@ -57,11 +74,11 @@ GitHub 只保留两个工作流：
 | Workflow | 触发条件 | 工作内容 |
 | --- | --- | --- |
 | CI | 推送 `main`、PR 更新，或手动运行 | 三平台测试、契约检查、独立安装验证和安全审计 |
-| Release | `main` 的发布相关文件更新，或手动运行 | 统一包装版本增加或指定有效 tag 时，三平台验证并发布三个独立 `.tgz` 和哈希清单 |
+| Release | `main` 的发布相关文件更新，或手动运行 | 统一包装版本增加或指定有效 tag 时，三平台验证并发布三个独立 `.tgz` 和哈希清单，再将这些已验证归档发布到 npm |
 
 CI 和 Release 不调用模型，也没有 GitHub cron。模型配置与 GitHub/SSH 凭据保存在维护主机，不需要维护模型 Actions Secrets/Variables。Release notes 复用本地 Pi 的具体更新摘要，发布阶段不再调用模型。
 
-首次或重试发布可手动运行 Release，`tag` 必须与根 package.json、三个包和 manifest 的版本一致。发布使用 `release` environment，可限制到 `main` 并配置审批。
+首次或重试发布可手动运行 Release，`tag` 必须与根 package.json、三个包和 manifest 的版本一致。发布使用 `release` environment，可限制到 `main` 并配置审批。独立的 npm job 只有 OIDC 权限，没有 GitHub 写权限，不安装或执行扩展依赖。首次发布和 trusted publisher 需要维护者[一次性配置](docs/npm-publishing.zh-CN.md)，VPS 不保存 npm token。
 
 开发 SDK 和 Action SHA 由维护者单独更新；安全审计保留。开发命令与人工审查要求见[维护者文档](docs/maintenance.md)。
 

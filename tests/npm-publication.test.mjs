@@ -9,7 +9,7 @@ import { spawnSync } from "node:child_process";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { packageEntries, packExtension } from "../scripts/lib/extension-package.mjs";
 import { readJson } from "../scripts/lib/files.mjs";
-import { NPM_REGISTRY, publishArchive, publishNpmArchives, validateNpmArchive } from "../scripts/publish-npm.mjs";
+import { NPM_REGISTRY, publishArchive, publishNpmArchives, validateNpmArchive, waitForPublishedArchive } from "../scripts/publish-npm.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repository = "gfgghgftgffg/amox_pi_extensions_lean";
@@ -27,7 +27,7 @@ test("npm publication validates actual packs, preflights all identities and reco
     const states = new Map(), calls = [], publishes = [];
     let mode = "normal", failAt = null;
     const fetchImpl = async (url, options) => {
-      assert.equal(options.redirect, "error"); assert.ok(options.signal);
+      assert.equal(options.redirect, "error"); assert.ok(options.signal); assert.equal(options.headers["cache-control"], "no-cache");
       assert.ok(url.startsWith(`${NPM_REGISTRY}/`)); calls.push(url);
       const [encoded, requested] = url.slice(NPM_REGISTRY.length + 1).split("/"), name = decodeURIComponent(encoded);
       assert.ok(files.some((file) => file.package === name));
@@ -107,4 +107,32 @@ test("npm publication validates actual packs, preflights all identities and reco
       const stale = invoke({ EXPECTED_SHA: "f".repeat(40) }); assert.equal(stale.status, 1); assert.match(stale.stderr, /checkout HEAD/);
     });
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("post-publish propagation waits use only bounded GETs without accepting conflicts", async () => {
+  const asset = { package: "@gfgghgftgffg/pi-web-access-lean", integrity: "sha512-verified" }, version = "0.1.4";
+  let elapsed = 0, reads = 0, sleeps = 0;
+  const clock = { now: () => elapsed, timeoutMs: 20, pollMs: 10, sleep: async (ms) => { sleeps++; elapsed += ms; }, log: () => {} };
+  const valid = { name: asset.package, version, dist: { integrity: asset.integrity } };
+  const fetchImpl = async (url, options) => {
+    reads++; assert.ok([undefined, "GET"].includes(options.method)); assert.equal(options.headers["cache-control"], "no-cache");
+    if (url.endsWith(`/${version}`)) return elapsed === 0 ? new Response(null, { status: 404 }) : Response.json(valid);
+    return Response.json({ name: asset.package, "dist-tags": { latest: elapsed < 20 ? "0.1.3" : version } });
+  };
+  await waitForPublishedArchive({ asset, version, fetchImpl, ...clock });
+  assert.equal(elapsed, 20); assert.equal(sleeps, 2); assert.equal(reads, 5);
+
+  elapsed = 0; sleeps = 0; reads = 0;
+  await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async () => { reads++; return new Response(null, { status: 404 }); } }), /timed out.*Upload may already have succeeded.*no publish retry/);
+  assert.equal(elapsed, 20); assert.equal(sleeps, 2); assert.equal(reads, 3);
+
+  elapsed = 0; sleeps = 0;
+  await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async () => Response.json({ ...valid, dist: { integrity: "sha512-conflict" } }) }), /integrity conflicts/);
+  assert.equal(sleeps, 0, "immutable hash conflicts cannot be hidden by waiting");
+  await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async () => Response.json({ ...valid, name: "@another/package" }) }), /identity mismatch/);
+  assert.equal(sleeps, 0);
+  await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async () => new Response(null, { status: 503 }) }), /HTTP 503/);
+  assert.equal(sleeps, 0);
+  await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async (url) => Response.json(url.endsWith(`/${version}`) ? valid : { name: asset.package, "dist-tags": { latest: "99.0.0" } }) }), /latest advanced unexpectedly/);
+  assert.equal(sleeps, 0, "a newer latest must not trigger tag writes or further polling");
 });

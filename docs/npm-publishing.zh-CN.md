@@ -8,7 +8,7 @@
 
 维护者审查并合并版本升级后，Release 在 Linux、macOS、Windows 验证同一不可变 SHA，创建 GitHub Release，再将其中三个已验证归档发布到 npm。无更新的维护运行不发布。根 `package.json` 保持 private。
 
-只有 npm job 获得 `id-token: write`。它在 GitHub-hosted Ubuntu、`release` environment 中运行，仓库只读，使用 Node 22.22.1 和 npm 11.15.0。它只安装固定版本 npm CLI，不安装扩展依赖。[发布脚本](../scripts/publish-npm.mjs) 校验 SHA/tag、归档哈希、包身份、仓库和包内全部六个文件，再预检三个公开 npm 版本。上传的是这些 `.tgz`，使用 `--ignore-scripts` 和 `--fetch-retries=0` 禁用生命周期脚本和 npm HTTP 重试；每次新发布后检查 registry integrity 和 `latest`。GitHub trusted publishing 自动生成 provenance。Pi、systemd、仓库和 Actions Secrets 均不保存 npm token。
+只有 npm job 获得 `id-token: write`。它在 GitHub-hosted Ubuntu、`release` environment 中运行，仓库只读，使用 Node 22.22.1 和 npm 11.15.0。它只安装固定版本 npm CLI，不安装扩展依赖。[发布脚本](../scripts/publish-npm.mjs) 校验 SHA/tag、归档哈希、包身份、仓库和包内全部六个文件，再预检三个公开 npm 版本。上传的是这些 `.tgz`，使用 `--ignore-scripts` 和 `--fetch-retries=0` 禁用生命周期脚本和 npm HTTP 重试；每次新发布后检查 registry integrity 和 `latest`，允许最多 3 分钟的只读 GET 轮询等待 registry 同步。integrity 或身份不一致立即失败，这段等待不会重新上传。GitHub trusted publishing 自动生成 provenance。Pi、systemd、仓库和 Actions Secrets 均不保存 npm token。
 
 ## 维护者发布配置
 

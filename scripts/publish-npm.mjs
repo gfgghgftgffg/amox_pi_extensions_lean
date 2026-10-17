@@ -7,6 +7,7 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { isDeepStrictEqual } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 import { validateReleaseAssets } from "./release-assets.mjs";
 import { packageEntries } from "./lib/extension-package.mjs";
 import { readJson } from "./lib/files.mjs";
@@ -53,8 +54,8 @@ export function validateNpmArchive({ repoRoot, asset, entry, version, repository
 async function registryMetadata(name, version, fetchImpl) {
   const path = `/${encodeURIComponent(name)}${version ? `/${version}` : ""}`;
   let response;
-  try { response = await fetchImpl(NPM_REGISTRY + path, { redirect: "error", signal: AbortSignal.timeout(30_000), headers: { accept: "application/json" } }); }
-  catch { throw new Error(`Public npm lookup failed for ${name}; no publish attempted/retried`); }
+  try { response = await fetchImpl(NPM_REGISTRY + path, { redirect: "error", signal: AbortSignal.timeout(30_000), headers: { accept: "application/json", "cache-control": "no-cache" } }); }
+  catch { throw new Error(`Public npm lookup failed for ${name}; no publish retry`); }
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Public npm lookup HTTP ${response.status} for ${name}`);
   const data = await response.json();
@@ -64,6 +65,27 @@ async function registryMetadata(name, version, fetchImpl) {
 function matchesIntegrity(metadata, asset) {
   return typeof metadata?.dist?.integrity === "string" && metadata.dist.integrity.split(/\s+/).includes(asset.integrity);
 }
+// A successful upload can precede anonymous registry visibility. Only GETs
+// wait here; hash/identity conflicts fail immediately and publish is never retried.
+export async function waitForPublishedArchive({ asset, version, fetchImpl = fetch, timeoutMs = 180_000, pollMs = 5_000, sleep = delay, now = Date.now, log = console.log }) {
+  const deadline = now() + timeoutMs;
+  let announced = false;
+  while (true) {
+    const actual = await registryMetadata(asset.package, version, fetchImpl);
+    if (actual && !matchesIntegrity(actual, asset)) throw new Error(`Published npm integrity conflicts with verified archive: ${asset.package}@${version}; no publish retry`);
+    if (actual) {
+      const metadata = await registryMetadata(asset.package, null, fetchImpl);
+      const latest = metadata?.["dist-tags"]?.latest;
+      if (latest === version) return;
+      if (latest && compareExactStableVersions(latest, version) > 0) throw new Error(`Published npm latest advanced unexpectedly: ${asset.package}@${version}; no automatic tag mutation`);
+    }
+    const remaining = deadline - now();
+    if (remaining <= 0) throw new Error(`Registry visibility wait timed out: ${asset.package}@${version}. Upload may already have succeeded; inspect exact version before recovery, no publish retry`);
+    if (!announced) { log(`Upload returned success; waiting for public registry version/integrity/latest visibility: ${asset.package}@${version} (GET only)`); announced = true; }
+    await sleep(Math.min(pollMs, remaining));
+  }
+}
+
 export function publishArchive(path, spawn = spawnSync) {
   const args = ["publish", path, "--access", "public", "--tag", "latest", "--ignore-scripts", "--fetch-retries=0", "--registry", NPM_REGISTRY];
   const result = spawn("npm", args, { encoding: "utf8", timeout: 5 * 60_000, maxBuffer: 2_000_000,
@@ -103,10 +125,7 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
     if (dryRun) { log(`Would publish verified archive: ${asset.package}@${version}`); continue; }
     try { await publish(asset.path); }
     catch (error) { throw new Error(`${asset.package}@${version}: ${error.message} Previously completed packages: ${completed.join(", ") || "none"}. Never unpublish or overwrite to recover.`); }
-    const actual = await registryMetadata(asset.package, version, fetchImpl);
-    if (!matchesIntegrity(actual, asset)) throw new Error(`Published version needs manual verification: ${asset.package}@${version}; no automatic retry`);
-    const metadata = await registryMetadata(asset.package, null, fetchImpl);
-    if (metadata?.["dist-tags"]?.latest !== version) throw new Error(`Published npm latest tag needs manual verification: ${asset.package}@${version}; no automatic tag mutation`);
+    await waitForPublishedArchive({ asset, version, fetchImpl, log });
     completed.push(asset.package);
     log(`Published and registry integrity verified: ${asset.package}@${version}`);
   }

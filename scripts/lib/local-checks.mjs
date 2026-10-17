@@ -92,12 +92,12 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       writeFileSync(join(repo, "maintenance/tool-contracts.json"), readFileSync(snapshot));
       generated.set("maintenance/tool-contracts.json", readFileSync(snapshot, "utf8"));
       // leanCommit moves only after the exact source comparison has been offered
-      // to the reviewing Pi; the draft still requires human approval.
+      // to the reviewing Pi; merging still requires exact-head three-platform CI.
       for (const lean of plan.leanPlans.filter((item) => item.changed)) manifest.packages.find((entry) => entry.id === lean.id).leanCommit = lean.remoteHead;
       writeFileSync(join(repo, "maintenance/manifest.json"), jsonText(manifest));
       generated.set("maintenance/manifest.json", jsonText(manifest));
       measureDocs(repo, manifest, baseline);
-      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after human merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both high-level audits. Three-platform CI and human review remain required; this report alone is not a cross-platform attestation.\n`;
+      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both high-level audits. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
       validateLocalChanges(repo, manifest, baseline, generated);
       const sha = checkpoint(repo);
@@ -111,7 +111,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       validateLocalChanges(repo, manifest, baseline, generated);
       verifiedSha = sha;
       log(`All local checks passed for ${sha}`);
-      return { ok: true, sha, output: `All local checks passed for ${sha}. Stop editing. Remote three-platform CI and human review are still required.` };
+      return { ok: true, sha, output: `All local checks passed for ${sha}. Stop editing. Remote three-platform CI and fixed-host merge acceptance are still required.` };
     },
   };
 }

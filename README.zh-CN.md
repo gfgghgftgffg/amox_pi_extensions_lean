@@ -58,7 +58,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 ## 自动维护
 
-安装和使用扩展不需要配置 Actions。维护入口在本机：每天 02:23 UTC（北京时间 10:23），systemd 启动一次性 Pi，在临时工作副本内检查上游、适配、实际跑检查，并根据报错修复同一份候选。没有上游更新或已有待审维护 PR 时不调用模型。
+安装和使用扩展不需要配置 Actions。维护入口在本机：每天 02:23 UTC（北京时间 10:23），systemd 启动一次性 Pi，在临时工作副本内检查上游、适配、实际跑检查，并根据报错修复同一份候选。没有上游更新或已有未合并维护 PR 时不调用模型。
 
 日常任务的源码与配置：
 - [维护入口](scripts/local-maintenance.mjs) · [独立 Pi SDK 会话](scripts/lib/local-pi.mjs)
@@ -67,7 +67,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 这是独立 Pi 会话，不是 subagent；维护会话不加载被维护的扩展（它们只在独立检查沙箱加载），也不更新当前个人安装。
 
-本地检查通过后创建草稿 PR，再由普通 CI 在 Linux、macOS、Windows 独立验收；人工审查合并版本升级后才进入 Release。Pi 不直接推 main、不自动合并，发布凭据与执行候选代码的环境隔离。部署和故障处理见[本机每日维护](docs/local-scheduler.md)。
+本地检查通过后，固定主机脚本创建非草稿维护 PR。Linux、macOS、Windows 和 `all-platforms-pass` 对该 PR 精确 head 成功后，主机再次检查 PR 身份、CI 结果及 base/main 未变化，再以 head SHA 为条件单次合并。它不合并其它 PR、不绕过失败检查、不重试结果不明的合并，也不直接推 main。Release 发布前再对合并后的 SHA 独立执行三平台检查。发布凭据仍与候选执行环境隔离。部署和恢复见[本机每日维护](docs/local-scheduler.md)。
 
 GitHub 只保留两个工作流：
 
@@ -80,7 +80,7 @@ CI 和 Release 不调用模型，也没有 GitHub cron。模型配置与 GitHub/
 
 首次或重试发布可手动运行 Release，`tag` 必须与根 package.json、三个包和 manifest 的版本一致。发布使用 `release` environment，可限制到 `main` 并配置审批。独立的 npm job 只有 OIDC 权限，没有 GitHub 写权限，不安装或执行扩展依赖。首次发布和 trusted publisher 需要维护者[一次性配置](docs/npm-publishing.zh-CN.md)，VPS 不保存 npm token。
 
-开发 SDK 和 Action SHA 由维护者单独更新；安全审计保留。开发命令与人工审查要求见[维护者文档](docs/maintenance.md)。
+开发 SDK 和 Action SHA 由维护者单独更新；安全审计保留。开发命令与自动合并策略见[维护者文档](docs/maintenance.md)。
 
 ## 来源
 

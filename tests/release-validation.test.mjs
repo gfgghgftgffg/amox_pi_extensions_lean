@@ -105,6 +105,7 @@ test("release summaries are substantive and bound to exactly one version", () =>
   const summary = "- 后台通知使用 steer，保留 deferred 工具作用域，补充隔离回归测试。";
   const report = `Release after human merge: ${tag}\n\n${releaseSummaryBlock({ version: rootVersion, summary })}`;
   assert.equal(extractReleaseSummary({ report, tag }), summary);
+  assert.equal(extractReleaseSummary({ report: report.replace("Release after human merge:", "Release after verified merge:"), tag }), summary);
   assert.equal(extractReleaseSummary({ report: report.replaceAll("\n", "\r\n"), tag }), summary);
   for (const invalid of ["", report.replace(tag, "v99.0.0"), report + "\n" + releaseSummaryBlock({ version: rootVersion, summary }), report.replace(":end -->", ":start -->")]) {
     assert.throws(() => extractReleaseSummary({ report: invalid, tag }), /Missing or stale/);

@@ -72,7 +72,7 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
     const api = localOnly ? undefined : githubClient(repository, loadPublishToken(publishEnv));
     const pending = await api?.pending();
     if (pending) {
-      status({ status: "pending-human-review", pr: pending.html_url, baseCommit }); keep = false;
+      status({ status: "pending-maintenance-pr", pr: pending.html_url, baseCommit }); keep = false;
       log(`Existing maintenance PR; no new model run: ${pending.html_url}`); return;
     }
     status({ status: "collecting-source", baseCommit });
@@ -94,16 +94,19 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
     if (localOnly) { status({ status: "local-verified-only", baseCommit, branch, sha, version }); log("Local-only validation passed; no push, PR, CI or release performed."); return; }
     let pull;
     // One bounded, targeted CI feedback round in the SAME Pi session/branch.
-    // No fresh candidate generation, workflow dispatch, model retry or merge.
+    // No fresh candidate generation, workflow dispatch or model retry. Only
+    // the fixed host may merge this exact candidate after remote acceptance.
     for (let round = 0; round < 2; round++) {
       sha = gate.verified();
       pull = await api.publish({ work, baseCommit, branch, pull });
       status({ status: "ci-pending", baseCommit, branch, sha, pr: pull.html_url, version });
-      log(`Draft PR: ${pull.html_url}`);
-      const ci = await api.waitForCI(sha, { log });
+      log(`Maintenance PR: ${pull.html_url}`);
+      const ci = await api.waitForCI(sha, { log, pullNumber: pull.number, branch });
       if (ci.ok) {
-        status({ status: "verified-awaiting-human-review", baseCommit, branch, sha, pr: pull.html_url, ci: ci.url, version });
-        log(`Three-platform CI passed: ${ci.url}. Human review/merge required; no automatic release from this process.`);
+        if (gate.verified() !== sha) throw new Error("Candidate changed after CI; no automatic merge");
+        const merged = await api.mergeVerified({ pull, sha, baseCommit, branch, ci, log });
+        status({ status: "merged-after-ci", baseCommit, branch, sha, mergeSha: merged.sha, pr: pull.html_url, ci: ci.url, version });
+        log(`Exact-candidate three-platform CI passed and PR merged: ${pull.html_url}. GitHub Release independently verifies the merged SHA before publication.`);
         return;
       }
       status({ status: "ci-failed", baseCommit, branch, sha, pr: pull.html_url, ci: ci.url, version });

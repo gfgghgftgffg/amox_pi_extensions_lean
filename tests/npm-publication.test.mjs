@@ -25,7 +25,7 @@ test("npm publication validates actual packs, preflights all identities and reco
     });
     writeFileSync(join(dir, "assets.json"), JSON.stringify({ version, files }));
     const states = new Map(), calls = [], publishes = [];
-    let mode = "normal", failAt = null;
+    let mode = "normal", failAt = null, delayVisibility = false;
     const fetchImpl = async (url, options) => {
       assert.equal(options.redirect, "error"); assert.ok(options.signal); assert.equal(options.headers["cache-control"], "no-cache");
       assert.ok(url.startsWith(`${NPM_REGISTRY}/`)); calls.push(url);
@@ -34,7 +34,8 @@ test("npm publication validates actual packs, preflights all identities and reco
       if (mode === "http-error") return new Response("no credentials or bodies should appear", { status: 503 });
       if (mode === "network-error") throw new Error("private response text must not appear");
       if (mode === "initial") return new Response(null, { status: 404 });
-      const data = requested ? states.get(name) : { name, "dist-tags": { latest: mode === "downgrade" ? "99.0.0" : mode === "stale-tag" ? "0.0.1" : version } };
+      const visible = !delayVisibility || publishes.length === files.length;
+      const data = requested ? (visible ? states.get(name) : undefined) : { name, "dist-tags": { latest: mode === "downgrade" ? "99.0.0" : mode === "stale-tag" ? "0.0.1" : version } };
       return data ? Response.json(data) : new Response(null, { status: 404 });
     };
     const metadata = (file) => ({ name: file.package, version, dist: { integrity: file.integrity } });
@@ -45,7 +46,7 @@ test("npm publication validates actual packs, preflights all identities and reco
       states.set(file.package, metadata(file));
     };
     const run = (dryRun = false) => publishNpmArchives({ repoRoot: root, dir, repository, dryRun, fetchImpl, publish, log: () => {} });
-    const reset = () => { mode = "normal"; failAt = null; states.clear(); calls.length = 0; publishes.length = 0; };
+    const reset = () => { mode = "normal"; failAt = null; delayVisibility = false; states.clear(); calls.length = 0; publishes.length = 0; };
     await t.test("all three real archives match six source files and package identities", () => {
       files.forEach((file, i) => assert.equal(validateNpmArchive({ repoRoot: root, entry: entries[i], asset: { ...file, path: join(dir, file.filename) }, version, repository }).name, entries[i].packageName));
       assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path: join(dir, files[0].filename) }, version, repository: "another/repo" }), /identity/);
@@ -57,6 +58,11 @@ test("npm publication validates actual packs, preflights all identities and reco
       reset(); states.set(files[0].package, metadata(files[0])); await run();
       assert.deepEqual(publishes, files.slice(1).map((file) => file.package));
       publishes.length = 0; await run(); assert.deepEqual(publishes, []);
+    });
+    await t.test("delayed visibility of an early upload does not block the remaining uploads", async () => {
+      reset(); delayVisibility = true; await run();
+      assert.deepEqual(publishes, files.map((file) => file.package));
+      assert.equal(states.size, 3);
     });
     await t.test("existing verified bytes do not conceal a stale latest tag or downgrade a newer one", async () => {
       reset(); for (const file of files) states.set(file.package, metadata(file));
@@ -74,7 +80,7 @@ test("npm publication validates actual packs, preflights all identities and reco
     });
     await t.test("ambiguous second write is not retried; explicit recovery skips the first", async () => {
       reset(); failAt = files[1].package;
-      await assert.rejects(run(), /ambiguous write outcome.*Previously completed packages/);
+      await assert.rejects(run(), /ambiguous write outcome.*Previously submitted or confirmed packages/);
       assert.deepEqual(publishes, files.slice(0, 2).map((file) => file.package));
       failAt = null; publishes.length = 0; await run(); assert.deepEqual(publishes, files.slice(1).map((file) => file.package));
     });

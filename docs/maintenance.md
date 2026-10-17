@@ -33,10 +33,10 @@ Pi 的文件权限限制不是操作系统级沙箱。新流程另外把真正�
 
 普通 CI 在 PR 和 main 更新后，独立运行 Linux、macOS、Windows 检查；`all-platforms-pass` 必须成功。PR checkout 固定候选 head SHA，不用可能变化的合并树。Fork PR 可能需要维护者 Approve workflows to run。
 
-维护脚本创建 draft PR，三平台通过后仍等待人工审查合并。没有自动合并。发布模型摘要由固定脚本写入版本绑定的 `maintenance/update-report.md`；Release 不再调用模型。
+维护脚本创建非草稿维护 PR。按仓库所有者授权，固定主机在该 PR 精确 head 的三平台和 `all-platforms-pass` 成功后，重新检查 PR/head/base/main 与最新 CI，再按 head SHA 单次自动 merge。只处理当前维护会话创建的 PR，不扫其它 PR 自动合并；失败、主干前进或结果不明时保留 PR 并停止，不强推或重试 merge。合并所需 PAT 仅在固定主机，需该仓库的 Contents read/write、Pull requests write、Actions read。发布摘要仍由固定脚本写入版本绑定的 `maintenance/update-report.md`，Release 不调用模型。
 
 Release 仅接受 main 上的统一包装版本增加，或手动输入与根 package.json、三个包和 manifest 一致的 `vX.Y.Z`。三个系统重新验证不可变提交；GitHub 写权限 job 只校验附件并创建 tag/Release，不执行 npm 或候选依赖。随后独立 npm job 使用 GitHub-hosted OIDC 发布同一批已验证 `.tgz`，只有仓库只读和 `id-token: write`，不安装扩展依赖，禁用生命周期脚本与 HTTP 重试。首次 npm 发布、三个 trusted publisher、部分成功恢复及 VPS 迁移见 [npm 发布说明](npm-publishing.zh-CN.md)。
 
-建议在仓库规则中要求 `all-platforms-pass`、禁止直接写 main，并配置 `release` environment 的 main 限制与必要审批。修改规则是账号管理操作，不由维护 Agent 自动完成。
+建议在仓库规则中要求 `all-platforms-pass`、禁止直接写 main，并要求分支保持最新；`release` environment 限制 main，不设置日常人工审批才可无人值守发布。修改规则是账号管理操作，不由维护 Agent 自动完成。
 
 所有 Actions 使用完整 SHA；CI 只读、不注入 Secrets，checkout 不保留凭据。仓库不再有维护 workflow、原生 cron、模型探针或 Dependabot 配置。npm 发布在现有 Release 内，不新增维护 workflow；VPS 不保存 npm token。

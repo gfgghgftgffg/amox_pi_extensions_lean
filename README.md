@@ -58,7 +58,7 @@ Keep only one installation source for each extension to avoid duplicate registra
 
 ## Automated maintenance
 
-You do not need to configure Actions to install or use these extensions. Maintenance runs locally: every day at 02:23 UTC (10:23 Beijing time), systemd starts a one-shot Pi process. In a temporary working copy, Pi checks upstream updates, adapts the wrappers, runs actual checks, and fixes the same candidate using failure output. It makes no model calls when there are no upstream updates or a maintenance PR is already awaiting review.
+You do not need to configure Actions to install or use these extensions. Maintenance runs locally: every day at 02:23 UTC (10:23 Beijing time), systemd starts a one-shot Pi process. In a temporary working copy, Pi checks upstream updates, adapts the wrappers, runs actual checks, and fixes the same candidate using failure output. It makes no model calls when there are no upstream updates or a maintenance PR is already open.
 
 Source code and configuration for the daily task:
 - [Maintenance entry point](scripts/local-maintenance.mjs) · [Independent Pi SDK session](scripts/lib/local-pi.mjs)
@@ -67,7 +67,7 @@ Source code and configuration for the daily task:
 
 The task uses an independent Pi session, not a subagent. That session does not load the extensions it maintains; only the separate check sandbox loads them. It does not update your current personal installation.
 
-Once local checks pass, the script creates a draft PR. Ordinary CI then checks it independently on Linux, macOS, and Windows. Release runs only after a maintainer reviews and merges the version bump. Pi does not push directly to main or merge PRs automatically. Publication credentials are isolated from the environment that executes candidate code. See [local daily maintenance](docs/local-scheduler.md) for deployment and troubleshooting.
+Once local checks pass, the fixed host script creates a non-draft maintenance PR. After Linux, macOS, Windows and `all-platforms-pass` succeed for that exact PR head, the host rechecks the PR identity, CI result and unchanged base/main, then merges it once using a head-SHA condition. It does not merge unrelated PRs, bypass failed checks, retry an uncertain merge, or push directly to main. Release independently checks the merged SHA on all three platforms before publication. Publication credentials remain isolated from candidate execution. See [local daily maintenance](docs/local-scheduler.md) for setup and recovery.
 
 The repository keeps two GitHub workflows:
 
@@ -80,7 +80,7 @@ CI and Release do not call a model, and there is no GitHub cron. Model configura
 
 For an initial release or a retry, you can run Release manually. The `tag` must match the versions in the root package.json, all three packages, and the manifest. Publishing uses the `release` environment, which can be restricted to `main` and configured to require approval. The separate npm job has OIDC permission, not GitHub write permission; it does not install or execute extension dependencies. First publication and trusted-publisher configuration require the maintainer's [one-time setup](docs/npm-publishing.md). No npm token is stored on the VPS.
 
-Maintainers update the development SDK and Action SHAs separately; security audits remain enabled. See the [maintainer documentation](docs/maintenance.md) for development commands and human review requirements.
+Maintainers update the development SDK and Action SHAs separately; security audits remain enabled. See the [maintainer documentation](docs/maintenance.md) for development commands and the automatic-merge policy.
 
 ## Sources
 

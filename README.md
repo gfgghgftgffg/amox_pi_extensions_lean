@@ -10,9 +10,9 @@ Based on character counts in the current [tool snapshot](maintenance/tool-contra
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |
-| [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | Web search, claim verification, web page and PDF fetching, result pagination |
-| [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | Tasks, dependencies, and progress tracking |
-| [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | Launch subagents, retrieve results, steer tasks, and run workflows |
+| [pi-web-access-lean](packages/pi-web-access-lean/README.md) | `web_access` | Web search, claim verification, web page and PDF fetching, result pagination |
+| [rpiv-todo-lean](packages/rpiv-todo-lean/README.md) | `todo` | Tasks, dependencies, and progress tracking |
+| [pi-subagents-lean](packages/pi-subagents-lean/README.md) | `subagent` | Launch subagents, retrieve results, steer tasks, and run workflows |
 
 Each extension installs independently. Upstream service credentials, external dependencies, and usage limits still apply; see each extension's README for details.
 
@@ -22,7 +22,7 @@ Supports macOS, Windows, and Linux. Requires Pi `>=1.1.0`, Node `>=22.19.0`, and
 
 ### npm installation and updates
 
-After the maintainer completes the [one-time npm setup](docs/npm-publishing.md), install only the extensions you want, without version pins:
+All three npm packages are public; installation does not require an npm login. Install only the extensions you want, without version pins:
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean
@@ -31,7 +31,7 @@ pi install npm:@gfgghgftgffg/pi-subagents-lean
 pi update --extensions
 ```
 
-If a package is not yet published (npm returns 404), use the Git fallback below. Authentication or network failures are not evidence that a package is missing. `pi update --extensions` updates unpinned npm sources, not local directory contents. For an existing local installation, back up settings, use `pi list`, remove only the exact old source with `pi remove <old-source>`, then install its npm source. Restart Pi and confirm each tool loads once. Do not register both sources.
+`pi update --extensions` updates unpinned npm sources, not local directory contents. For an existing local installation, back up settings, use `pi list`, remove only the exact old source with `pi remove <old-source>`, then install its npm source. Restart Pi and confirm each tool loads once. Do not register both sources.
 
 For a new VPS, follow [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md). The [deployment checklist](docs/npm-publishing.md#new-vps-checklist) separates extension installation from optional maintenance-host deployment.
 
@@ -52,7 +52,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 You do not need to run `npm ci` at the repository root. To update, run `git pull --ff-only`, then rerun the relevant install command. For a fixed version, check out a published tag.
 
-The Git installer remains available before npm setup is complete and for fixed-tag installations.
+The Git installer remains available for source-checkout and fixed-tag installations.
 
 Keep only one installation source for each extension to avoid duplicate registration with upstream packages or older `@ssk_dev/*-lean` installations. Find old sources with `pi list` and remove them with `pi remove <旧来源>`.
 
@@ -78,7 +78,7 @@ The repository keeps two GitHub workflows:
 
 CI and Release do not call a model, and there is no GitHub cron. Model configuration and GitHub/SSH credentials stay on the maintenance host; maintenance-model Actions Secrets/Variables are not required. Release notes reuse the local Pi session's specific change summary, with no further model call during publication.
 
-For an initial release or a retry, you can run Release manually. The `tag` must match the versions in the root package.json, all three packages, and the manifest. Publishing uses the `release` environment, which can be restricted to `main` and configured to require approval. The separate npm job has OIDC permission, not GitHub write permission; it does not install or execute extension dependencies. First publication and trusted-publisher configuration require the maintainer's [one-time setup](docs/npm-publishing.md). No npm token is stored on the VPS.
+For an initial release or a retry, you can run Release manually. The `tag` must match the versions in the root package.json, all three packages, and the manifest. Publishing uses the `release` environment, which can be restricted to `main` and configured to require approval. The separate npm job has OIDC permission, not GitHub write permission; it does not install or execute extension dependencies. First publication and trusted-publisher configuration require the maintainer's [one-time npm setup](docs/npm-publishing.md). No npm token is stored on the VPS.
 
 Maintainers update the development SDK and Action SHAs separately; security audits remain enabled. See the [maintainer documentation](docs/maintenance.md) for development commands and the automatic-merge policy.
 

@@ -1,6 +1,6 @@
 # @gfgghgftgffg/pi-web-access-lean
 
-Part of the [`amox-pi-extensions-lean`](../../README.md) monorepo. A lightweight Pi facade for
+Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`pi-web-access`](https://github.com/nicobailon/pi-web-access) that keeps the full upstream
 search/fetch engine and compresses four provider tools into one `web_access` tool.
 
@@ -22,13 +22,20 @@ by [Nico Bailon](https://github.com/nicobailon/pi-web-access). Both are MIT-lice
 
 ## Installation
 
-Install only this extension from the repository root (clone as shown in the root README):
+This is a public npm package. Install without a version pin:
+
+```bash
+pi install npm:@gfgghgftgffg/pi-web-access-lean
+pi update --extensions
+```
+
+For a Git fallback, run from the repository checkout:
 
 ```bash
 node scripts/install-extension.mjs pi-web-access-lean
 ```
 
-Once published to npm, install with `pi install npm:@gfgghgftgffg/pi-web-access-lean` (no version pin), then update with `pi update --extensions`. Before first publication (npm 404), use the Git installer above. Local installs are updated by pulling the checkout and rerunning that installer, not by `pi update`. To migrate, back up settings and remove only the exact old source shown by `pi list` before installing the npm source. Choose one installation method.
+Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source.
 
 Do not load this package alongside another `pi-web-access` wrapper, to avoid duplicate tool
 registrations.
@@ -85,7 +92,7 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.4 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.5 | 149 |
 | pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -93,7 +100,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.4`
+* Wrapper: `0.1.5`
 * Upstream runtime: pinned to `pi-web-access@0.41.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

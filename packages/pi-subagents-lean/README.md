@@ -1,6 +1,6 @@
 # @gfgghgftgffg/pi-subagents-lean
 
-Part of the [`amox-pi-extensions-lean`](../../README.md) monorepo. A lightweight Pi facade for
+Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents): the full subagent/workflow
 runtime behind one `subagent` tool.
 
@@ -23,13 +23,20 @@ original `LICENSE` is preserved in this package.
 
 ## Installation
 
-Install only this extension from the repository root (clone as shown in the root README):
+This is a public npm package. Install without a version pin:
+
+```bash
+pi install npm:@gfgghgftgffg/pi-subagents-lean
+pi update --extensions
+```
+
+For a Git fallback, run from the repository checkout:
 
 ```bash
 node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-Once published to npm, install with `pi install npm:@gfgghgftgffg/pi-subagents-lean` (no version pin), then update with `pi update --extensions`. Before first publication (npm 404), use the Git installer above. Local installs are updated by pulling the checkout and rerunning that installer, not by `pi update`. To migrate, back up settings and remove only the exact old source shown by `pi list` before installing the npm source. Choose one installation method; do not load another `pi-subagents` wrapper alongside it.
+Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `pi-subagents` wrapper alongside it.
 
 ## Usage
 
@@ -89,7 +96,7 @@ Child tool scope respects exposure/defaultActive and also checks nested `ctx.exe
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.4 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.5 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -97,7 +104,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.4`
+* Wrapper: `0.1.5`
 * Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
 * Requires Pi `>=1.1.0`. Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 

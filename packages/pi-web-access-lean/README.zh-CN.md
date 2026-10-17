@@ -1,6 +1,6 @@
 # @gfgghgftgffg/pi-web-access-lean
 
-隶属于 [`amox-pi-extensions-lean`](../../README.md) 单仓。基于
+隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
 [`pi-web-access`](https://github.com/nicobailon/pi-web-access) 的精简封装：完整保留上游检索与抓取引擎，
 将四个对模型可见的工具合并为一个 `web_access` 工具。
 
@@ -19,13 +19,20 @@
 
 ## 安装
 
-从仓库根目录只安装本扩展（先按根 README 克隆仓库）：
+这是公开的 npm 包，安装时不固定版本：
+
+```bash
+pi install npm:@gfgghgftgffg/pi-web-access-lean
+pi update --extensions
+```
+
+需要 Git 回退安装时，在仓库 checkout 根目录执行：
 
 ```bash
 node scripts/install-extension.mjs pi-web-access-lean
 ```
 
-发布到 npm 后，用 `pi install npm:@gfgghgftgffg/pi-web-access-lean` 安装，不固定版本，再用 `pi update --extensions` 更新。首次发布前（npm 404）使用上述 Git 安装脚本。本地安装需拉取 checkout 并重跑脚本，不由 `pi update` 更新。迁移时先备份 settings，通过 `pi list` 找到并仅移除精确的旧来源，再安装 npm 来源。两种方式只选一种。
+本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。
 
 请勿与其它 `pi-web-access` 包装扩展同时加载，以防重复注册工具。
 
@@ -77,7 +84,7 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.4 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.5 | 149 |
 | pi-web-access | 0.41.0 | 2739 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -85,7 +92,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.4`
+* 包装层：`0.1.5`
 * 上游运行时：锁定 `pi-web-access@0.41.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

@@ -1,6 +1,6 @@
 # @gfgghgftgffg/pi-subagents-lean
 
-隶属于 [`amox-pi-extensions-lean`](../../README.md) 单仓。基于
+隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) 的精简封装：完整 Subagent/Workflow
 运行时收束为一个 `subagent` 工具。
 
@@ -19,13 +19,20 @@
 
 ## 安装
 
-从仓库根目录只安装本扩展（先按根 README 克隆仓库）：
+这是公开的 npm 包，安装时不固定版本：
+
+```bash
+pi install npm:@gfgghgftgffg/pi-subagents-lean
+pi update --extensions
+```
+
+需要 Git 回退安装时，在仓库 checkout 根目录执行：
 
 ```bash
 node scripts/install-extension.mjs pi-subagents-lean
 ```
 
-发布到 npm 后，用 `pi install npm:@gfgghgftgffg/pi-subagents-lean` 安装，不固定版本，再用 `pi update --extensions` 更新。首次发布前（npm 404）使用上述 Git 安装脚本。本地安装需拉取 checkout 并重跑脚本，不由 `pi update` 更新。迁移时先备份 settings，通过 `pi list` 找到并仅移除精确的旧来源，再安装 npm 来源。两种方式只选一种，请勿与其它 `pi-subagents` 包装扩展同时加载。
+本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。请勿同时加载其它 `pi-subagents` 包装扩展。
 
 ## 使用方法
 
@@ -78,7 +85,7 @@ Agent 文件的 `isolated` 对 Workflow 子任务、mention 和 RPC 生效，优
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.4 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.5 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -86,7 +93,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.4`
+* 包装层：`0.1.5`
 * 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
 * 要求 Pi `>=1.1.0`。开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 

@@ -1,6 +1,6 @@
 # @gfgghgftgffg/rpiv-todo-lean
 
-Part of the [`amox-pi-extensions-lean`](../../README.md) monorepo. A lightweight Pi facade for
+Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo): the
 complete task-management engine with a compact flat schema, preserved RPC/session/overlay behavior,
 and per-session isolated overlays.
@@ -22,13 +22,20 @@ is preserved in this package.
 
 ## Installation
 
-Install only this extension from the repository root (clone as shown in the root README):
+This is a public npm package. Install without a version pin:
+
+```bash
+pi install npm:@gfgghgftgffg/rpiv-todo-lean
+pi update --extensions
+```
+
+For a Git fallback, run from the repository checkout:
 
 ```bash
 node scripts/install-extension.mjs rpiv-todo-lean
 ```
 
-Once published to npm, install with `pi install npm:@gfgghgftgffg/rpiv-todo-lean` (no version pin), then update with `pi update --extensions`. Before first publication (npm 404), use the Git installer above. Local installs are updated by pulling the checkout and rerunning that installer, not by `pi update`. To migrate, back up settings and remove only the exact old source shown by `pi list` before installing the npm source. Choose one installation method; do not load another `rpiv-todo` wrapper alongside it.
+Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `rpiv-todo` wrapper alongside it.
 
 ## Usage
 
@@ -45,7 +52,7 @@ replay retained. RPC responses are not expanded with an additional full-plan sna
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.4 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.5 | 247 |
 | @juicesharp/rpiv-todo | 2.13.8 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -53,7 +60,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.4`
+* Wrapper: `0.1.5`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
 * Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 

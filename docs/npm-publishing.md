@@ -2,48 +2,31 @@
 
 [简体中文](npm-publishing.zh-CN.md)
 
-The existing [Release workflow](../.github/workflows/release.yml) now has an npm job. This does not publish the first packages, log in to npm, or migrate existing Pi installations. Until the one-time account setup below is complete, use the Git installer. Do not merge the next release bump expecting npm delivery before setup is ready: GitHub Release can succeed while npm publication fails.
+The [Release workflow](../.github/workflows/release.yml) publishes verified archives to npm after a reviewed release. Maintainers must initialize publication before npm delivery is available; until then, extension users can use the Git installer. A successful GitHub Release does not by itself prove npm publication succeeded.
 
 ## Release boundary
 
 A maintainer reviews and merges a version bump. Release checks the same immutable SHA on Linux, macOS and Windows, creates the GitHub Release, then sends its three verified archives to npm. No-update maintenance runs do not publish. Root `package.json` remains private.
 
-Only the npm job has `id-token: write`. It runs on GitHub-hosted Ubuntu under environment `release`, with read-only repository access, Node 22.22.1 and npm 11.15.0. It installs the fixed npm CLI, not extension dependencies. [The publisher](../scripts/publish-npm.mjs) checks SHA/tag, archive hashes, package identity, repository and all six packaged files, then preflights all three public registry versions. It publishes the `.tgz` files with lifecycle scripts and npm HTTP retries disabled. It checks registry integrity and the resulting `latest` tag after each new publish. GitHub trusted publishing generates provenance automatically. No npm token belongs in Pi, systemd, this repository or Actions Secrets.
+Only the npm job has `id-token: write`. It runs on GitHub-hosted Ubuntu under environment `release`, with read-only repository access, Node 22.22.1 and npm 11.15.0. It installs the fixed npm CLI, not extension dependencies. [The publisher](../scripts/publish-npm.mjs) checks SHA/tag, archive hashes, package identity, repository and all six packaged files, then preflights all three public registry versions. It publishes the `.tgz` files with `--ignore-scripts` and `--fetch-retries=0`, disabling lifecycle scripts and npm HTTP retries. It checks registry integrity and the resulting `latest` tag after each new publish. GitHub trusted publishing generates provenance automatically. No npm token belongs in Pi, systemd, this repository or Actions Secrets.
 
-## One-time npm account setup
+## Maintainer publishing setup
 
-Use npm account `gfgghgftgffg`, with verified email and 2FA. Complete login/2FA yourself on a trusted computer. Do not send passwords, OTPs or tokens to an agent or put them in commands.
+This section is for package maintainers. Extension users only need the installation commands in the README; they do not need npm publishing credentials or trusted-publisher configuration.
 
-First publish these packages using the **existing verified GitHub Release archives**, not a newly packed working tree:
+The first publication requires package publishing rights and must use the **existing verified GitHub Release archives**, not a newly packed working tree:
 
 - `@gfgghgftgffg/pi-web-access-lean`
 - `@gfgghgftgffg/rpiv-todo-lean`
 - `@gfgghgftgffg/pi-subagents-lean`
 
-Example for a trusted Bash terminal. Choose an existing release and a new, empty working directory; `v0.1.4` is an example, not an installation pin. GitHub CLI authentication is separate from npm authentication.
+Validate all three archives against the matching release tag and `assets.json` before publication. After each publish, compare its exact version's public registry `dist.integrity` with the manifest and check `dist-tags.latest`. npm versions cannot be overwritten. If a write fails ambiguously, inspect the registry before any explicit retry. Do not publish the private workspace root.
 
-```bash
-set -e
-TAG=v0.1.4
-git clone --branch "$TAG" https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git amox-npm-bootstrap
-cd amox-npm-bootstrap
-gh release download "$TAG" --repo gfgghgftgffg/amox_pi_extensions_lean --pattern '*.tgz' --pattern assets.json --dir .release-assets
-node --input-type=module -e 'import { validateReleaseAssets } from "./scripts/release-assets.mjs"; console.log(validateReleaseAssets({repoRoot:process.cwd(),dir:".release-assets"}).map(x=>x.package));'
-npm login --registry=https://registry.npmjs.org/
-npm whoami --registry=https://registry.npmjs.org/
-# Confirm the account is gfgghgftgffg before these public, irreversible writes:
-npm publish ".release-assets/gfgghgftgffg-pi-web-access-lean-${TAG#v}.tgz" --access public --ignore-scripts --fetch-retries=0 --registry=https://registry.npmjs.org/
-npm publish ".release-assets/gfgghgftgffg-rpiv-todo-lean-${TAG#v}.tgz" --access public --ignore-scripts --fetch-retries=0 --registry=https://registry.npmjs.org/
-npm publish ".release-assets/gfgghgftgffg-pi-subagents-lean-${TAG#v}.tgz" --access public --ignore-scripts --fetch-retries=0 --registry=https://registry.npmjs.org/
-```
-
-After each publish, inspect its exact version's `dist.integrity` and `dist-tags.latest` on the public registry, comparing integrity with `assets.json`. npm versions cannot be overwritten. If a command fails ambiguously, inspect the registry before any explicit retry; never blindly rerun the block. Do not publish the private workspace root. Log out of npm on temporary computers when finished.
-
-For **each of the three packages**, open npmjs.com → package → Settings → Trusted Publisher → GitHub Actions:
+Once the packages exist, configure **each of the three packages** under npmjs.com → package → Settings → Trusted Publisher → GitHub Actions. Trusted-publisher configuration requires maintainer access and account-level 2FA:
 
 | Field | Value |
 | --- | --- |
-| Organization or user | `gfgghgftgffg` |
+| Organization or user (GitHub owner) | `gfgghgftgffg` |
 | Repository | `amox_pi_extensions_lean` |
 | Workflow filename | `release.yml` (not its full path) |
 | Environment name | `release` |
@@ -51,7 +34,7 @@ For **each of the three packages**, open npmjs.com → package → Settings → 
 
 Configure GitHub's `release` environment to allow only `main`, adding human approval if desired. Approvals may be requested for both publication jobs. After OIDC works, choose npm's “Require two-factor authentication and disallow tokens” and revoke unused publishing tokens. Forks or repository/workflow/environment renames need corresponding package metadata and new trust configurations; cloning a VPS does not grant npm publishing authority.
 
-Official [trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) requires a new trust configuration to complete its **first successful publish within 2 days**. Configure it close to the next reviewed version release; an already-published-version skip, dry run or `npm whoami` does not validate OIDC. If it expires, delete and recreate the trust configuration before that release. Do not reuse the initial version or bump versions solely to disguise missing setup. The first actual OIDC release remains unverified until it succeeds on GitHub.
+Official [trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) requires a new trust configuration to complete its **first successful publish within 2 days**. Configure it close to the next reviewed version release; an already-published-version skip, dry run or login-state check does not validate OIDC. If it expires, delete and recreate the trust configuration before that release. Do not reuse the initial version or bump versions solely to disguise missing setup. The first actual OIDC release remains unverified until it succeeds on GitHub.
 
 ## Partial publication and recovery
 

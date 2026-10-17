@@ -85,6 +85,7 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   for (const file of ["docs/npm-publishing.md", "docs/npm-publishing.zh-CN.md"]) {
     const guide = read(file); assert.match(guide, /release\.yml/); assert.match(guide, /Re-run failed jobs/);
     assert.match(guide, /--fetch-retries=0/); assert.match(guide, /npm publish/); assert.match(guide, /2 (days|天)/);
+    assert.doesNotMatch(guide, /npm login|npm whoami|Use npm account|使用 npm 账号|Confirm the account/);
   }
   for (const doc of [readme, english]) assert.doesNotMatch(doc, /sub2api\.amox\.cc|gpt-6\.1-sol|MAINTENANCE_API_KEY|dispatch-workflows/);
   assert.match(maintenance, /最小改动/); assert.match(maintenance, /Approve workflows to run/);

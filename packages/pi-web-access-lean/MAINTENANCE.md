@@ -2,6 +2,8 @@
 
 本文件记录本包与原 lean 基线的差异、锁定的上游版本、依赖的上游内部细节、升级步骤与已知限制。
 
+历史审查中的“未运行”“待 CI”或人工审批要求只记录当时阶段，不代表当前 CI/发布结果或现行审批要求。当前自动合并与 OIDC 发布规则见[维护者文档](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)。
+
 ## 来源与基线
 
 - 上游引擎：`pi-web-access`（npm），作者 Nico Bailon，仓库
@@ -15,7 +17,7 @@
 - `pi-web-access@0.41.0`（精确固定；`dependencies`；此前为 0.40.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
-- 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2（当前暂存候选）。
+- 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
 
 ## 相对基线的精确改动（最小适配）
 
@@ -113,7 +115,7 @@
 
 ## 升级步骤
 
-1. `npm view pi-web-access version` 确认新版本，阅读 0.35.0→目标版本的 `CHANGELOG.md`。
+1. `npm view pi-web-access version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。
 2. 更新根 `package.json` 与 `packages/pi-web-access-lean/package.json` 中的精确依赖，执行
    `npm install --ignore-scripts` 刷新根 lockfile。
 3. 若上游改了工具名、执行签名、`pdf-extract.ts` 导出或 `prepareArguments` 行为，按上表同步最小适配；

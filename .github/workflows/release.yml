@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Initial/retry manual release tag vX.Y.Z (matches root and all package versions)"
+        description: "Unreleased tag vX.Y.Z matching all package versions; existing releases: re-run failed jobs on their original run"
         required: true
         type: string
 

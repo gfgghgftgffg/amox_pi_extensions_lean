@@ -107,6 +107,27 @@ test("public docs describe local Pi, reviewed npm publication and independent in
     }
   }
 });
+test("publication docs reflect completed bootstrap without changing recovery or installation boundaries", () => {
+  const english = read("README.md"), chinese = read("README.zh-CN.md");
+  const npmEnglish = read("docs/npm-publishing.md"), npmChinese = read("docs/npm-publishing.zh-CN.md");
+  assert.match(npmEnglish, /All three extension packages are public on npm/);
+  assert.match(npmChinese, /三个扩展包已在 npm 公开发布/);
+  for (const doc of [english, chinese, npmEnglish, npmChinese]) {
+    assert.match(doc, /OIDC/);
+    assert.doesNotMatch(doc, /before npm delivery is available|sources once available|npm 才可用于安装|三个包可用后|initial release or a retry|首次或重试发布/);
+  }
+  assert.match(english, /publication does not schedule updates on your computer/);
+  assert.match(chinese, /仓库发布不会在你的电脑上安排自动更新/);
+  for (const doc of [npmEnglish, npmChinese]) assert.match(doc, /Re-run failed jobs/);
+  assert.match(workflow("release.yml"), /Unreleased tag vX\.Y\.Z/);
+  assert.doesNotMatch(workflow("release.yml"), /Initial\/retry manual release/);
+  for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
+    const doc = read(`${entry.path}/MAINTENANCE.md`);
+    assert.match(doc, /不代表当前 CI\/发布结果或现行审批要求/);
+    assert.match(doc, /对比 manifest 中当前固定版本\/revision 与目标源码/);
+    assert.doesNotMatch(doc, /当前候选开发\/测试依赖|当前暂存候选/);
+  }
+});
 test("README and maintainer docs keep local links and anchors valid", () => {
   const documents = ["README.md", "README.zh-CN.md", ...readdirSync(join(repoRoot, "docs")).filter((file) => file.endsWith(".md")).map((file) => `docs/${file}`)];
   for (const file of documents) for (const [, href] of read(file).matchAll(/\]\(([^)]+)\)/g)) {

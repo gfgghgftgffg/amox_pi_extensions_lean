@@ -1,18 +1,8 @@
 # 维护者文档
 
-本项目的 runtime 仍是三个独立 lean 门面。维护流程采用本地一次性 Pi，GitHub 只做普通 CI 和 Release，不再拆分检测、模型、候选 artifact、独立 verify 和 PR-writing jobs。
+## 开发检查
 
-## 原则
-
-- 阅读精确前后版本的源码和 CHANGELOG，按最小改动适配；不要复制上游运行时代码。
-- 原 lean 作者的新 revision 只是待逐项审查的数据，不直接覆盖本项目。
-- 保留现有断言；只补本次变化相关的门面回归。新增测试需要依据真实响应结构，不把展示文本当原始数据。
-- 实际执行检查，失败后修复同一份候选。主干 CI 成功不能证明新增候选成功，Linux 本地成功不能冒充三平台成功。
-- 依赖固定稳定版本；上游元数据失败、预发布和降级都明确报错。Pi 开发 SDK 与 Action SHA 仍由维护者单独更新，不跟随扩展上游自动升级。
-- README 只描述当前安装、用法、配置、限制、版本与字符统计，中英文同步更新现有段落，不追加逐版本升级或作者审查流水账。详细审查与适配历史放在各包 MAINTENANCE.md 和 maintenance/agent-review.md，发布摘要进入 Release notes。
-- 测试保留在原目录，不发布到三个 lean 包；不靠删除运行时测试获得绿灯。
-
-## 本地开发
+需要 Node >=22.19、npm 和 Git，在仓库根目录运行：
 
 ```bash
 npm ci --ignore-scripts
@@ -23,20 +13,26 @@ npm audit --audit-level=high
 npm audit --omit=dev --audit-level=high
 ```
 
-适配或版本变动后用 `npm run contracts` 重新捕获 `maintenance/tool-contracts.json`，对照源码审查实际变化，并同步 README 中的字符代理统计。该统计不是计费 token。
+工具契约变化后执行 `npm run contracts`，审查 `maintenance/tool-contracts.json`，同步中英文 README 的字符代理统计。字符代理不是计费 token。
 
-只读检测：`npm run maintenance:plan`。自动维护：`npm run maintenance:local`。只读本机诊断：`npm run maintenance:dry-run`。调度、凭据隔离和失败副本说明见[本机每日维护](local-scheduler.md)。
+## 适配规则
 
-Pi 的文件权限限制不是操作系统级沙箱。新流程另外把真正执行候选代码的检查放进 bubblewrap；不加载个人扩展、MCP、项目 AGENTS 或保存个人会话。主机固定代码仍需信任，不能把它当作对 VPS 管理员的隔离。
+- 对比 manifest 中当前版本与目标稳定版本的精确源码和 CHANGELOG；lean 作者更新逐项审查，不直接覆盖本仓库。
+- 保持最小改动，不复制上游实现，不改 node_modules。保留既有测试断言，只补与门面变化有关的回归。
+- 依赖保持精确版本；Pi 开发 SDK、Action SHA 和维护宿主代码单独审查、更新及部署。
+- README 只描述当前安装、用法、配置、限制、版本与测量，中英文同步。技术审查保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
 
-## GitHub
+[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 会话加载；只有 `list/read/write/edit/check` 工具，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。失败后修复同一候选，不重新生成候选或凭口头声明通过。
 
-普通 CI 在 PR 和 main 更新后，独立运行 Linux、macOS、Windows 检查；`all-platforms-pass` 必须成功。PR checkout 固定候选 head SHA，不用可能变化的合并树。Fork PR 可能需要维护者 Approve workflows to run。
+Pi 的工具权限不是操作系统级沙箱。候选执行另用 bubblewrap 隔离，检查进程没有主机 home、SSH 或凭据，候选源码只读；安装与契约捕获仅开放所需写入。主机固定代码仍属于信任边界。
 
-维护脚本创建非草稿维护 PR。按仓库所有者授权，固定主机在该 PR 精确 head 的三平台和 `all-platforms-pass` 成功后，重新检查 PR/head/base/main 与最新 CI，再按 head SHA 单次自动 merge。只处理当前维护会话创建的 PR，不扫其它 PR 自动合并；失败、主干前进或结果不明时保留 PR 并停止，不强推或重试 merge。合并所需 PAT 仅在固定主机，需该仓库的 Contents read/write、Pull requests write、Actions read。发布摘要仍由固定脚本写入版本绑定的 `maintenance/update-report.md`，Release 不调用模型。
+## CI、合并与发布
 
-Release 仅接受 main 上的统一包装版本增加，或手动输入与根 package.json、三个包和 manifest 一致的 `vX.Y.Z`。三个系统重新验证不可变提交；GitHub 写权限 job 只校验附件并创建 tag/Release，不执行 npm 或候选依赖。随后独立 npm job 使用 GitHub-hosted OIDC 发布同一批已验证 `.tgz`，只有仓库只读和 `id-token: write`，不安装扩展依赖，禁用生命周期脚本与 HTTP 重试。首次 npm 发布、三个 trusted publisher、部分成功恢复及 VPS 迁移见 [npm 发布说明](npm-publishing.zh-CN.md)。
+CI 对精确 PR head 独立运行 Linux、macOS、Windows 检查，必须通过 `all-platforms-pass`。Fork PR 可能需要维护者 Approve workflows to run。Actions 固定完整 SHA，checkout 不保留凭据，普通 CI 只读且不注入 Secrets。
 
-建议在仓库规则中要求 `all-platforms-pass`、禁止直接写 main，并要求分支保持最新；`release` environment 限制 main，不设置日常人工审批才可无人值守发布。修改规则是账号管理操作，不由维护 Agent 自动完成。
+固定主机自动合并当前维护会话创建的同仓非草稿 PR，合并前重新检查精确 head、最新 CI、PR 身份和 base/main，再按 head SHA 发送一次请求。不合并其它 PR，不直接推 main；检查失败、主干前进或写入结果不明就停止，不盲目重试。建议仓库规则要求 `all-platforms-pass` 和严格最新分支检查。
 
-所有 Actions 使用完整 SHA；CI 只读、不注入 Secrets，checkout 不保留凭据。仓库不再有维护 workflow、原生 cron、模型探针或 Dependabot 配置。npm 发布在现有 Release 内，不新增维护 workflow；VPS 不保存 npm token。
+版本增加后，Release 对合并 SHA 重新执行三平台验收，发布三个归档和哈希清单，再由独立 OIDC job 发布这些归档到 npm。日常成功路径无需人工合并或 npm 认证。已发布版本不可覆盖；出现回归须重新验证并发布更高的修复版本。
+
+- [维护主机部署与运行](local-scheduler.md)
+- [npm 发布配置与恢复](npm-publishing.zh-CN.md)

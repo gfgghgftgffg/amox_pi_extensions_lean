@@ -1,33 +1,14 @@
 # 本机每日维护
 
-每日 02:23 UTC（北京时间 10:23），systemd 启动一个一次性 Pi SDK 进程。不依赖 GitHub cron，不复用个人会话，也没有常驻 Agent。
+Linux 维护主机每天 02:23 UTC（北京时间 10:23）启动一次性 Pi SDK 会话。它不是 subagent，不加载个人扩展，也不更新个人安装或替换运行中的宿主。固定主机自动合并与发布的安全边界见[维护策略](maintenance.md)。
 
-代码位置：
-- 任务入口：[scripts/local-maintenance.mjs](../scripts/local-maintenance.mjs)
-- 独立 Pi 会话：[scripts/lib/local-pi.mjs](../scripts/lib/local-pi.mjs)
-- 实际加载的 prompt：[maintenance/daily-update.md](../maintenance/daily-update.md)
-- 定时器：[scripts/systemd/amox-pi-actions.timer](../scripts/systemd/amox-pi-actions.timer)
-- 服务：[scripts/systemd/amox-pi-actions.service](../scripts/systemd/amox-pi-actions.service)
+## 前置条件
 
-这里调用 `createAgentSession` 新开 Pi 会话，不调用 subagent、不加载 subagent 扩展或 task-routing。被维护的依赖只装进临时副本，不更新个人 Pi 或正在运行的宿主。
+安装 Node >=22.19、npm、Git、`bubblewrap`、`flock`、GNU `timeout` 和 systemd。克隆本仓库，在根目录执行 `npm ci --ignore-scripts`。普通扩展用户不需要部署此服务。
 
-## 工作过程
+维护账号需要该仓库的 SSH 写权限，以及仅授权该仓库的 GitHub PAT：Contents read/write、Pull requests write、Actions read。凭据放在仓库外，不作为命令行参数。
 
-`systemd → 临时 main 副本 → 检测上游 → Pi 修改并实际检查 → 维护 PR → 普通三平台 CI → 固定主机自动合并 → Release`
-
-没有上游更新，或已经有未合并的 `maintenance/local-*` PR，就不调用模型、不重复创建 PR。临时副本不会改动日常开发 checkout。
-
-Pi 只有 `list/read/write/edit/check` 五个工具。`check` 真正执行契约捕获、类型检查、测试、独立生产安装和两次安全审计。失败输出交回同一个 Pi 会话，修复同一份候选，而不是重新生成候选。根检查脚本、工作流、依赖版本和已有测试断言受保护；新写的回归测试可根据真实响应修正。
-
-发布由固定脚本执行，不以 Agent 的口头“通过”为依据。它只推已经检查过且未再修改的 commit，使用普通非强制 push，创建非草稿 PR。远程 CI 失败时，最多给同一会话一次针对实际日志的修复机会；再次失败就停。只有当前会话创建的同仓维护 PR，精确 head 的三个平台与 `all-platforms-pass` 全部成功，且 PR 身份、head、base 和 main 预检未变化，固定主机才以 head SHA 为条件发送一次 merge 请求。不会自动合并任意已有 PR、草稿或外部 PR，不直接推 main，也不重试结果不明的合并。
-
-合并版本升级后，Release 再对合并后的不可变 SHA 做三平台验证并发布 GitHub 附件，随后由独立 OIDC job 发布已验证归档到 npm。应在仓库规则中要求主干更新前的严格最新分支检查，避免并发主干更新的竞态；无论如何，发布检查不使用合并前的 CI 冒充合并后验收。首次 npm 配置和迁移到其他 VPS 见 [npm 发布与 VPS 迁移](npm-publishing.zh-CN.md)。
-
-## 依赖与配置
-
-维护主机需要 Linux、Node >=22.19、npm、Git、`bubblewrap`、`flock`、GNU `timeout` 和 systemd。先在维护工具 checkout 运行 `npm ci --ignore-scripts`。扩展用户不需要这些维护配置。
-
-模型配置放在仓库外的 `~/.config/amox-pi-maintenance.json`，权限 **600**：
+创建 `~/.config/amox-pi-actions.env`，内容为一行字面值 `GH_TOKEN=...`，不使用 shell 表达式。创建 `~/.config/amox-pi-maintenance.json`：
 
 ```json
 {
@@ -40,15 +21,11 @@ Pi 只有 `list/read/write/edit/check` 五个工具。`check` 真正执行契约
 }
 ```
 
-支持 `openai-responses`、`openai-completions`、`anthropic-messages`。内置 provider 可省略 `baseUrl`。不执行配置中的 shell 命令。凭据不要提交到 Git，不要作为命令行参数。
-
-GitHub API 凭据放在仓库外的 `~/.config/amox-pi-actions.env`，权限 **600**，格式为一行字面值 `GH_TOKEN=...`，不加 shell 表达式。建议细粒度 PAT 只授权该仓库：Contents read/write（自动 merge 必需）、Pull requests write、Actions read。权限不足时停止并保留 PR，不降级为直接推 main。Git push 使用维护账号的 SSH key，需对该仓库有写权限。
-
-模型和发布凭据仅供主机上的固定控制代码使用。检查子进程由 bubblewrap 清空环境、隔离 PID，只有公共系统文件、只读候选、临时 HOME/TMP；没有主机 home、SSH、凭据或主机 `/proc`。安装阶段只开放 node_modules 和 lockfile 写入；捕获阶段只开放输出快照写入。检查需要访问公共 npm/GitHub，网络不是完全隔离的。
+支持 `openai-responses`、`openai-completions` 和 `anthropic-messages`，内置 provider 可省略 `baseUrl`。两个凭据文件均设为 **600**，不提交到 Git。
 
 ## 部署
 
-示例系统级 unit 保存在 [scripts/systemd](../scripts/systemd/)；部署到其它账号或路径时，先修改其中的 `User`、工作目录和状态路径。已存在的 unit 必须先备份，不直接覆盖未知部署。
+先按实际账号和安装路径修改 [service](../scripts/systemd/amox-pi-actions.service) 中的 `User`、工作目录、HOME、状态目录、ExecStart 和 ReadWritePaths；[timer](../scripts/systemd/amox-pi-actions.timer) 使用 UTC。已有 unit 先备份；迁移 VPS 时先停旧 timer。
 
 ```bash
 mkdir -p ~/.local/state/amox-pi-maintenance/tmp
@@ -57,25 +34,19 @@ sudo install -m 644 scripts/systemd/amox-pi-actions.service /etc/systemd/system/
 sudo install -m 644 scripts/systemd/amox-pi-actions.timer /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemd-analyze verify /etc/systemd/system/amox-pi-actions.{service,timer}
+node scripts/local-maintenance.mjs --dry-run
 ```
 
-先验证，再启用定时器：
+检查模型配置、权限、磁盘 TMPDIR 和 bubblewrap 可用后，按授权选择一次真实验证，再启用 timer：
 
 ```bash
-node scripts/local-maintenance.mjs --dry-run
-# 实际调用模型、做本地检查，但不推送或创建 PR：
-node scripts/local-maintenance.mjs --run --local-only
-# 完整执行（会调用模型，创建维护 PR，并在精确提交 CI 通过后自动合并）：
 sudo systemctl start amox-pi-actions.service
-# 完整链路成功后才启用：
 sudo systemctl enable --now amox-pi-actions.timer
 ```
 
-`--local-only` 不是短模型探针，会执行真正适配和检查，仍按模型服务计费。不要把这三条验证命令机械地全执行，以免重复付费；只读诊断后选需要的一条实际运行。
+没有上游更新或已有维护 PR 时跳过模型；有更新时，真实运行会产生模型费用。`--run --local-only` 可只验证本地适配，不推送、创建 PR 或自动合并，也不检查远端待处理 PR。不要机械执行多次付费验证；无更新成功不等于模型适配已验证。
 
-可通过 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV`、`AMOX_MAINTENANCE_STATE` 指定仓库外的配置/状态路径。锁、工作副本和日志默认在 `~/.local/state/amox-pi-maintenance`，不打包进扩展。
-
-## 失败与恢复
+## 日常检查与恢复
 
 ```bash
 systemctl status amox-pi-actions.service
@@ -83,14 +54,8 @@ systemctl list-timers amox-pi-actions.timer
 journalctl -u amox-pi-actions.service
 ```
 
-查看状态目录中的 `last-run.json` 与它指向的副本/`checks-*` 日志。失败副本会保留，便于检查同一份改动；维护者可在确认不再需要后清理这些专用 `run-*` 目录，避免长期积累。没有更新的临时副本自动删除。
+状态和失败副本位于 `~/.local/state/amox-pi-maintenance`，从 `last-run.json` 找到对应候选和检查日志。失败后修复同一候选；不会在下一次调度自动接管旧 PR。不要因请求超时就重复推送、创建 PR 或 merge，先检查远端实际状态。npm 恢复见[发布说明](npm-publishing.zh-CN.md)。
 
-单次使用 `flock` 防重入、总运行上限 120 分钟（service 130 分钟兜底），Pi 模型/工具阶段合计最多 45 分钟、80 turn，不自动重试模型错误。检查命令各有超时，远程 CI 每轮等待最多 40 分钟。超时不等于远程任务取消；推送/PR/merge 请求结果不明时先检查远端，不自动重发。
+单次维护上限 120 分钟，service 130 分钟兜底，模型错误不自动重试。timer 使用 `Persistent=true`，启用前检查是否会补执行。暂停：`sudo systemctl disable --now amox-pi-actions.timer`。确认不再需要后再清理专用失败副本，避免磁盘耗尽。
 
-timer 为 `Persistent=true`。首次启用前确认最近成功运行和 timer stamp，避免补执行形成不必要的模型调用。暂停：`sudo systemctl disable --now amox-pi-actions.timer`。
-
-出现已合并回归时，由维护者回滚 Git 改动并重新验证；npm 已发布的版本不可覆盖，应发布更高的修复版本。不要把回滚 main 当作已经回滚用户安装的 npm 包。
-
-GitHub 不再需要维护模型 Secrets/Variables。旧值不会被新流程读取；移除旧 workflow 不等于自动删除账号里的凭据。
-
-`.github/dependabot.yml` 的版本/Action 更新配置已经删除。GitHub 的 `dynamic/dependabot/dependabot-updates` 是平台动态入口，不是仓库里的 YAML，普通 workflow disable API 不支持禁用它。Dependabot 自动安全更新由仓库安全设置控制，需具备相应仓库管理权限；移除配置不能证明安全更新已关闭。可在仓库 Settings 的安全设置中关闭 Dependabot security updates；漏洞告警与 npm audit 是独立检查，可保留。历史 Actions 入口/记录可能仍显示，不能冒充已清除。
+自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV` 和 `AMOX_MAINTENANCE_STATE`，并同步 unit 的写入权限与 TMPDIR。

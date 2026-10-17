@@ -1,51 +1,36 @@
-# npm publishing and VPS migration
+# npm publishing
 
 [简体中文](npm-publishing.zh-CN.md)
 
-The [Release workflow](../.github/workflows/release.yml) publishes verified archives to npm after a reviewed release. Maintainers must initialize publication before npm delivery is available; until then, extension users can use the Git installer. A successful GitHub Release does not by itself prove npm publication succeeded.
+All three extension packages are public on npm. [Release](../.github/workflows/release.yml) publishes verified GitHub Release archives through OIDC; users only need the README installation commands.
 
-## Release boundary
+## Publishing configuration
 
-A maintenance PR is merged automatically by the fixed host only after its exact head passes all three platforms and `all-platforms-pass`, with unchanged PR/base/main preflight. Other changes follow the repository's merge policy. Release checks the merged immutable SHA on Linux, macOS and Windows, creates the GitHub Release, then sends its three verified archives to npm. No-update maintenance runs do not publish. Root `package.json` remains private.
-
-Only the npm job has `id-token: write`. It runs on GitHub-hosted Ubuntu under environment `release`, with read-only repository access, Node 22.22.1 and npm 11.15.0. It installs the fixed npm CLI, not extension dependencies. [The publisher](../scripts/publish-npm.mjs) checks SHA/tag, archive hashes, package identity, repository and all six packaged files, then preflights all three public registry versions. It publishes the `.tgz` files with `--ignore-scripts` and `--fetch-retries=0`, disabling lifecycle scripts and npm HTTP retries. The missing archives are each submitted once before read-back verification, so slow visibility for one package does not block the remaining uploads. Verification shares one 10-minute GET-only deadline and checks integrity and `latest`. Integrity or identity conflicts fail immediately; an upload is never repeated by this wait. GitHub trusted publishing generates provenance automatically. No npm token belongs in Pi, systemd, this repository or Actions Secrets.
-
-## Maintainer publishing setup
-
-This section is for package maintainers. Extension users only need the installation commands in the README; they do not need npm publishing credentials or trusted-publisher configuration.
-
-The first publication requires package publishing rights and must use the **existing verified GitHub Release archives**, not a newly packed working tree:
-
-- `@gfgghgftgffg/pi-web-access-lean`
-- `@gfgghgftgffg/rpiv-todo-lean`
-- `@gfgghgftgffg/pi-subagents-lean`
-
-Validate all three archives against the matching release tag and `assets.json` before publication. After each publish, compare its exact version's public registry `dist.integrity` with the manifest and check `dist-tags.latest`. npm versions cannot be overwritten. If a write fails ambiguously, inspect the registry before any explicit retry. Do not publish the private workspace root.
-
-Once the packages exist, configure **each of the three packages** under npmjs.com → package → Settings → Trusted Publisher → GitHub Actions. Trusted-publisher configuration requires maintainer access and account-level 2FA:
+Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, and `@gfgghgftgffg/pi-subagents-lean`.
 
 | Field | Value |
 | --- | --- |
-| Organization or user (GitHub owner) | `gfgghgftgffg` |
+| GitHub owner | `gfgghgftgffg` |
 | Repository | `amox_pi_extensions_lean` |
-| Workflow filename | `release.yml` (not its full path) |
-| Environment name | `release` |
-| Allowed actions | Explicitly allow direct `npm publish`; stage-only permission is insufficient |
+| Workflow filename | `release.yml` |
+| Environment | `release` |
+| Allowed actions | Direct `npm publish`, not stage-only |
 
-Configure GitHub's `release` environment to allow only `main`. Leave human approval disabled for unattended publication; enabling it deliberately adds a manual gate. After OIDC works, choose npm's “Require two-factor authentication and disallow tokens” and revoke unused publishing tokens. Forks or repository/workflow/environment renames need corresponding package metadata and new trust configurations; cloning a VPS does not grant npm publishing authority.
+These connections are already in use. Keep GitHub's `release` environment restricted to `main`, without human approval for unattended releases. Managing npm trust requires maintainer access and interactive 2FA; routine OIDC publication does not. A [new connection](https://docs.npmjs.com/trusted-publishers/) must complete its first successful publish within **2 days**. Do not repeat setup when moving the VPS.
 
-Official [trusted-publishing documentation](https://docs.npmjs.com/trusted-publishers/) requires a new trust configuration to complete its **first successful publish within 2 days**. Configure it close to the next reviewed version release; an already-published-version skip, dry run or login-state check does not validate OIDC. If it expires, delete and recreate the trust configuration before that release. Do not reuse the initial version or bump versions solely to disguise missing setup. The first actual OIDC release remains unverified until it succeeds on GitHub.
+Only the npm job has `id-token: write`; it has read-only repository access and installs no extension dependencies. [The publisher](../scripts/publish-npm.mjs) validates the source SHA, tag, archive contents and registry integrity. Root `package.json` remains private. Pi, systemd and Actions Secrets need no npm token.
 
-## Partial publication and recovery
+## Failure recovery
 
-All three registry versions are checked before any write. Existing versions with matching integrity are skipped; different content at the same version is rejected. Missing first packages, lookup failures and attempts to move `latest` backwards stop publication. An ambiguous publish failure is not retried and later packages are not published.
+Each missing archive is submitted once with `--ignore-scripts --fetch-retries=0`, followed by a shared ten-minute GET-only visibility check. Matching existing versions skip; integrity conflicts or uncertain writes stop. Never blindly repeat an upload, overwrite a version or move `latest` backwards.
 
-Inspect the exact run, all three registry versions and hashes first. Within artifact retention (7 days), explicitly **Re-run failed jobs** on the same Release run after resolving the cause. Completed identical packages are skipped. Do not start a new manual full Release for an existing tag: the GitHub release job intentionally refuses to retag or overwrite an existing release. If artifacts expired, use the verified GitHub assets and a maintainer-controlled manual recovery, checking identity and integrity first. Never unpublish or rewrite tags to force success. Unexpected registry `latest` tags require manual review rather than automatic tag changes.
+Inspect the exact Release run and all three registry versions first. After resolving the cause, use **Re-run failed jobs** on the same run within artifact retention (7 days). Do not start a new full Release for an existing tag. If artifacts expired, recover from verified GitHub Release assets, checking identity and hashes before any write; do not repack a working tree. GitHub Release success alone does not prove npm publication succeeded.
+
+A manual full Release is only for an unreleased tag matching the root, three packages and manifest versions. Rollback does not retract npm versions; publish a higher repair version.
 
 ## New VPS checklist
 
-1. For normal Pi use, follow [bootstrap setup](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md). Use the three unpinned `npm:@gfgghgftgffg/...` sources once available, then `pi update --extensions`. If npm returns 404, use the per-extension Git installer. Preserve upstream dependency pins; do not register upstream engines separately.
-2. Migrate old local sources only with the user's approval: back up settings, `pi list`, `pi remove <exact-old-source>`, then install the corresponding npm source. Keep unrelated packages and credentials. Restart Pi and verify one `web_access`, one `todo`, and one `subagent` tool. Local Git installations still require `git pull --ff-only` and rerunning the installer.
-3. Running daily maintenance is optional and separate. Follow [local scheduler deployment](local-scheduler.md): install Linux prerequisites and root dependencies, render the systemd unit for the actual user/paths, and create fresh host-local model config, repository-scoped GitHub PAT and SSH access. Keep model, GitHub and npm credentials separate; do not copy secrets, sessions or model logs through Git.
-4. Disable the old VPS timer before enabling the new one. Check the clock/timezone, state-directory permissions, disk-backed TMPDIR and bubblewrap restrictions. Run read-only `--dry-run` first; choose at most one authorized real verification run before enabling the daily 02:23 UTC timer. A successful no-update check does not test a paid model adaptation. Do not mechanically run multiple paid checks.
-5. A VPS move does not move npm trusted publishing: GitHub remains the publisher. Keep workflow/environment identity unchanged, retain exact-head three-platform CI and fixed-host merge checks, and verify both the next GitHub Release and npm job rather than assuming a green CI job means publication succeeded.
+1. For ordinary Pi use, follow [bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md), using unpinned npm sources. Run `pi update --extensions` when needed; publication does not update personal installations. Use Git fallback only on confirmed public-registry 404, not authentication or network errors.
+2. Migrate existing local sources only with user approval: back up settings, identify exact sources with `pi list`, remove those entries, install npm sources, and restart. Keep one facade per tool and preserve unrelated configuration.
+3. To run daily maintenance, follow [Linux host deployment](local-scheduler.md). Configure that host's model, GitHub and SSH access separately; do not copy credentials or sessions through Git. Stop the old VPS timer before enabling the new one.
+4. GitHub remains the npm publisher. A VPS move requires no new npm credentials or trust connection; preserve the repository/workflow/environment identity and check the next Release's npm job.

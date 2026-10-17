@@ -1,51 +1,36 @@
-# npm 发布与 VPS 迁移
+# npm 发布
 
 [English](npm-publishing.md)
 
-[Release workflow](../.github/workflows/release.yml) 在审查后的版本发布中，将已验证归档发布到 npm。维护者完成发布初始化后，npm 才可用于安装；在此之前，扩展用户可使用 Git 安装脚本。GitHub Release 成功不等于 npm 发布成功。
+三个扩展包已在 npm 公开发布。[Release](../.github/workflows/release.yml) 通过 OIDC 发布已验证的 GitHub Release 归档；用户只需执行 README 中的安装命令。
 
-## 发布边界
+## 发布配置
 
-维护 PR 只有在精确 head 的三平台与 `all-platforms-pass` 成功，并通过 PR/base/main 未变化的预检后，才由固定主机自动合并。其它改动遵循仓库的合并策略。Release 在 Linux、macOS、Windows 验证合并后的不可变 SHA，创建 GitHub Release，再将其中三个已验证归档发布到 npm。无更新的维护运行不发布。根 `package.json` 保持 private。
-
-只有 npm job 获得 `id-token: write`。它在 GitHub-hosted Ubuntu、`release` environment 中运行，仓库只读，使用 Node 22.22.1 和 npm 11.15.0。它只安装固定版本 npm CLI，不安装扩展依赖。[发布脚本](../scripts/publish-npm.mjs) 校验 SHA/tag、归档哈希、包身份、仓库和包内全部六个文件，再预检三个公开 npm 版本。上传的是这些 `.tgz`，使用 `--ignore-scripts` 和 `--fetch-retries=0` 禁用生命周期脚本和 npm HTTP 重试；每个缺失归档只提交一次，全部提交后再读取验证，避免一个包的可见性延迟阻塞后续上传。验证共享 10 分钟的只读 GET 期限，检查 integrity 和 `latest`。integrity 或身份不一致立即失败，这段等待不会重新上传。GitHub trusted publishing 自动生成 provenance。Pi、systemd、仓库和 Actions Secrets 均不保存 npm token。
-
-## 维护者发布配置
-
-本节面向包维护者。扩展用户只需执行 README 中的安装命令，不需要 npm 发布凭据或 trusted publisher 配置。
-
-首次发布需要包发布权限，并使用**已有且经过验证的 GitHub Release 归档**，不要重新打包工作树：
-
-- `@gfgghgftgffg/pi-web-access-lean`
-- `@gfgghgftgffg/rpiv-todo-lean`
-- `@gfgghgftgffg/pi-subagents-lean`
-
-发布前，将三个归档与对应的 release tag 和 `assets.json` 校验。每次发布后，将精确版本的公开 registry `dist.integrity` 与清单比较，并检查 `dist-tags.latest`。npm 版本不能覆盖。写入结果不明时，先检查 registry，再决定是否明确重试。不要发布 private 的 workspace 根包。
-
-包存在后，**三个包分别**在 npmjs.com → 包 → Settings → Trusted Publisher → GitHub Actions 配置。trusted publisher 配置需要维护者权限，并在账号层面启用 2FA：
+每个包分别配置 npm Trusted Publisher：`@gfgghgftgffg/pi-web-access-lean`、`@gfgghgftgffg/rpiv-todo-lean`、`@gfgghgftgffg/pi-subagents-lean`。
 
 | 字段 | 值 |
 | --- | --- |
-| Organization or user（GitHub 仓库所有者） | `gfgghgftgffg` |
+| GitHub owner | `gfgghgftgffg` |
 | Repository | `amox_pi_extensions_lean` |
-| Workflow filename | `release.yml`，不填完整路径 |
-| Environment name | `release` |
-| Allowed actions | 显式允许直接 `npm publish`；只有 stage 权限不够 |
+| Workflow filename | `release.yml` |
+| Environment | `release` |
+| Allowed actions | 直接 `npm publish`，不能只有 stage 权限 |
 
-GitHub 的 `release` environment 限制到 `main`。无人值守发布不要设置人工审批；启用审批就会有意增加人工关口。OIDC 验证成功后，在 npm 选择 “Require two-factor authentication and disallow tokens”，撤销不再使用的发布 token。Fork 或修改仓库、workflow、environment 名称时，需要同步包元数据并新建信任配置；迁移 VPS 不会授予 npm 发布权限。
+这些连接已在使用。GitHub 的 `release` environment 保持仅允许 `main`，无人值守发布不设人工审批。管理 npm 信任配置需要维护者权限和交互式 2FA，日常 OIDC 发布不需要。[新连接](https://docs.npmjs.com/trusted-publishers/)必须在 **2 天**内完成首次成功发布。迁移 VPS 不必重做配置。
 
-npm [官方 trusted publishing 文档](https://docs.npmjs.com/trusted-publishers/)要求新信任配置在 **2 天内完成首次成功发布**。请在下次已审查的版本发布前就近配置；跳过已发布版本、dry-run 和登录状态检查都不能验证 OIDC。过期时，在发布前删除并重建信任配置。不要复用首次版本，也不要靠随意升版本掩盖配置缺失。首次真正的 OIDC 发布在 GitHub 成功前，仍属于未验证。
+只有 npm job 获得 `id-token: write`，仓库只读，不安装扩展依赖。[发布脚本](../scripts/publish-npm.mjs) 校验源码 SHA、tag、归档内容和 registry integrity。根 `package.json` 保持 private。Pi、systemd 和 Actions Secrets 不需要 npm token。
 
-## 部分成功与恢复
+## 失败恢复
 
-写入前预检三个 registry 版本。已存在且 integrity 相同则跳过，同版本内容不同则拒绝。尚未首发、查询失败、试图倒退 `latest` 时停止。发布结果不明不会自动重试，也不会继续发布后面的包。
+每个缺失归档只通过 `--ignore-scripts --fetch-retries=0` 提交一次，再共享十分钟只读 GET 可见性检查。已存在且一致的版本跳过；integrity 冲突或写入结果不明就停止。不盲目重复上传、不覆盖版本、不倒退 `latest`。
 
-先检查精确的工作流运行、三个 registry 版本和哈希。在 artifact 保留期内（7 天），修复原因后，明确选择同一次 Release 的 **Re-run failed jobs**。已完成且一致的包会跳过。不要对已有 tag 重新启动一次完整手动 Release：GitHub 发布 job 有意拒绝改指 tag 或覆盖已有 release。artifact 已过期时，由维护者用已验证的 GitHub 附件手动恢复，先检查身份和 integrity。不要通过撤包或改写 tag 强行通过。registry `latest` 异常需要人工审查，不自动改 tag。
+先检查精确的 Release 运行和三个 registry 版本。修复原因后，在 artifact 保留期内（7 天）对同一次运行选择 **Re-run failed jobs**。不要为已有 tag 重新启动完整 Release。artifact 已过期时，使用已验证的 GitHub Release 附件恢复，写入前核对身份和哈希，不重新打包工作树。GitHub Release 成功不能单独证明 npm 发布成功。
+
+手动完整 Release 只用于尚未发布、与根目录、三个包和 manifest 版本一致的 tag。回滚不会撤回 npm 版本，修复应发布更高版本。
 
 ## 新 VPS 检查表
 
-1. 日常 Pi 使用按 [bootstrap setup](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md) 安装。三个包可用后采用不固定版本的 `npm:@gfgghgftgffg/...` 来源，再用 `pi update --extensions`。npm 返回 404 时使用各扩展的 Git 安装脚本。保留上游依赖固定版本，不另行注册上游引擎。
-2. 迁移旧本地来源需要用户同意：备份 settings，`pi list`，`pi remove <exact-old-source>`，再安装对应 npm 来源。保留无关包和凭据，重启 Pi，确认 `web_access`、`todo`、`subagent` 各一个。Git 本地安装仍需 `git pull --ff-only` 并重跑安装脚本。
-3. 每日维护主机是独立的可选部署。按[本机维护说明](local-scheduler.md)安装 Linux 前置依赖和根依赖，按实际用户与路径修改 systemd unit，单独配置主机模型文件、仓库限定 GitHub PAT 和 SSH 权限。模型、GitHub、npm 凭据分开，不通过 Git 复制密钥、会话或模型日志。
-4. 先停旧 VPS timer，再启新主机。检查时钟/时区、状态目录权限、磁盘 TMPDIR 和 bubblewrap 限制。先只读 `--dry-run`，再按授权选择至多一次真实验证，成功后启用每日 02:23 UTC timer。无更新检查成功不等于付费模型适配已验证，不要机械执行多轮付费检查。
-5. 迁移 VPS 不迁移 npm trusted publishing，发布仍由 GitHub 执行。保持 workflow/environment 身份不变，保留精确 head 的三平台 CI 和固定主机合并检查；下次同时确认 GitHub Release 与 npm job，不能把 CI 绿灯当作发布成功。
+1. 日常 Pi 使用按 [bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md) 安装，采用不固定版本的 npm 来源。按需执行 `pi update --extensions`，发布不更新个人安装。只有确认公共 registry 返回 404 时才使用 Git 回退，不把认证或网络错误当成缺包。
+2. 迁移已有本地来源须经用户同意：备份 settings，通过 `pi list` 确定精确来源，仅移除对应项，安装 npm 来源后重启。每个工具只保留一个门面，保留无关配置。
+3. 需要每日维护时，按 [Linux 主机部署](local-scheduler.md) 单独配置模型、GitHub 和 SSH 权限，不通过 Git 复制凭据或会话。先停旧 VPS timer，再启新 timer。
+4. npm 发布仍由 GitHub 执行。迁移 VPS 不需要新的 npm 凭据或信任连接；保持仓库、workflow、environment 身份不变，并检查下次 Release 的 npm job。

@@ -2,6 +2,8 @@
 
 本文件记录本包与原 lean 基线的差异、锁定的上游版本、依赖的上游内部细节、升级步骤与已知限制。
 
+历史审查中的“未运行”“待 CI”或人工审批要求只记录当时阶段，不代表当前 CI/发布结果或现行审批要求。当前自动合并与 OIDC 发布规则见[维护者文档](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)。
+
 ## 来源与基线
 
 - 上游扩展：`@tintinweb/pi-subagents`（npm），作者 tintinweb，仓库
@@ -17,8 +19,8 @@
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
-- 当前候选开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
-  （由规划阶段暂存，独立任务验证；此前为 typebox 1.3.27 / TypeScript 5.9.3）。
+- 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
+  （此前为 typebox 1.3.27 / TypeScript 5.9.3）。
 
 ## 相对基线的精确改动（最小适配）
 
@@ -155,7 +157,7 @@
 
 ## 升级步骤
 
-1. `npm view @tintinweb/pi-subagents version`，阅读上游 `CHANGELOG.md`，对比 0.19.0 基线源码。
+1. `npm view @tintinweb/pi-subagents version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。
 2. 更新根与工作区 `package.json` 的精确依赖与 peer 下限，`npm install --ignore-scripts` 刷新 lockfile。
 3. 核对：工具名是否变化、`subagent_type` 描述格式是否变化、Schema 构建库是否仍为 typebox v1、
    `execute`/`renderCall`/`renderResult` 签名是否变化。仅版本变化时不需要改 `index.ts`。

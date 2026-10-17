@@ -52,7 +52,7 @@ export function extractReleaseSummary({ report, tag }) {
   const end = `<!-- amox-release-summary:${tag}:end -->`;
   const markers = text.match(/<!-- amox-release-summary:[^\r\n]*? -->/g) || [];
   if (markers.length !== 2 || markers[0] !== start || markers[1] !== end
-    || !text.split("\n").includes(`Release after human merge: ${tag}`)) {
+    || ![`Release after verified merge: ${tag}`, `Release after human merge: ${tag}`].some((line) => text.split("\n").includes(line))) {
     throw new Error(`Missing or stale release summary for ${tag}; update maintenance/update-report.md before releasing`);
   }
   const summary = text.slice(text.indexOf(start) + start.length, text.indexOf(end)).trim();

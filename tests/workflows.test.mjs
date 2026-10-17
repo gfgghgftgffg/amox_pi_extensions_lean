@@ -91,7 +91,8 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   assert.match(maintenance, /最小改动/); assert.match(maintenance, /Approve workflows to run/);
   assert.match(maintenance, /不是操作系统级沙箱/); assert.match(scheduler, /bubblewrap/);
   assert.match(maintenance, /README 只描述当前/); assert.match(read("maintenance/daily-update.md"), /更新现有段落，不追加逐版本升级历史/);
-  assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /人工合并/);
+  assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /固定主机自动合并/);
+  assert.match(english, /head-SHA condition/); assert.match(readme, /以 head SHA 为条件单次合并/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
     for (const doc of [english, readme]) assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
     assert.ok(english.includes(`node scripts/install-extension.mjs ${entry.id}`));
@@ -126,7 +127,11 @@ test("official registry and fixed lockfile download surface remain enforced", ()
 test("one daily local Pi entry point has locking and bounded execution, not dispatch", () => {
   const pkg = JSON.parse(read("package.json")); assert.equal(pkg.scripts["maintenance:local"], "node scripts/local-maintenance.mjs --run");
   const runner = read("scripts/local-maintenance.mjs"); assert.match(runner, /flock/); assert.match(runner, /120m/); assert.match(runner, /gate\.verified\(\)/);
-  assert.doesNotMatch(runner, /workflow_run_id|workflow_dispatch|--force|merge\(/);
+  assert.doesNotMatch(runner, /workflow_run_id|workflow_dispatch|--force/);
+  assert.match(runner, /api\.mergeVerified/); assert.match(runner, /gate\.verified\(\) !== sha/);
+  const publisher = read("scripts/lib/github-maintenance.mjs");
+  assert.match(publisher, /draft: false/); assert.match(publisher, /method: "PUT", body: \{ sha, merge_method: "merge" \}/);
+  assert.match(publisher, /once: true, pullNumber: pull\.number/);
   assert.match(read("scripts/lib/local-pi.mjs"), /SessionManager\.inMemory/);
   assert.match(read("scripts/systemd/amox-pi-actions.timer"), /OnCalendar=\*-\*-\* 02:23:00 UTC/);
   assert.match(read("scripts/systemd/amox-pi-actions.service"), /local-maintenance\.mjs --run/);

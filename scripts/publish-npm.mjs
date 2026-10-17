@@ -67,7 +67,7 @@ function matchesIntegrity(metadata, asset) {
 }
 // A successful upload can precede anonymous registry visibility. Only GETs
 // wait here; hash/identity conflicts fail immediately and publish is never retried.
-export async function waitForPublishedArchive({ asset, version, fetchImpl = fetch, timeoutMs = 180_000, pollMs = 5_000, sleep = delay, now = Date.now, log = console.log }) {
+export async function waitForPublishedArchive({ asset, version, fetchImpl = fetch, timeoutMs = 600_000, pollMs = 5_000, sleep = delay, now = Date.now, log = console.log }) {
   const deadline = now() + timeoutMs;
   let announced = false;
   while (true) {
@@ -119,14 +119,21 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
     if (existing && (!latest || compareExactStableVersions(latest, version) < 0)) throw new Error(`Existing npm version matches but latest needs manual review: ${asset.package}@${version}`);
     plan.push({ asset, exists: Boolean(existing) });
   }
-  const completed = [];
+  const completed = [], uploaded = [];
   for (const { asset, exists } of plan) {
     if (exists) { log(`Already published, matching verified integrity: ${asset.package}@${version}`); completed.push(asset.package); continue; }
     if (dryRun) { log(`Would publish verified archive: ${asset.package}@${version}`); continue; }
     try { await publish(asset.path); }
-    catch (error) { throw new Error(`${asset.package}@${version}: ${error.message} Previously completed packages: ${completed.join(", ") || "none"}. Never unpublish or overwrite to recover.`); }
-    await waitForPublishedArchive({ asset, version, fetchImpl, log });
+    catch (error) { throw new Error(`${asset.package}@${version}: ${error.message} Previously submitted or confirmed packages: ${completed.join(", ") || "none"}. Never unpublish or overwrite to recover.`); }
+    uploaded.push(asset);
     completed.push(asset.package);
+    log(`Upload returned success; public verification pending: ${asset.package}@${version}`);
+  }
+  // Submit each missing archive once before waiting for registry propagation;
+  // a slow read for package one must not prevent packages two/three uploading.
+  const deadline = Date.now() + 600_000;
+  for (const asset of uploaded) {
+    await waitForPublishedArchive({ asset, version, fetchImpl, log, timeoutMs: Math.max(0, deadline - Date.now()) });
     log(`Published and registry integrity verified: ${asset.package}@${version}`);
   }
   return { version, packages: assets.map((asset) => asset.package), dryRun };

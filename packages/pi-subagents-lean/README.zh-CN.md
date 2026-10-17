@@ -50,54 +50,28 @@ node scripts/install-extension.mjs pi-subagents-lean
 但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
 
-## 本次审查：0.20.0 → 0.21.0
+## 运行行为与设置
 
-四个上游工具的名称、参数 Schema、默认值与执行签名不变，lean 入口无需修改。高级选项仍放入
-`input` 并通过 `help` 查询；会话始终只暴露一个 `subagent` 工具。
+后台 Agent、分组和 Workflow 的完成通知使用 steering 队列，不打断正在运行的工具。`smart` 和
+`async` join 在父会话下一边界报告完成项，不等待同批其它任务。忙碌父会话在工具批次后一次收到
+合并消息；空闲父会话约 200 ms 后启动一轮。需要等待整批时使用 `group`；单个任务和跨 turn
+任务不分组。Esc 后保留待发通知，发送前读取已完成结果即可取消其通知。
 
-后台 Agent、分组和 Workflow 的完成通知现在进入 steering 队列：忙碌父会话在当前工具批次结束后、
-下一次模型调用前收到，不打断正在运行的工具。前台新派生任务运行中可在编辑器有焦点时按 `ctrl+b`
-将全部前台任务转后台，或在会话 viewer 按 `b` 将单个任务转后台；调用返回 ID，任务继续执行并在完成时通知。
-viewer 也会遵循 Pi 的全屏模式与滚动条设置。
+前台任务可在编辑器有焦点时按 `ctrl+b` 全部转后台，或在 viewer 按 `b` 将单个任务转后台；
+调用返回 ID，完成后通知。viewer 遵循 Pi 的全屏模式与滚动条设置。
 
-Agent 文件的 `isolated` 现在对 Workflow 子任务、mention 和 RPC 都生效，文件设置优先于调用参数。
-文件的 `isolation` 同样覆盖 mention/RPC，指定 worktree 而目录不是可用 git 仓库时会启动失败；
-Workflow 的 worktree 仍只由脚本选项决定。子会话继承父会话项目 trust，跨目录派生不会自动信任目标目录。
-`extensions: true` 的子会话现在加载 Pi 内置 codemode、tool search 和 MCP，每个子会话启动自己的 MCP
-服务器；可用 Agent 的 `exclude_extensions: builtin:mcp`、全局 `-builtin:mcp` 或 `--no-mcp` 关闭。
-子工具作用域尊重 exposure/defaultActive，并检查嵌套的 `ctx.executeTool` 调用。
-
-源码证据与测试边界见 [MAINTENANCE.md](MAINTENANCE.md)。
-
-## 本次审查：0.21.0 → 0.22.0
-
-四个工具的名称、字段、required、执行／渲染签名与调用默认值继续兼容，lean 入口无需改动。
-默认 `smart` join 现在在父会话下一边界报告已完成任务，不等待其它同批任务；`async` 语义相同。
-忙碌父会话在工具批次后一次收到已完成任务；空闲父会话约 200 ms 后启动一轮，并合并窗口内的完成。
-需要等待整批时使用 `group` join 设置：按父会话 turn 分组，单个任务和跨 turn 的任务不再分组。
-Esc 时待发完成通知会保留，在被中断的运行结束后启动新一轮；完成结果在发送前被读取即可取消通知。
-
-已安装 Pi 包可用 `pi.subagents` 或 `pi-subagents` 声明 Agent 与 Workflow；默认启用，优先级低于
-用户自己的定义。仅由不受信任项目配置的包不可见。`subagents.json` 中 `packageAgents` 与
+已安装的包可在 `pi.subagents` 或 `pi-subagents` 声明 Agent/Workflow；默认启用，优先级低于用户
+自己的定义，仅由不受信任项目配置的包不可见。`subagents.json` 中的 `packageAgents` 与
 `packageWorkflows` 支持 `true`、`false` 或包白名单。包 Agent 在 `/agents` 中只读，可 Eject／Disable。
-发现／trust 设置变更后重新加载扩展以更新门面的启动名单。Shutdown 现在也释放 widget、group-join
-与 completion-outbox 状态。
+发现或 trust 设置变更后重新加载扩展，刷新门面的启动名单。
 
-候选检查在独立沙箱捕获新字符统计并运行既有门面／集成回归、类型检查、生产安装和审计。
-真实模型／MCP 与交互通知时序不在这些检查范围；三平台 CI 后仍需人工审查发版。
+Agent 文件的 `isolated` 对 Workflow 子任务、mention 和 RPC 生效，优先于调用参数；文件的
+`isolation` 同样适用于 mention/RPC，worktree 要求可用的 git 仓库。Workflow 的 worktree 仍由脚本
+选项决定。子会话继承父会话项目 trust，跨目录派生不会自动信任目标目录。
 
-## 本次 lean 作者审查
-
-作者更新的 typebox v1 导入、`instancePath` 错误位置与共享 fallback 描述本仓已实现；路由、
-字段优先级、校验与渲染继续兼容，无需重写入口。引擎保持 npm stable 0.22.0，不采用较新的未发布
-远端 HEAD。作者 Pi 1.2 的测量与打包变化不替代本仓捕获；精确 revision 和逐项复用决定见 MAINTENANCE.md。
-
-## 最新 lean 作者审查
-
-已审查作者 `777b853` → `3082c5f`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
-改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；引擎仍锁定 0.22.0。
-上文 typebox 修复早于本次源码对。本仓字符代理由候选 check 重新统计，这不代表已验证 Pi 1.3
-兼容性；精确源码证据见 [MAINTENANCE.md](MAINTENANCE.md)。
+`extensions: true` 的子会话加载内置 codemode、tool search 和 MCP，每个子会话使用自己的 MCP
+服务器。可用 Agent 的 `exclude_extensions: builtin:mcp`、全局 `-builtin:mcp` 或 `--no-mcp` 关闭 MCP。
+子工具作用域尊重 exposure/defaultActive，也检查嵌套的 `ctx.executeTool` 调用。
 
 ## 上下文占用（字符代理）
 
@@ -114,7 +88,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 * 包装层：`0.1.4`
 * 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
-* 要求 Pi `>=1.1.0`（上游 peer 下限不变）；此前基线测试使用 Pi `1.1.0`、Node `22.22.1`，本次候选等待独立任务验证。
+* 要求 Pi `>=1.1.0`。开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 
 ## 开发
 
@@ -122,7 +96,8 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 维护说明
 
-适配点、上游元数据、升级步骤与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+适配点、上游元数据、升级历史、源码审查决定与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+README 只说明当前用法，不记录逐次发布过程。
 
 ## 协议与致谢
 

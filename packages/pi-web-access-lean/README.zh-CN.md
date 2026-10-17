@@ -45,7 +45,7 @@ node scripts/install-extension.mjs pi-web-access-lean
 
 批量或高级参数请将 JSON 对象序列化为 `input` 字符串传入；仅在不清楚字段时调用 `help`。
 
-## 本次审查：0.40.0 → 0.41.0
+## 抓取配置
 
 在 `web-search.json` 设置 `fetchContent.userAgent` 可指定直接 HTTP 页面抓取的 User-Agent：
 
@@ -53,41 +53,24 @@ node scripts/install-extension.mjs pi-web-access-lean
 { "fetchContent": { "userAgent": "My Reader/1.0" } }
 ```
 
-未设或 null 保留 `OpenAI File Downloader, XaiImageApiFetch/1.0`。合法字符串会 trim；空白、非字符串、
-非 ASCII 或 CR/LF 会在远端请求及 Provider 回退前报错。这是配置项，不是工具参数，常驻 Schema 与
-操作 help 无需扩充。配置在 `localhost`、`127.0.0.0/8` 或 `::1` 的 SearXNG 现在不必全局放行
-`ssrf.allowRanges`；豁免不允许跳转到其它本地 origin，也不允许普通页面 fetch 访问本地服务。
-新增真实门面回归使用离线 DNS/fetch mock 覆盖这些行为。
+未设或 null 保留 `OpenAI File Downloader, XaiImageApiFetch/1.0`。字符串会 trim；空白、非字符串、
+非 ASCII 或 CR/LF 会在远端请求及 Provider 回退前报错。这是配置项，不是工具参数。显式配置在
+`localhost`、`127.0.0.0/8` 或 `::1` 的 SearXNG 不必全局放行 `ssrf.allowRanges`；
+豁免不允许跳转到其它本地 origin，也不允许普通页面 fetch 访问本地服务。
 
-另已逐项审查 lean 作者更新：argument hook 和 subagents typebox 修复本仓已有；未采用全量结果文本
-正则重写或 RPC todo Plan 快照，具体理由见各包 MAINTENANCE。上游输出提示保留原工具名：将
-`get_search_content({ ... })` 换为 `web_access` 的 `op: "get"`，同一参数对象序列化进 `input`；
-search/fetch 提示分别使用 `op: "search"`／`"fetch"`。页面字面正文保持原样。
-
-## 历史审查：0.39.0 → 0.40.0
-
-按需限制重定向时，将高级 JSON 放入 `input`：
+按需限制同源重定向时，将高级 JSON 放入 `input`：
 
 ```json
 { "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
 ```
 
-`help` 的 `fetch` 会展示新参数，精简 Schema 仍只有 `op` 与 `input`。
-也可在 `web-search.json` 设置 `fetchContent.redirects: "same-origin"`。
-每次重定向都必须保持原始 URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也不尝试
-Provider 回退。启用策略后，无法观察重定向链的提取路径（包括托管提取、Jina、GitHub、YouTube）
-不可用。默认未启用该策略。
+也可在 `web-search.json` 设置 `fetchContent.redirects: "same-origin"`。每次重定向必须保持原始
+URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也不尝试 Provider 回退。启用后，无法观察
+重定向链的路径（托管提取、Jina、GitHub、YouTube）不可用。默认没有这项限制；`help` 的 `fetch`
+会说明这个高级参数。
 
-上游还修复了带缩略图的视频文字回答、Gemini 视频上传经配置网关发送，以及存储内容分页的 Unicode
-边界（摘录边缘的半个字符用替代字符表示）。lean 入口无需改动。新增离线门面回归覆盖 help、JSON
-透传、跨源拒绝、同源成功和非法参数；真实网关／视频 Provider 不在该测试范围内。
-
-## 最新 lean 作者审查
-
-已审查作者 `ae54d0d` → `c2beefc`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
-改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；引擎仍锁定 0.41.0。
-本仓字符代理由候选 check 重新统计，这不代表已验证 Pi 1.3 兼容性。
-精确源码证据和保留的适配决定见 [MAINTENANCE.md](MAINTENANCE.md)。
+页面字面正文保持原样。上游提示保留原工具名：将 `get_search_content({ ... })` 换为 `web_access`
+的 `op: "get"`，同一参数对象序列化进 `input`；search/fetch 提示分别使用 `op: "search"` 或 `"fetch"`。
 
 ## 上下文占用（字符代理）
 
@@ -112,7 +95,8 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 维护说明
 
-适配点、上游元数据、升级步骤与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+适配点、上游元数据、升级历史、源码审查决定与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+README 只说明当前用法，不记录逐次发布过程。
 
 ## 协议与致谢
 

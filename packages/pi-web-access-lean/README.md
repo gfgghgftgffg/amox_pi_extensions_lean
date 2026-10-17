@@ -50,55 +50,35 @@ registrations.
 Pass a JSON object string as `input` for batch/advanced parameters. Use `help` only when the field
 names are unclear.
 
-## Reviewed upgrade: 0.40.0 → 0.41.0
+## Fetch configuration
 
-Set `fetchContent.userAgent` in `web-search.json` to use your own User-Agent for direct page HTTP fetches:
+Set `fetchContent.userAgent` in `web-search.json` for direct HTTP page fetches:
 
 ```json
 { "fetchContent": { "userAgent": "My Reader/1.0" } }
 ```
 
-Leaving it unset (or null) keeps `OpenAI File Downloader, XaiImageApiFetch/1.0`. Valid strings are trimmed;
-blank, non-string, non-ASCII, or CR/LF values fail before any remote fetch or provider fallback.
-This is a configuration setting, not a new tool argument; the compact schema and operation help stay unchanged.
-A configured SearXNG endpoint on `localhost`, `127.0.0.0/8`, or `::1` now works without globally allowing
-loopback in `ssrf.allowRanges`. That exemption does not allow redirects to another local origin or ordinary
-page fetches to local services. These behaviors are covered through the real facade with offline DNS/fetch mocks.
+Unset or null keeps `OpenAI File Downloader, XaiImageApiFetch/1.0`. Strings are trimmed; blank,
+non-string, non-ASCII or CR/LF values fail before a remote request or provider fallback. This is
+configuration, not a tool argument. An explicitly configured SearXNG endpoint on `localhost`,
+`127.0.0.0/8` or `::1` works without globally allowing loopback in `ssrf.allowRanges`; the exemption
+does not allow redirects to another local origin or ordinary page fetches to local services.
 
-The lean-author update was reviewed separately. Its argument hook and subagents typebox fixes are already
-present here. Blanket result-text rewriting and RPC todo plan snapshots were not adopted; see each
-MAINTENANCE file for the specific reasons. Upstream tool hints retain their original names: translate
-`get_search_content({ ... })` to `web_access` with `op: "get"` and the same argument object serialized as
-`input`. Likewise use `op: "search"` or `"fetch"` for upstream search/fetch guidance. Page bodies remain literal.
-
-## Previous upgrade: 0.39.0 → 0.40.0
-
-For an opt-in redirect restriction, pass advanced JSON through `input`:
+For an opt-in same-origin redirect restriction, pass advanced JSON through `input`:
 
 ```json
 { "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
 ```
 
-`help` for `fetch` exposes this option; the compact schema remains `op` + `input`.
-Alternatively set `fetchContent.redirects: "same-origin"` in `web-search.json`.
-Every redirect must keep the requested scheme, hostname, and effective port. A refused
-redirect returns no page body and triggers no provider fallback. Paths whose redirect chain
-cannot be observed (including hosted extraction, Jina, GitHub, and YouTube) are unavailable
-while this policy is enabled. The default remains unrestricted by this opt-in policy.
+Alternatively set `fetchContent.redirects: "same-origin"` in `web-search.json`. Every redirect must
+keep the original scheme, hostname and effective port. A refusal returns no page body and triggers
+no provider fallback. Paths whose redirects cannot be observed (hosted extraction, Jina, GitHub
+and YouTube) are unavailable while this policy is enabled. The default has no such restriction;
+`help` for `fetch` describes the advanced parameter.
 
-The dependency also fixes video answer mode with transcript thumbnails, routes Gemini video
-uploads through the configured gateway, and preserves Unicode characters at stored-page
-boundaries (split excerpt edges use a replacement character). The lean entry needs no change.
-The focused offline facade regression covers redirect help, JSON forwarding, refusal, success,
-and invalid values. Live gateways/video providers are outside that test's scope.
-
-## Latest lean-author review
-
-Reviewed author revisions `ae54d0d` → `c2beefc`. The complete adapter and package metadata are identical;
-only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
-No tools, parameters, defaults or runtime behavior change. Our engine pin stays 0.41.0 and our own
-character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
-Exact source evidence and retained adaptation decisions are in [MAINTENANCE.md](MAINTENANCE.md).
+Page bodies remain literal. Upstream hints keep their original tool names: translate
+`get_search_content({ ... })` to `web_access` with `op: "get"`, serializing the same argument object
+as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`.
 
 ## Context footprint (character proxy)
 
@@ -123,8 +103,8 @@ Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:chec
 
 ## Maintenance
 
-Adaptation points, pinned upstream metadata, upgrade steps, and limitations live in
-[MAINTENANCE.md](MAINTENANCE.md).
+Adaptation points, pinned upstream metadata, upgrade history, source-review decisions, and limitations
+live in [MAINTENANCE.md](MAINTENANCE.md). This README describes current usage, not individual releases.
 
 ## License
 

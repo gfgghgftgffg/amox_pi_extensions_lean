@@ -31,28 +31,8 @@ node scripts/install-extension.mjs rpiv-todo-lean
 通常需要显式传入 `action`；省略时封装会依据 `subject` 推断 `create`，或依据 `id` 加可变字段推断
 `update`，其余情况交由上游报错。
 
-## 本次审查：2.13.5 → 2.13.8
-
-上游 2.13.6–2.13.8 的 CHANGELOG 条目没有列出工具或行为变化。核对工具 Schema、注册／执行路径、
-reducer、回放／store、覆盖层私有字段、配置适配器和 i18n loader／bridge 后，这些审查面源码保持一致。
-lean 入口无需修改：仍为一个 `todo` 工具、六个 action、同样的 action 推断与逐会话 RPC 覆盖层。
-create 仍默认 `pending`；list 默认排除 deleted tombstone，`includeDeleted: true` 可包含；clear 重置 ID 为 1。
-持久化键仍为 `rpiv-todo-state`，继续兼容历史 toolResult 回放。
-
-配套 i18n 固定版本同步到 2.13.8，上游传递依赖 rpiv-config 范围同步到 `^2.13.8`。
-源码 revision 与审查边界见 [MAINTENANCE.md](MAINTENANCE.md)，既有回归断言全部保留。
-本次候选 check 实际执行安装、测试、契约捕获、生产安装与审计，结果以工具输出为准；发版仍需人工审查。
-
-已审查作者新增 RPC Plan 输出但未复用：它向所有 RPC host 的模型可见结果追加全量任务快照，且在执行后
-新增未保护的上下文读取。本仓保留 Pi 1.1 stale guard、命令等待顺序、结果封装与覆盖层。
-引擎 pins 仍为 2.13.8，不消费未发布的远端 HEAD；逐项决定见 MAINTENANCE.md。
-
-## 最新 lean 作者审查
-
-已审查作者 `6c74831` → `50e485d`：完整入口和包元数据一致，中英文基准文档仅将 Pi 1.2.0
-改为 1.3.0，估算数值未变。无工具、参数、默认值或运行行为变化；todo/i18n 仍锁定 2.13.8。
-上文 Plan 输出决定属于此前审查，两版均已包含该实现。本仓字符代理由候选 check 重新统计，
-这不代表已验证 Pi 1.3 兼容性；精确源码证据见 [MAINTENANCE.md](MAINTENANCE.md)。
+新任务默认 `pending`；list 默认不含已删除任务，`includeDeleted: true` 可包含；clear 重置任务 ID 为 1。
+状态通过 `rpiv-todo-state` 条目持久化，保留历史工具结果回放。RPC 响应不会额外追加全量 Plan 快照。
 
 ## 上下文占用（字符代理）
 
@@ -69,7 +49,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 * 包装层：`0.1.4`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.8` 与 `@juicesharp/rpiv-i18n@2.13.8`（精确版本）
-* 此前基线测试使用 Pi `1.1.0`、Node `22.22.1`；本次候选等待独立任务验证。
+* 开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 
 ## 开发
 
@@ -77,7 +57,8 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 维护说明
 
-适配点、上游元数据、升级步骤与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+适配点、上游元数据、升级历史、源码审查决定与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+README 只说明当前用法，不记录逐次发布过程。
 
 ## 协议与致谢
 

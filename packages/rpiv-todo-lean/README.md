@@ -36,33 +36,9 @@ The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`,
 `action` is normally required; when it is omitted the facade infers `create` from `subject` or
 `update` from `id` plus a mutable field, and otherwise lets upstream report the error.
 
-## Reviewed upgrade: 2.13.5 → 2.13.8
-
-Upstream's 2.13.6–2.13.8 changelog entries contain no tool or behavior changes. The reviewed tool
-schema, registration/execute path, reducer, replay/store, overlay private fields, configuration
-adapter, and i18n loader/bridge are unchanged. The lean entry remains unchanged: one `todo` tool,
-six actions, the same action inference, and the same per-session RPC overlays. Create still defaults
-to `pending`; list excludes tombstones unless `includeDeleted: true`; clear resets task IDs to 1.
-The persistence key remains `rpiv-todo-state`, with legacy tool-result replay retained.
-
-The coupled i18n pin advances to 2.13.8; upstream's transitive rpiv-config range advances to
-`^2.13.8`. See [MAINTENANCE.md](MAINTENANCE.md) for source revisions and review limits. All existing
-regression assertions are preserved. The current candidate check runs installation, tests, contract capture,
-production-install verification and audits; its output is the validation record. Release requires human review.
-
-The new lean-author RPC plan-output feature was reviewed and not adopted: it appends full task snapshots
-to model-visible results for all RPC hosts and adds unguarded context reads after execution. The existing
-Pi 1.1 stale guards, command ordering, result envelope and overlays are retained. Pins remain 2.13.8;
-unpublished engine HEAD changes are not consumed. See the itemized review in MAINTENANCE.md.
-
-## Latest lean-author review
-
-Reviewed author revisions `6c74831` → `50e485d`. The complete adapter and package metadata are identical;
-only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
-No tools, parameters, defaults or runtime behavior change. Our todo/i18n pins stay 2.13.8 and our own
-character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
-The plan-output decision above is from the previous review and remains applicable to both snapshots.
-Exact source evidence is in [MAINTENANCE.md](MAINTENANCE.md).
+New tasks default to `pending`. Listing excludes deleted tasks unless `includeDeleted: true`;
+clearing resets task IDs to 1. State persists through `rpiv-todo-state` entries, with legacy tool-result
+replay retained. RPC responses are not expanded with an additional full-plan snapshot.
 
 ## Context footprint (character proxy)
 
@@ -79,7 +55,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 * Wrapper: `0.1.4`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
-* Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
+* Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 
 ## Development
 
@@ -87,8 +63,8 @@ Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:chec
 
 ## Maintenance
 
-Adaptation points, pinned upstream metadata, upgrade steps, and limitations live in
-[MAINTENANCE.md](MAINTENANCE.md).
+Adaptation points, pinned upstream metadata, upgrade history, source-review decisions, and limitations
+live in [MAINTENANCE.md](MAINTENANCE.md). This README describes current usage, not individual releases.
 
 ## License
 

@@ -56,67 +56,33 @@ preserves that discovery mechanism. After installation: review discovered agent 
 their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, and watch for naming
 collisions with the built-in `general-purpose`, `Explore`, and `Plan` types.
 
-## Reviewed upgrade: 0.20.0 → 0.21.0
+## Runtime behavior and settings
 
-The four upstream tools, parameter schemas, defaults, and execution signatures are unchanged; the
-lean entry is unchanged. Advanced options still go through `input` and `help`, and the session
-continues to expose one `subagent` tool.
+Background agent, group and workflow completions use the steering queue without interrupting running
+tools. `smart` and `async` joins report completed tasks at the parent's next boundary without waiting
+for siblings. A busy parent receives one combined message after its tool batch; an idle parent gets a
+turn after about 200 ms. Use `group` to wait for a turn's batch; a lone spawn and different parent
+turns are not grouped. Pending notifications survive Esc, and reading a finished result before delivery
+suppresses its notification.
 
-Background agent, group, and workflow completions now enter the steering queue: a busy parent sees
-one after its current tool batch and before the next model call. Running tools are not interrupted.
-A running foreground spawn can be handed to the background with `ctrl+b` while the editor has focus
-(all foreground spawns), or `b` in its conversation viewer (one spawn); it returns an ID and later
-notifies on completion. The viewer also follows Pi's fullscreen mode and scrollbar setting.
+A foreground spawn can move to the background with `ctrl+b` while the editor has focus (all foreground
+spawns), or `b` in its viewer (one spawn). It returns an ID and later notifies on completion. The viewer
+follows Pi's fullscreen and scrollbar settings.
 
-Agent-file `isolated` now applies to workflow children, mentions, and RPC spawns; file values override
-caller values. File `isolation` applies to mentions/RPC too, and a requested worktree fails to start
-outside a usable git repository. Workflow worktrees remain controlled by the script's option.
-Children inherit the parent's project trust; a different spawn directory is not implicitly trusted.
-With `extensions: true`, children load Pi's built-in codemode, tool search, and MCP, each with its
-own MCP servers. Opt out with agent `exclude_extensions: builtin:mcp`, global `-builtin:mcp`, or
-`--no-mcp`. Child tool scope respects exposure/defaultActive and also gates nested `ctx.executeTool`
-calls.
+Installed packages can declare agents/workflows under `pi.subagents` or `pi-subagents`. These resources
+are enabled by default, rank below your own definitions, and are invisible if configured only by an
+untrusted project. `packageAgents` and `packageWorkflows` in `subagents.json` accept `true`, `false` or
+a package allowlist. Package agents are read-only in `/agents`, with Eject/Disable actions. Reload
+after changing discovery or trust settings to refresh the facade's startup type list.
 
-Source review and test scope are recorded in [MAINTENANCE.md](MAINTENANCE.md).
+Agent-file `isolated` applies to workflow children, mentions and RPC spawns, overriding caller values.
+File `isolation` also applies to mentions/RPC; a requested worktree requires a usable git repository.
+Workflow worktrees remain controlled by script options. Children inherit parent project trust;
+a different spawn directory does not become trusted automatically.
 
-## Reviewed upgrade: 0.21.0 → 0.22.0
-
-The four tool names, fields, required parameters, execution/render signatures, and invocation
-defaults remain compatible; the lean entry is unchanged. The default `smart` join mode now
-reports completed tasks at the parent's next boundary without waiting for siblings; `async`
-has the same behavior. A busy parent receives completions from its tool batch in one message;
-an idle parent gets a turn after about 200 ms, combining completions within that window.
-Use the `group` join setting to wait for a turn's batch; a lone spawn and different parent
-turns are not grouped. A pending completion survives Esc and starts a turn after the interrupted
-run ends. Reading a finished result suppresses its notification any time before delivery.
-
-Installed Pi packages can declare agents and workflows under `pi.subagents` or `pi-subagents`.
-Package resources are enabled by default and rank below your own definitions; packages configured
-only by an untrusted project are invisible. `packageAgents` and `packageWorkflows` accept `true`,
-`false`, or a package allowlist in `subagents.json`. Package agents are read-only in `/agents`,
-with Eject/Disable actions. Reload after changing discovery/trust settings to refresh the facade's
-startup type list. Shutdown now also disposes widget, group-join, and completion-outbox state.
-
-The candidate check captures current character measurements and runs the existing facade and
-integration regressions, typechecks, production installs, and audits in a separate sandbox.
-Live model/MCP and interactive notification timing are outside those checks; release requires
-human review after three-platform CI.
-
-## Current lean-author review
-
-The author update's typebox v1 imports, `instancePath` error locations and shared fallback description
-are already implemented here. Routes, field precedence, validation and rendering stay compatible;
-no adapter rewrite is needed. The engine remains npm stable 0.22.0; newer unpublished remote HEAD is
-not adopted. Author Pi 1.2 benchmarks and packaging changes are kept separate from this repository's
-own capture. Exact revisions and itemized reuse decisions are in MAINTENANCE.md.
-
-## Latest lean-author review
-
-Reviewed author revisions `777b853` → `3082c5f`. The complete adapter and package metadata are identical;
-only the bilingual benchmark environment changes from Pi 1.2.0 to 1.3.0, with the same estimates.
-No tools, parameters, defaults or runtime behavior change. Our engine pin stays 0.22.0 and our own
-character measurements are refreshed by the candidate check; this does not establish Pi 1.3 compatibility.
-The typebox fixes described above predate this pair. Exact evidence is in [MAINTENANCE.md](MAINTENANCE.md).
+With `extensions: true`, children load builtin codemode, tool search and MCP, each with its own MCP
+servers. Disable MCP with agent `exclude_extensions: builtin:mcp`, global `-builtin:mcp` or `--no-mcp`.
+Child tool scope respects exposure/defaultActive and also checks nested `ctx.executeTool` calls.
 
 ## Context footprint (character proxy)
 
@@ -133,7 +99,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 * Wrapper: `0.1.4`
 * Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
-* Requires Pi `>=1.1.0` (unchanged upstream peer floor). Previous baseline testing used Pi `1.1.0`, Node `22.22.1`; candidate validation is pending in the independent job.
+* Requires Pi `>=1.1.0`. Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 
 ## Development
 
@@ -141,8 +107,8 @@ Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:chec
 
 ## Maintenance
 
-Adaptation points, pinned upstream metadata, upgrade steps, and limitations live in
-[MAINTENANCE.md](MAINTENANCE.md).
+Adaptation points, pinned upstream metadata, upgrade history, source-review decisions, and limitations
+live in [MAINTENANCE.md](MAINTENANCE.md). This README describes current usage, not individual releases.
 
 ## License
 

@@ -90,6 +90,7 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   for (const doc of [readme, english]) assert.doesNotMatch(doc, /sub2api\.amox\.cc|gpt-6\.1-sol|MAINTENANCE_API_KEY|dispatch-workflows/);
   assert.match(maintenance, /最小改动/); assert.match(maintenance, /Approve workflows to run/);
   assert.match(maintenance, /不是操作系统级沙箱/); assert.match(scheduler, /bubblewrap/);
+  assert.match(maintenance, /README 只描述当前/); assert.match(read("maintenance/daily-update.md"), /更新现有段落，不追加逐版本升级历史/);
   assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /人工合并/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
     for (const doc of [english, readme]) assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
@@ -100,6 +101,8 @@ test("public docs describe local Pi, reviewed npm publication and independent in
       const doc = read(`${entry.path}/${file}`); assert.doesNotMatch(doc, /pi install git:|phase 1/);
       assert.ok(doc.includes(`node scripts/install-extension.mjs ${entry.id}`));
       assert.ok(doc.includes(`pi install npm:${entry.packageName}`)); assert.ok(doc.includes("pi update --extensions"));
+      assert.doesNotMatch(doc, /^#{1,6} .*?(?:reviewed upgrade|previous upgrade|lean-author review|upgrade history|change ?log|release notes|本次审查|历史审查|作者审查|已审核升级|升级历史|更新日志)/im);
+      assert.match(doc, /\[MAINTENANCE\.md\]\(MAINTENANCE\.md\)/);
     }
   }
 });

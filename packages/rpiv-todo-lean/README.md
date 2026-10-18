@@ -52,16 +52,16 @@ replay retained. RPC responses are not expanded with an additional full-plan sna
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.5 | 247 |
-| @juicesharp/rpiv-todo | 2.13.8 | 882 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.6 | 247 |
+| @juicesharp/rpiv-todo | 2.13.9 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.5`
-* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.8` and `@juicesharp/rpiv-i18n@2.13.8` (exact)
+* Wrapper: `0.1.6`
+* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.9` and `@juicesharp/rpiv-i18n@2.13.9` (exact)
 * Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 
 ## Development

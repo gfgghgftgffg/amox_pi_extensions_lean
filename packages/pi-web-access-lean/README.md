@@ -55,7 +55,24 @@ registrations.
 ```
 
 Pass a JSON object string as `input` for batch/advanced parameters. Use `help` only when the field
-names are unclear.
+names are unclear. DeepSeek search uses advanced JSON, for example:
+
+```json
+{ "op": "search", "input": "{\"query\":\"Pi extensions\",\"provider\":\"deepseek\"}" }
+```
+
+Set `deepseekApiKey` in `web-search.json` or `DEEPSEEK_API_KEY`. DeepSeek is billed per successful
+search and requires explicit selection (including configured routing); `auto` and `all` exclude it.
+Domain and recency filters count toward its 128-character query limit. `help` for `search` or `check`
+shows the current provider choices.
+
+The facade stays directly available even with upstream `toolExposure: "deferred"`; this setting does
+not defer `web_access`. Upstream still rejects combining it with `toolActivation: "eager"`.
+Page answers and search summaries use the host registry's `streamSimple` path when available,
+including virtual models. On Windows, `!command` credential sources prefer Git Bash or `bash.exe`
+on PATH, with the default command shell as fallback. Gemini `geminiAuth: "adc"` can use an attached
+GCE service account when no ADC file is configured or present; `GCE_METADATA_HOST` overrides the
+metadata host and `METADATA_SERVER_DETECTION=none` disables detection.
 
 ## Fetch configuration
 
@@ -92,16 +109,16 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.5 | 149 |
-| pi-web-access | 0.41.0 | 2739 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.6 | 149 |
+| pi-web-access | 0.42.0 | 2755 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.5`
-* Upstream runtime: pinned to `pi-web-access@0.41.0` (exact)
+* Wrapper: `0.1.6`
+* Upstream runtime: pinned to `pi-web-access@0.42.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 
 ## Development

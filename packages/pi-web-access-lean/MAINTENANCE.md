@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.41.0`（精确固定；`dependencies`；此前为 0.40.0）。
+- `pi-web-access@0.42.0`（精确固定；`dependencies`；此前为 0.41.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -112,6 +112,40 @@
   `b3f676d8448ede197d8cd22589beeb9e44f1cf44` 未采用。本次库存仅有 lean 源码，不声称重审远端引擎。
 - 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
   无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
+
+## 本次审查：0.41.0 → 0.42.0 与 lean 作者更新
+
+- 精确发布源码：`d47dc040552505e3b135d0136a0b15eaf4bdba52` →
+  `18e36f9e0fc2de3c9895a7fda8d39a62ce60f49e`（npm stable 与远端一致）。阅读新旧入口注册／执行面、
+  CHANGELOG、package.json、gemini-search.ts provider 表与策略、page-query.ts、summary-review.ts
+  的模型调用、summary-model-scope.ts、credential-source.ts、gemini-adc.ts 与返回契约／fetch core。
+  审查范围为门面相关边界，并非全仓安全审计。
+- 无工具增删、无调用字段增删；provider 枚举新增 deepseek，search/check help 从真实 schema 自动披露，
+  input JSON 原样传入并保留 search.prepareArguments；不扩大常驻 op/input Schema。numResults 默认 5、
+  fetch 默认 readable、workflow 默认 none 不变。依赖／peer 范围不变。
+- DeepSeek 显式选择或配置 searchRouting，auto/all 不包含它；deepseekApiKey／DEEPSEEK_API_KEY 提供凭据。
+  域名转 site:/-site:，recency 转 after:，包含过滤表达式的查询最多 128 Unicode 字符，超长在发请求前失败。
+  POST https://api.deepseek.com/v1/tools/search 返回 results，summary 优先作为 snippet。
+- 新配置 toolExposure 默认 direct，可选 deferred，后者强制 dynamic 且不兼容 toolActivation=eager。
+  captured 工具新增 exposure，但本地新建的 web_access 不继承它；既有 loader 丢弃和 setActiveTools 拦截
+  继续有效，保持门面直接可用。这是配置边界，不是新工具参数；中英文 README 明示。
+- 页面回答与摘要优先 registry.streamSimple(...).result()，其次 registry.complete，最后 compat.complete；
+  支持 virtual model，仍做 auth／scope 检查、透传 sessionId 与 cacheRetention=none。无本地模型调用实现复制。
+- Windows !command 凭据优先 Git Bash 安装路径或 PATH bash.exe，排除旧 WSL launcher；缺失时 exec 默认 shell。
+  增加 Windows 环境变量白名单，仍共享 5 秒预算／abort／输出限制。GCE ADC 无显式或默认文件时可用 metadata token，
+  由 GCE_METADATA_HOST 或 Google BIOS 检测，METADATA_SERVER_DETECTION=none 禁用；metadata 请求禁止 redirect。
+- 五参数 execute、四默认路由、PDF 独立分支继续成立；rendered content、structuredContent、存储正文分层保持。
+  answer 的 structuredContent.urls[].content 是回答，get 取回的是原始页面；返回对象不做文本正则替换。
+- 逐项作者复用审查 `c2beefc20ff6ed52a376d5ddaf9a91bcf3a7a09a` →
+  `09262708ad57726d1a4b3c22b084fb84ea22281b`：完整入口一致，原有 hint rewrite 仍不复用；
+  package.json 仅包装版本／description 测量／引擎 pin 更新，保留本仓脚本管理元数据和 peer/dev 基线。
+  中英文 README 仅版本及测量更新，不复制其 Pi 1.3 数值。作者测试将 help 标题改 0.42 并补 deepseek 断言，
+  本仓以新 focused 回归覆盖，不修改既有基线测试。
+- 新增 upstream-042-regression.test.mjs：导入前 DNS/fetch mocks、绝对 URL、虚构凭据；覆盖 help、JSON
+  stringified provider/domainFilter、实际请求、超长错误、deferred 下单一直接门面与无 active-list 变动、
+  answer 对 host streamSimple 的透传及响应分层。无 ADC／Windows shell 内部测试或真实模型任务。
+- check 捕获当前字符代理及契约并实际执行类型／测试／生产安装／审计；结果以输出为准。
+  ceil(chars/4) 不是计费 token。真实 DeepSeek、GCE、Windows Git Bash 和虚拟模型服务端端到端未实测。
 
 ## 升级步骤
 

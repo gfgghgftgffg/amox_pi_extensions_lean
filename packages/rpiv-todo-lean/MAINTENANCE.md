@@ -14,9 +14,9 @@
 
 ## 锁定的上游版本
 
-- `@juicesharp/rpiv-todo@2.13.8`（精确固定；`dependencies`；此前为 2.13.5）。
-- `@juicesharp/rpiv-i18n@2.13.8`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
-- 上游 2.13.8 自带传递依赖 `@juicesharp/rpiv-config@^2.13.8`（此前为 ^2.13.5；由 npm 解析，不显式固定）。
+- `@juicesharp/rpiv-todo@2.13.9`（精确固定；`dependencies`；此前为 2.13.8）。
+- `@juicesharp/rpiv-i18n@2.13.9`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
+- 上游 2.13.9 自带传递依赖 `@juicesharp/rpiv-config@^2.13.9`（此前为 ^2.13.8；由 npm 解析，不显式固定）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
@@ -118,6 +118,25 @@
   `fc951b8d2628ccbd5dc706d07df329e85daf1edd` 未采用。本次库存仅有 lean 源码，不声称重审远端引擎。
 - 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
   无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
+
+## 本次审查：2.13.8 → 2.13.9
+
+- 发布源码 `afc21bc25f7d07cae9fb3103dc309240a16b9f49` →
+  `54df50eea935fc9753edc300d5f23c5e28d906d7`，todo 与相关 i18n 同步。远端
+  `d3c6f0812140605a4e55e0a660eb83edc12abbc5` 不是本次采用源码；lean 作者仍为
+  `50e485d82809009213e21c93c564f4eaf33a650c`，无新差异可复用。
+- 对比两包 CHANGELOG、todo package.json、index.ts、tool/types.ts、state/store.ts、state/replay.ts、
+  todo-overlay.ts 与 i18n index.ts：本次相关源码变化为相对导入从不存在的 .js 改到发布的 .ts 文件，
+  避免 jiti fallback resolution；不是运行时逻辑重写。rpiv-config 传递范围升为 ^2.13.9，peer 不变；
+  库存未包含 config 本体，不宣称审查了其全部实现。
+- 工具仍为 todo，六个 action、字段／required 未变；create 默认 pending，list 默认不含 deleted、
+  clear 重置 nextId=1。state entry 仍为 rpiv-todo-state，优先回放逻辑与 session map 未变。
+  overlay 依赖的普通 private 字段 lastNextId／两个 completed 集合、getSnapshot 以及公开方法继续可用。
+- 最小适配：本地 index.ts 四个深层 import 同步为 .ts，直接命中真实发布文件；默认包入口不变。
+  schema 去描述、action 推断、RPC 会话隔离、stale guards、异步命令等待和原始响应委派不变。
+  已有 tests 中 .js 路径与全部断言保留，真实集成回归同时验证与新 .ts 入口共享状态；不增加重复引擎测试。
+- README 两种语言更新当前版本，字符代理由 check 重测。check 实际执行类型／既有任务与 RPC 回归、
+  契约、独立生产安装与审计，结果以输出为准；不宣称测量了启动耗时改善。
 
 ## 升级步骤
 

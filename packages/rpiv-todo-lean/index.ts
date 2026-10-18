@@ -1,9 +1,9 @@
 import type { ExtensionAPI, ExtensionContext, ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import todo from "@juicesharp/rpiv-todo";
-import { replayFromBranch } from "@juicesharp/rpiv-todo/state/replay.js";
-import { evictSession, getState, replaceState, sid } from "@juicesharp/rpiv-todo/state/store.js";
-import { TOOL_NAME } from "@juicesharp/rpiv-todo/todo.js";
-import { TodoOverlay } from "@juicesharp/rpiv-todo/todo-overlay.js";
+import { replayFromBranch } from "@juicesharp/rpiv-todo/state/replay.ts";
+import { evictSession, getState, replaceState, sid } from "@juicesharp/rpiv-todo/state/store.ts";
+import { TOOL_NAME } from "@juicesharp/rpiv-todo/todo.ts";
+import { TodoOverlay } from "@juicesharp/rpiv-todo/todo-overlay.ts";
 
 const COLLAPSED_DISPLAY_SERVICE = Symbol.for(
 	"@local/pi-collapsed-tools.display-service.v1",

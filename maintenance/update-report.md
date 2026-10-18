@@ -1,13 +1,14 @@
 # Local upstream maintenance
 
-Base: 700a341dfeefe6233116be56de2687646ec060bf
-Release after verified merge: v0.1.5
+Base: 7ffc2199477c2cc00e250b6043aab2f079415715
+Release after verified merge: v0.1.6
 
-<!-- amox-release-summary:v0.1.5:start -->
-- Publish the reviewed npm distribution and automatic-merge fixes as 0.1.5; keep every facade entrypoint and upstream/SDK pin unchanged.
-- Prefer unpinned public npm installation and pi update --extensions in both README languages; retain the Git fallback and one-source migration guidance.
-- Ship shorter current-usage READMEs with review history kept in MAINTENANCE, and preserve strict archive identity/hash checks with bounded read-only registry propagation waits.
-<!-- amox-release-summary:v0.1.5:end -->
+<!-- amox-release-summary:v0.1.6:start -->
+- Update pi-web-access to 0.42.0: DeepSeek is available through search/check help and advanced JSON with explicit paid-provider selection, domain/date filters and the upstream 128-character query limit.
+- Preserve the directly available single web_access facade under upstream deferred exposure; document the eager/deferred configuration conflict and the host streaming path for virtual-model page answers and search summaries, Windows Bash credential sources and GCE ADC support in both README languages.
+- Update rpiv-todo and coupled rpiv-i18n to 2.13.9; point four adapter deep imports directly at published .ts files while preserving task schemas, persistence, RPC session isolation and stale-context handling. Keep subagents on published 0.22.0.
+- Add focused offline facade coverage for DeepSeek help/JSON execution and length errors, stable deferred registration, and answer-mode streamSimple forwarding with distinct rendered and structured response assertions. Preserve all baseline assertions and record exact source/reuse decisions; recapture local character-proxy measurements and contracts.
+<!-- amox-release-summary:v0.1.6:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-web-access-lean",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "type": "module",
   "description": "Lean Pi web access extension: one web_access facade over the full pi-web-access runtime, with advanced parameters disclosed through help.",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "pi-web-access": "0.42.0"
+    "pi-web-access": "0.43.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",

@@ -85,7 +85,7 @@ Agent 文件的 `isolated` 对 Workflow 子任务、mention 和 RPC 生效，优
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.6 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.7 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -93,7 +93,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.6`
+* 包装层：`0.1.7`
 * 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
 * 要求 Pi `>=1.1.0`。开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 

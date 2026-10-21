@@ -138,6 +138,22 @@
 - README 两种语言更新当前版本，字符代理由 check 重测。check 实际执行类型／既有任务与 RPC 回归、
   契约、独立生产安装与审计，结果以输出为准；不宣称测量了启动耗时改善。
 
+## 本次 lean 作者审查：保持最小兼容更新
+
+- 精确作者入口 `50e485d82809009213e21c93c564f4eaf33a650c` →
+  `f1e3fc7bcde2644a89803fa6a3a256fb7422d89f` 完整比较：四个深层导入 .js → .ts，本仓上一轮已适配；
+  新增 bare id（仅允许附带 includeDeleted）推断 get；prompt 改为逐步开始／完成、禁止最后批量标记。
+- 后两项是可选输入容错与更强的工作流指导，不是当前固定引擎兼容所需，本次不复用。保留现有
+  create/update 推断、显式 action=get、单一 in_progress 指导、RPC 会话／stale guards 与异步命令等待。
+  作者原有 withHostPlan 仍未修复 await 后 stale getter，不复用的历史决定继续适用。
+- 作者 wrapper 测试新增 bare id 推断／幂等／不推断破坏性操作断言，只对应未采用的功能，不复制。
+  package.json 包装 2.13.10 → 2.13.12、todo/i18n pins 2.13.8 → 2.13.9，本仓已固定 2.13.9；
+  README 更新版本、字符代理及新推断／指导用法，不复制其 Pi 1.3 基准、锁文件或包装版本。
+- 引擎稳定版仍为 `54df50eea935fc9753edc300d5f23c5e28d906d7`，远端
+  `d3c6f0812140605a4e55e0a660eb83edc12abbc5` 未采用。本次库存仅有 lean before/after，不声称
+  重审未提供的引擎源码。六个 action、默认值与内部 overlay/store 依赖由现有真实集成验证。
+- 本次无门面改动，不加重复回归。check 运行现有全部断言并更新本仓字符代理，结果以其输出为准。
+
 ## 升级步骤
 
 1. `npm view @juicesharp/rpiv-todo version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码（`tool/types.ts`、`todo.ts`、`todo-overlay.ts`、`index.ts`、`state/*`）及 `CHANGELOG.md`。

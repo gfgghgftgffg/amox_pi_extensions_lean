@@ -46,7 +46,7 @@ node scripts/install-extension.mjs rpiv-todo-lean
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.6 | 247 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.7 | 247 |
 | @juicesharp/rpiv-todo | 2.13.9 | 882 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -54,7 +54,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.6`
+* 包装层：`0.1.7`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.9` 与 `@juicesharp/rpiv-i18n@2.13.9`（精确版本）
 * 开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 

@@ -1,14 +1,16 @@
 # Local upstream maintenance
 
-Base: 7ffc2199477c2cc00e250b6043aab2f079415715
-Release after verified merge: v0.1.6
+Base: c2dc52dc1b91bc5e5c7d7f0da1f0d10b054f2da4
+Release after verified merge: v0.1.7
 
-<!-- amox-release-summary:v0.1.6:start -->
-- Update pi-web-access to 0.42.0: DeepSeek is available through search/check help and advanced JSON with explicit paid-provider selection, domain/date filters and the upstream 128-character query limit.
-- Preserve the directly available single web_access facade under upstream deferred exposure; document the eager/deferred configuration conflict and the host streaming path for virtual-model page answers and search summaries, Windows Bash credential sources and GCE ADC support in both README languages.
-- Update rpiv-todo and coupled rpiv-i18n to 2.13.9; point four adapter deep imports directly at published .ts files while preserving task schemas, persistence, RPC session isolation and stale-context handling. Keep subagents on published 0.22.0.
-- Add focused offline facade coverage for DeepSeek help/JSON execution and length errors, stable deferred registration, and answer-mode streamSimple forwarding with distinct rendered and structured response assertions. Preserve all baseline assertions and record exact source/reuse decisions; recapture local character-proxy measurements and contracts.
-<!-- amox-release-summary:v0.1.6:end -->
+<!-- amox-release-summary:v0.1.7:start -->
+- Update pi-web-access to 0.43.0 while preserving the compact, single web_access facade and literal page content.
+- Expose Linkup through existing advanced JSON and on-demand help; document API-key setup, explicit paid-provider selection and linkupDepth configuration.
+- Carry upstream DeepSeek inline page storage and opt-in hosted Fetch support, configured-provider-array fallback and short static HTML fixes; document xAI gateway credentials and timeout configuration in both languages.
+- Review all three exact lean-author before/after adapters. Retain current explicit operation/string-JSON contracts and todo guidance; record optional inference changes not reused and .ts imports already applied locally.
+- Add focused offline facade regressions for Linkup requests/help, DeepSeek stored-content retrieval, default-array versus explicit-array fallback, and short-page/hosted fetching, preserving every baseline assertion.
+- Refresh source-review and maintenance records; recapture contracts and character proxies and run the fixed sandbox validation gates.
+<!-- amox-release-summary:v0.1.7:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

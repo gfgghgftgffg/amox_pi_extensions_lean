@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.42.0`（精确固定；`dependencies`；此前为 0.41.0）。
+- `pi-web-access@0.43.0`（精确固定；`dependencies`；此前为 0.42.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -146,6 +146,41 @@
   answer 对 host streamSimple 的透传及响应分层。无 ADC／Windows shell 内部测试或真实模型任务。
 - check 捕获当前字符代理及契约并实际执行类型／测试／生产安装／审计；结果以输出为准。
   ceil(chars/4) 不是计费 token。真实 DeepSeek、GCE、Windows Git Bash 和虚拟模型服务端端到端未实测。
+
+## 本次审查：0.42.0 → 0.43.0 与 lean 作者更新
+
+- 发布源码以 sources.json 为准：`18e36f9e0fc2de3c9895a7fda8d39a62ce60f49e` →
+  `7fcb1531fbc4b86cef12e8851f66b42e6385e0ce`；远端 `d0e323ac935e8753d11e1853b81c057e39dee4dc`
+  未采用。对比 CHANGELOG、package.json、入口 search/check/fetch/get schema 与执行面、gemini-search.ts
+  的 provider 表及数组路由、deepseek.ts、xai-search.ts 和 extract.ts 的路由／短正文分支；阅读新增
+  linkup.ts 及 web-tool-contract.ts、web-tool-core.ts 的响应／内容存储路径。范围为门面兼容审查。
+- 无工具增删、无调用字段增删；provider 枚举新增 linkup，help 自动披露，JSON input 完整透传。
+  numResults 默认 5、workflow 默认 none、fetch 默认 readable 不变；运行时依赖和 peer 范围不变。
+  Linkup 配置 linkupApiKey／LINKUP_API_KEY；linkupDepth 为 flash/fast/standard/deep，默认 fast。
+  POST https://api.linkup.so/v1/search 支持过滤与 inlineContent；auto/all 不包含该付费 Provider。
+- DeepSeek includeContent 发送 need_content=true，使用搜索返回的原始正文，不做 Fetch 的 Markdown
+  去转义，也不重复抓取已覆盖 URL。DeepSeek Fetch POST /v1/tools/fetch 返回 title/content，需显式加入
+  fetchRouting.providers 并允许远端托管；默认顺序没有它。仍做 SSRF／域名预检，同源重定向策略只允许 HTTP。
+- 配置默认 provider 数组全失败且每项错误均符合 fallbackOn 时，继续 searchRouting 的未尝试 Provider；
+  单次显式数组不回退。providerFromConfig 从 core／curator 透传；不是新增工具字段。
+- xaiResponsesUrl 为绝对 HTTP(S) 配置，自定义端点绕过 Pi 登录凭据，仅用 xaiApiKey／XAI_API_KEY。
+  xaiSearchTimeoutMs 为正整数，默认 60,000、封顶 600,000。均为配置，不加入 help 的工具 schema。
+- 短静态 HTML 在 Readability 已提取非空内容、原始可见文本不足 500 且没有可执行脚本时不再报 incomplete；
+  JSON-LD 等数据脚本不算可执行脚本。仍不完整时错误包含字符数；不把此修复宣称为任意空页面均成功。
+- 五参数 execute、prepareArguments 归一化、默认名路由、web_enable 丢弃、setActiveTools 拦截及 PDF
+  独立分支继续适用。search structuredContent 只含结果／snippet 与 fetchId；全文由 get 取回，get 的
+  rendered text 含标题；fetch structuredContent.urls[].content 是正文，不能等同于完整工具文本。
+- 作者完整入口 `09262708ad57726d1a4b3c22b084fb84ea22281b` →
+  `e5e9954a3ec000132d794b2ad88314c71e51a82e` 新增 prepareFacadeArguments：推断缺省 op、序列化
+  对象 input、合并顶层字段、拒绝冲突，以及提取纯路径判断；作者测试覆盖这些分支。作为可选容错扩展
+  本次不复用：当前显式 op／字符串 input 已兼容 0.43，不扩大最小依赖更新的接受输入面。
+  既有 broad hint rewrite 继续不复用，保留字面正文。作者包装版本 0.42.0 → 0.42.2，引擎仍为 0.42；
+  不复制其包装版本、Pi 基准、锁文件或 README 的容错功能宣称；本地 index.ts 保持不变。
+- 新增 upstream-043-regression.test.mjs，仅测真实门面的 Linkup help／JSON、DeepSeek inlineContent/get、
+  配置数组与显式数组回退边界、短 HTML／托管 Fetch。导入前 DNS/fetch mocks、绝对 URL、虚构 key；
+  分别断言 rendered text、structuredContent 与 stored body，已有断言全部保留。
+- check 实际重测字符代理 ceil(chars/4)、契约、类型／测试、生产安装及审计，结果以输出为准；不是计费 token。
+  没有真实 Linkup／DeepSeek／xAI 网关请求；跨平台与发布仍由固定后续流程验证。
 
 ## 升级步骤
 

@@ -96,7 +96,7 @@ Child tool scope respects exposure/defaultActive and also checks nested `ctx.exe
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.6 | 270 |
+| @gfgghgftgffg/pi-subagents-lean | 0.1.7 | 270 |
 | @tintinweb/pi-subagents | 0.22.0 | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -104,7 +104,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.6`
+* Wrapper: `0.1.7`
 * Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
 * Requires Pi `>=1.1.0`. Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 

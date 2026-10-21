@@ -155,6 +155,23 @@
 - 不复制作者基准或改变宿主要求；本仓字符代理由 check 重新捕获，不宣称已验证 Pi 1.3。
   无门面变化，不新增测试；check 实际执行既有回归、契约、类型、生产安装与审计，结果以输出为准。
 
+## 本次 lean 作者审查：保持显式操作契约
+
+- 精确作者完整入口 `3082c5fb3dada95f2dabffa6a20db0bf43e03a62` →
+  `b084c51a7ec3fa6737b108ca3583e3d71075874f`：新增 prepareFacadeArguments，把对象 input 序列化，
+  无 op 时根据顶层 prompt/subagent_type 推断 run、agent_id 推断 result（带 message 则 steer），
+  混合信号不推断；renderCall/renderResult 也使用该修正；prompt 首句改为 op=run。
+- 本次不复用这项可选容错扩展：当前显式 op／字符串 JSON input 已兼容固定 0.22 引擎，维持最小更新范围，
+  不扩大接受输入面。typebox v1／instancePath、启动名单正则、直接字段优先及 execute/render 委派保持原实现。
+  没有工具／字段／默认值变化，也未删除或合并额外工具或规则。
+- 阅读作者新增 inference／对象 input／render 回归，仅对应未采用的容错功能，不复制测试。
+  package.json 包装 0.22.1 → 0.22.4、Pi dev 1.2 → 1.3，引擎仍 0.22.0；README 更新包装版本／基准
+  并说明容错，不复制其锁文件、Pi 1.3 测量或开发依赖。本地 fallback 常量名保持不变。
+- 引擎稳定版仍为 `85a704cb8f35c96c0cabfa665b572bab296942e5`；远端
+  `ca93a5247e72e7053fcd10bea7125d6c4205f949` 未采用。本次未提供引擎 before/after，不声称重审
+  未发布远端。既有内部依赖继续由固定依赖与真实集成／契约验证；不启动维护 subagent 或模型任务。
+- 无本次门面变化，不加重复测试；check 重测字符代理并实际执行已有回归，结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view @tintinweb/pi-subagents version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。

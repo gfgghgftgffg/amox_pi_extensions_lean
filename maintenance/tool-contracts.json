@@ -247,7 +247,7 @@
     },
     "pi-web-access": {
       "package": "pi-web-access",
-      "version": "0.42.0",
+      "version": "0.43.0",
       "entry": "node_modules/pi-web-access/dist/index.js",
       "registeredTools": [
         "web_search",
@@ -263,8 +263,8 @@
         "get_search_content"
       ],
       "totals": {
-        "registeredProxyTokens": 2755,
-        "activeProxyTokens": 2689
+        "registeredProxyTokens": 2768,
+        "activeProxyTokens": 2702
       },
       "tools": [
         {
@@ -363,7 +363,8 @@
                       "zai",
                       "keenable",
                       "ceramic",
-                      "deepseek"
+                      "deepseek",
+                      "linkup"
                     ]
                   },
                   {
@@ -408,13 +409,14 @@
                         "zai",
                         "keenable",
                         "ceramic",
-                        "deepseek"
+                        "deepseek",
+                        "linkup"
                       ]
                     },
                     "minItems": 1
                   }
                 ],
-                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek) remain excluded; omit this field to use the configured provider, or use auto when none is configured"
+                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek, Linkup) remain excluded; omit this field to use the configured provider, or use auto when none is configured"
               },
               "workflow": {
                 "type": "string",
@@ -433,12 +435,12 @@
           },
           "chars": {
             "description": 309,
-            "schema": 3325,
+            "schema": 3351,
             "snippet": 0,
             "guidelines": 0,
-            "total": 3634
+            "total": 3660
           },
-          "proxyTokens": 909
+          "proxyTokens": 915
         },
         {
           "name": "source_check",
@@ -535,7 +537,8 @@
                       "zai",
                       "keenable",
                       "ceramic",
-                      "deepseek"
+                      "deepseek",
+                      "linkup"
                     ]
                   },
                   {
@@ -580,13 +583,14 @@
                         "zai",
                         "keenable",
                         "ceramic",
-                        "deepseek"
+                        "deepseek",
+                        "linkup"
                       ]
                     },
                     "minItems": 1
                   }
                 ],
-                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek) remain excluded"
+                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek, Linkup) remain excluded"
               },
               "proxy": {
                 "type": "string",
@@ -596,12 +600,12 @@
           },
           "chars": {
             "description": 134,
-            "schema": 2325,
+            "schema": 2351,
             "snippet": 0,
             "guidelines": 0,
-            "total": 2459
+            "total": 2485
           },
-          "proxyTokens": 615
+          "proxyTokens": 622
         },
         {
           "name": "fetch_content",
@@ -928,7 +932,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -1009,7 +1013,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1067,7 +1071,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

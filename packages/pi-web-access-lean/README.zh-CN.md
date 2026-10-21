@@ -59,7 +59,16 @@ DeepSeek 搜索使用高级 JSON，例如：
 
 在 `web-search.json` 设置 `deepseekApiKey`，或设置 `DEEPSEEK_API_KEY`。DeepSeek 按成功搜索计费，
 需要显式选择（包括配置路由）；`auto` 与 `all` 不会使用它。域名与时间过滤表达式也计入 128 字符查询限制。
-`help` 的 `search` 或 `check` 会列出当前 Provider 选项。
+设置 `includeContent: true` 时，DeepSeek 返回的页面正文会保存供 `op: "get"` 读取，不再重复抓取已覆盖页面。
+`help` 的 `search` 或 `check` 会列出当前 Provider 选项，包括 Linkup。在高级 JSON 中选择
+`"provider":"linkup"`，并设置 `linkupApiKey` 或 `LINKUP_API_KEY`。Linkup 消耗账号额度，
+`auto`/`all` 不包含它；`web-search.json` 的 `linkupDepth` 可选 `flash`、`fast`（默认）、`standard` 或 `deep`。
+
+配置的默认 Provider 数组全部失败且每项错误均匹配 `fallbackOn` 时，可回退到尚未尝试的
+`searchRouting.providers`；单次调用显式传入的 Provider 数组不回退。
+xAI 网关可配置绝对 HTTP(S) 地址 `xaiResponsesUrl`，并设置 `xaiApiKey` 或 `XAI_API_KEY`；
+自定义端点仅使用该 key，不使用 Pi 的 xAI 登录凭据。`xaiSearchTimeoutMs` 默认 60,000，
+接受正整数并封顶 600,000。
 
 即使上游设置 `toolExposure: "deferred"`，门面 `web_access` 仍直接可用；此配置不会延迟门面加载。
 上游仍拒绝将其与 `toolActivation: "eager"` 组合。页面回答与搜索摘要在宿主支持时使用 registry 的
@@ -69,6 +78,11 @@ DeepSeek 搜索使用高级 JSON，例如：
 可禁用检测。
 
 ## 抓取配置
+
+readable 抓取在已提取有效文本时接受完整的短静态 HTML 页面；运行脚本的页面仍可能被判为不完整，
+并继续尝试配置的其它 Provider。启用 DeepSeek Fetch 托管回退时，在现有 `fetchRouting.providers`
+加入 `"deepseek"`，设置 `fetchRouting.allowRemoteHostedProviders: true`，并使用搜索的同一个
+DeepSeek key。目标 URL 会发送给 DeepSeek。默认抓取顺序不包含它，同源重定向限制开启时不可用。
 
 在 `web-search.json` 设置 `fetchContent.userAgent` 可指定直接 HTTP 页面抓取的 User-Agent：
 
@@ -100,15 +114,15 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.6 | 149 |
-| pi-web-access | 0.42.0 | 2755 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.7 | 149 |
+| pi-web-access | 0.43.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.6`
+* 包装层：`0.1.7`
 * 上游运行时：锁定 `pi-web-access@0.42.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

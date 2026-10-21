@@ -63,8 +63,18 @@ names are unclear. DeepSeek search uses advanced JSON, for example:
 
 Set `deepseekApiKey` in `web-search.json` or `DEEPSEEK_API_KEY`. DeepSeek is billed per successful
 search and requires explicit selection (including configured routing); `auto` and `all` exclude it.
-Domain and recency filters count toward its 128-character query limit. `help` for `search` or `check`
-shows the current provider choices.
+Domain and recency filters count toward its 128-character query limit. With `includeContent: true`,
+DeepSeek's returned page text is stored for `op: "get"` without fetching covered pages again.
+`help` for `search` or `check` shows the current provider choices, including Linkup. Select Linkup
+with `"provider":"linkup"` inside advanced JSON and set `linkupApiKey` or `LINKUP_API_KEY`.
+Linkup uses account credits and is excluded from `auto`/`all`; `linkupDepth` in `web-search.json`
+accepts `flash`, `fast` (default), `standard`, or `deep`.
+
+A configured default provider array can fall back to untried `searchRouting.providers` only when
+every failure matches `fallbackOn`. A provider array explicitly passed in a call remains strict.
+For xAI gateways, configure an absolute HTTP(S) `xaiResponsesUrl` and `xaiApiKey` or `XAI_API_KEY`;
+a custom endpoint receives that key and does not use Pi's xAI sign-in. `xaiSearchTimeoutMs` defaults
+to 60,000 and accepts a positive integer capped at 600,000.
 
 The facade stays directly available even with upstream `toolExposure: "deferred"`; this setting does
 not defer `web_access`. Upstream still rejects combining it with `toolActivation: "eager"`.
@@ -75,6 +85,13 @@ GCE service account when no ADC file is configured or present; `GCE_METADATA_HOS
 metadata host and `METADATA_SERVER_DETECTION=none` disables detection.
 
 ## Fetch configuration
+
+Readable fetch accepts short static HTML pages once useful text is extracted; pages running
+scripts may still be treated as incomplete and try other configured providers.
+To enable DeepSeek Fetch as a hosted fallback, add `"deepseek"` to your existing
+`fetchRouting.providers`, set `fetchRouting.allowRemoteHostedProviders: true`, and provide the same
+DeepSeek key used for search. Target URLs are sent to DeepSeek. It is absent from the default
+fetch order and unavailable under the same-origin redirect restriction.
 
 Set `fetchContent.userAgent` in `web-search.json` for direct HTTP page fetches:
 
@@ -109,15 +126,15 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.6 | 149 |
-| pi-web-access | 0.42.0 | 2755 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.7 | 149 |
+| pi-web-access | 0.43.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.6`
+* Wrapper: `0.1.7`
 * Upstream runtime: pinned to `pi-web-access@0.42.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

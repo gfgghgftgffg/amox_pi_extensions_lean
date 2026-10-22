@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.43.0`（精确固定；`dependencies`；此前为 0.42.0）。
+- `pi-web-access@0.44.0`（精确固定；`dependencies`；此前为 0.43.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -181,6 +181,46 @@
   分别断言 rendered text、structuredContent 与 stored body，已有断言全部保留。
 - check 实际重测字符代理 ceil(chars/4)、契约、类型／测试、生产安装及审计，结果以输出为准；不是计费 token。
   没有真实 Linkup／DeepSeek／xAI 网关请求；跨平台与发布仍由固定后续流程验证。
+
+## 本次审查：0.43.0 → 0.44.0
+
+- 精确发布源码以 sources.json 为准：`7fcb1531fbc4b86cef12e8851f66b42e6385e0ce` →
+  `d0e323ac935e8753d11e1853b81c057e39dee4dc`，目标与远端 HEAD 相同。先读三个包的维护记录，
+  对比两版 CHANGELOG、package.json、index.ts 的初始化／search/check/fetch/get 注册执行面、
+  utils.ts 网关与重定向实现、DeepSeek search/fetch、SerpApi、Jina search；核对 tool-activation.ts、
+  web-tool-contract.ts、web-tool-core.ts 的配置／返回分层以及 PDF 配置接口。阅读新增上游网关测试
+  作为行为证据，不复制其测试。范围为门面兼容边界，不是全仓安全审计。
+- 四个业务工具、provider 选项、调用字段／required／默认值未增删；numResults=5、workflow=none、
+  fetch=readable 保持。运行时依赖与 peer 范围不变。新配置不是工具参数，不加入常驻 op/input schema，
+  也不宣称工具 help 会列出配置项。index.ts 无需修改。
+- 新 resolveProviderApiUrl 通过 `<stem>BaseUrl` 或对应环境变量覆盖官方 origin，保留网关前缀并追加
+  官方 endpoint pathname/search；环境变量优先。deepseek／ollama 仅读取 PI_DEEPSEEK_BASE_URL／
+  PI_OLLAMA_BASE_URL，不使用其它客户端常设的普通名称。Jina 为 jinaSearchBaseUrl／JINA_SEARCH_BASE_URL，
+  Mistral 为 mistralSearchBaseUrl／MISTRAL_SEARCH_BASE_URL。默认官方端点保持。
+  共享校验要求 HTTPS（loopback 可 HTTP），禁止内嵌凭据、查询串、fragment，去掉尾部斜杠。
+- 代表路径已逐项对比：DeepSeek search 与 hosted fetch 共用 deepseekBaseUrl；SerpApi /search.json
+  使用 query api_key；Jina 追加编码查询，并在无其它过滤表达式时拒绝单独 .／..，避免路径逃逸。
+  上游 CHANGELOG／gateway coverage 表还列出其它迁移 Provider；本次不宣称逐一端到端验证所有 Provider。
+- fetchWithCredentialRedirects 已有 5 次上限与跨 origin header 去凭据逻辑；0.44 新增 query 凭据列表，
+  SerpApi 传入 api_key，跨 origin 删除目标 URL 中全部同名项；上限错误也先去掉原 URL 中的凭据。
+  301/302 POST 与 303 非 GET/HEAD 改 GET 并移除 body/content headers，307 保留 method/body。
+  该 API 传输策略不等同于页面 fetch 的 redirects=same-origin；不夸大为所有重定向均被拒绝。
+- toolActivation 新增 none，默认仍 auto；none 必须搭配 toolExposure=deferred，跳过 loader 注册，
+  原生上游依赖 codemode/tool_search 访问。门面仍新建单一直接 web_access，不继承 exposure；
+  loader 丢弃／setActiveTools 拦截保持，无需改变原 lean 精简规则。README 中英文明确这个配置边界。
+- 默认工具名路由、五参数 execute、prepareArguments 字符串数组归一化与 PDF 独立分支继续适用。
+  返回对象仍原样委派：search structuredContent 是 results/snippets，fetch 的 urls[].content 才是正文，
+  rendered content 可能含标题、存储与续取提示；不以整个工具文本充当存储正文。
+- 三个 lean 作者 HEAD 均未变化（web e5e9954a3ec000132d794b2ad88314c71e51a82e；todo
+  f1e3fc7bcde2644a89803fa6a3a256fb7422d89f；subagents b084c51a7ec3fa6737b108ca3583e3d71075874f），
+  无新增作者实现可复用，历史复用决定保持。todo/i18n 2.13.9、subagents 0.22.0 无发布升级，
+  本次未提供其引擎快照，不声称审查未发布远端代码。
+- 仅新增 tests/upstream-044-regression.test.mjs：真实门面 none/deferred 直接可用及非法组合、help、
+  DeepSeek 网关前缀／环境优先／307 header 去凭据、SerpApi query 去凭据、Jina dot 拒绝。
+  DNS/fetch 在导入前 mock、绝对 HTTPS URL、虚构 key、拒绝意外目标；分别断言 rendered 与 structured。
+  不改基线断言，不添加无关上游内部测试。
+- check 捕获字符代理 ceil(chars/4)、更新测量文档并实际执行类型／回归／契约、独立生产安装与两种审计；
+  结果以工具输出为准，字符代理不是计费 token。无真实 Provider／网关请求；跨平台与发布由固定后续流程验证。
 
 ## 升级步骤
 

@@ -76,8 +76,22 @@ For xAI gateways, configure an absolute HTTP(S) `xaiResponsesUrl` and `xaiApiKey
 a custom endpoint receives that key and does not use Pi's xAI sign-in. `xaiSearchTimeoutMs` defaults
 to 60,000 and accepts a positive integer capped at 600,000.
 
-The facade stays directly available even with upstream `toolExposure: "deferred"`; this setting does
-not defer `web_access`. Upstream still rejects combining it with `toolActivation: "eager"`.
+The facade stays directly available even with upstream `toolExposure: "deferred"` and
+`toolActivation: "none"`; these settings do not defer `web_access` or remove its definition.
+Upstream requires `"deferred"` for `"none"` and rejects combining deferred exposure with `"eager"`.
+
+Provider gateways are configured in `web-search.json`, for example
+`"deepseekBaseUrl": "https://gateway.example/deepseek"` or
+`"serpapiBaseUrl": "https://gateway.example/serpapi"`. The endpoint path is appended to the
+configured prefix (DeepSeek adds `/v1/tools/search` or `/v1/tools/fetch`). Matching environment
+variables override config: `PI_DEEPSEEK_BASE_URL`, `PI_OLLAMA_BASE_URL`, `SERPAPI_BASE_URL`,
+`JINA_SEARCH_BASE_URL`, and `MISTRAL_SEARCH_BASE_URL` are examples. Bare `DEEPSEEK_BASE_URL` and
+`OLLAMA_BASE_URL` are ignored. Bases must use HTTPS (HTTP is accepted only for loopback hosts),
+without embedded credentials, query parameters or fragments. Official endpoints remain the default.
+Migrated provider API calls follow at most five redirects and remove their credential headers or
+`api_key` query parameter on cross-origin redirects. Jina search rejects `.` and `..` queries.
+These are configuration and transport behaviors; use advanced JSON for tool arguments as before.
+
 Page answers and search summaries use the host registry's `streamSimple` path when available,
 including virtual models. On Windows, `!command` credential sources prefer Git Bash or `bash.exe`
 on PATH, with the default command shell as fallback. Gemini `geminiAuth: "adc"` can use an attached
@@ -126,16 +140,16 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.7 | 149 |
-| pi-web-access | 0.43.0 | 2768 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.8 | 149 |
+| pi-web-access | 0.44.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.7`
-* Upstream runtime: pinned to `pi-web-access@0.42.0` (exact)
+* Wrapper: `0.1.8`
+* Upstream runtime: pinned to `pi-web-access@0.44.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 
 ## Development

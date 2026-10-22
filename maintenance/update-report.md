@@ -1,16 +1,15 @@
 # Local upstream maintenance
 
-Base: c2dc52dc1b91bc5e5c7d7f0da1f0d10b054f2da4
-Release after verified merge: v0.1.7
+Base: e1f21649da8e7bd475b0be16f425c02f9d4e379d
+Release after verified merge: v0.1.8
 
-<!-- amox-release-summary:v0.1.7:start -->
-- Update pi-web-access to 0.43.0 while preserving the compact, single web_access facade and literal page content.
-- Expose Linkup through existing advanced JSON and on-demand help; document API-key setup, explicit paid-provider selection and linkupDepth configuration.
-- Carry upstream DeepSeek inline page storage and opt-in hosted Fetch support, configured-provider-array fallback and short static HTML fixes; document xAI gateway credentials and timeout configuration in both languages.
-- Review all three exact lean-author before/after adapters. Retain current explicit operation/string-JSON contracts and todo guidance; record optional inference changes not reused and .ts imports already applied locally.
-- Add focused offline facade regressions for Linkup requests/help, DeepSeek stored-content retrieval, default-array versus explicit-array fallback, and short-page/hosted fetching, preserving every baseline assertion.
-- Refresh source-review and maintenance records; recapture contracts and character proxies and run the fixed sandbox validation gates.
-<!-- amox-release-summary:v0.1.7:end -->
+<!-- amox-release-summary:v0.1.8:start -->
+- Update pi-web-access runtime from 0.43.0 to 0.44.0, adding upstream provider gateway configuration while preserving the single direct web_access facade and its compact op/input schema.
+- Document gateway prefixes, environment-over-config precedence (including PI_DEEPSEEK_BASE_URL and PI_OLLAMA_BASE_URL), HTTPS/loopback URL constraints, and credential removal across provider API redirects in both English and Chinese.
+- Clarify that toolActivation=none requires deferred exposure upstream while the lean web_access facade remains directly available; Jina rejects standalone dot-path queries.
+- Add four focused real-facade offline regressions for none/deferred compatibility, DeepSeek gateway/authorization redirects, SerpApi query credential removal and Jina rejection, preserving all existing assertions. Record exact before/after source review and refresh contract/character-proxy measurements through the fixed check flow.
+- Todo/i18n remain on 2.13.9 and subagents on 0.22.0; no unpublished remote implementation or unchanged lean-author source is adopted. Live provider and gateway services are outside offline verification; three-platform CI and fixed-host merge/release gates follow independently.
+<!-- amox-release-summary:v0.1.8:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

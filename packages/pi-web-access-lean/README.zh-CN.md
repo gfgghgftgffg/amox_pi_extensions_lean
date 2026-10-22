@@ -70,8 +70,21 @@ xAI 网关可配置绝对 HTTP(S) 地址 `xaiResponsesUrl`，并设置 `xaiApiKe
 自定义端点仅使用该 key，不使用 Pi 的 xAI 登录凭据。`xaiSearchTimeoutMs` 默认 60,000，
 接受正整数并封顶 600,000。
 
-即使上游设置 `toolExposure: "deferred"`，门面 `web_access` 仍直接可用；此配置不会延迟门面加载。
-上游仍拒绝将其与 `toolActivation: "eager"` 组合。页面回答与搜索摘要在宿主支持时使用 registry 的
+即使上游设置 `toolExposure: "deferred"` 和 `toolActivation: "none"`，门面 `web_access` 仍直接可用，
+不会延迟加载或移除其定义。上游要求 `"none"` 搭配 `"deferred"`，并拒绝 deferred 与 `"eager"` 组合。
+
+Provider 网关在 `web-search.json` 配置，例如
+`"deepseekBaseUrl": "https://gateway.example/deepseek"` 或
+`"serpapiBaseUrl": "https://gateway.example/serpapi"`。端点路径追加到网关前缀之后
+（DeepSeek 追加 `/v1/tools/search` 或 `/v1/tools/fetch`）。对应环境变量优先于配置，例如
+`PI_DEEPSEEK_BASE_URL`、`PI_OLLAMA_BASE_URL`、`SERPAPI_BASE_URL`、`JINA_SEARCH_BASE_URL` 和
+`MISTRAL_SEARCH_BASE_URL`；普通的 `DEEPSEEK_BASE_URL`、`OLLAMA_BASE_URL` 不读取。
+基础地址必须使用 HTTPS（仅 loopback 主机可用 HTTP），不能含内嵌凭据、查询参数或 fragment。
+未配置时保留官方端点。迁移后的 Provider API 调用最多跟随五次重定向，跨 origin 时移除对应凭据
+header 或 `api_key` 查询参数。Jina 搜索拒绝 `.`、`..` 查询。这些属于配置与传输行为，工具参数
+仍按原方式放进高级 JSON。
+
+页面回答与搜索摘要在宿主支持时使用 registry 的
 `streamSimple` 路径，支持虚拟模型。Windows 的 `!command` 凭据源优先使用 Git Bash 或 PATH 中的
 `bash.exe`，缺失时回退默认命令 shell。Gemini 的 `geminiAuth: "adc"` 在未显式配置且不存在 ADC 文件时
 可使用 GCE 附加服务账号；`GCE_METADATA_HOST` 可覆盖元数据主机，`METADATA_SERVER_DETECTION=none`
@@ -114,16 +127,16 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.7 | 149 |
-| pi-web-access | 0.43.0 | 2768 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.8 | 149 |
+| pi-web-access | 0.44.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.7`
-* 上游运行时：锁定 `pi-web-access@0.42.0`（精确版本）
+* 包装层：`0.1.8`
+* 上游运行时：锁定 `pi-web-access@0.44.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 
 ## 开发

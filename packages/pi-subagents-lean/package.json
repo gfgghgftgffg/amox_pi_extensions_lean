@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-subagents-lean",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "type": "module",
   "description": "Lean Pi subagents extension: one subagent facade over the full @tintinweb/pi-subagents runtime, with advanced parameters disclosed through help.",
   "license": "MIT",

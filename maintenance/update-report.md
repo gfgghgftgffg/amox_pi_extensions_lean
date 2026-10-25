@@ -4,11 +4,11 @@ Base: eeda719e84344fa77f4c7833b121ed1c808a9bb7
 Release after verified merge: v0.1.9
 
 <!-- amox-release-summary:v0.1.9:start -->
-- Upgrade todo and coupled i18n from 2.13.9 to 2.15.0 with atomic tasks[] creation, upstream JSON normalization and unchanged six-action tool identity.
-- Preserve upstream nested schema and hook delegation; update compact guidance and bilingual usage for batch field placement, dependency rules and atomic rejection.
-- Inherit malformed-snapshot replay protection and accurate error-card rendering through existing RPC lifecycle and render delegation.
-- Add focused real-facade batch, persistence, replay and rendering regressions; repair their store fixture to use the shared jiti import path already exercised by baseline integration tests, without changing assertions.
-- Retain every protected baseline assertion. The obsolete exact description/schema assertion and 1200-character budget block readiness if they fail; do not weaken them or hide the new upstream surface.
+- Consume todo/i18n 2.15.0 for atomic batch creation with tasks[], upstream JSON argument normalization, error-card fixes and robust saved-snapshot replay.
+- Preserve the upstream schema and existing hook/RPC/render delegation; minimally correct compact create guidance and bilingual usage without changing action inference or removing rules.
+- Add focused real-facade regressions for batch data fields, validation, atomic failures, persistence, RPC replay and rendering, using jiti's shared module cache so direct store reads and the facade share one runtime graph.
+- Record exact before/after review and unchanged web/subagents releases and lean author revisions; recapture character proxies through the fixed checker.
+- Preserve append-only baseline assertions. Their obsolete exact description/schema and 1200-character metadata cap conflict with the new upstream batch surface and remain release blockers if failing.
 <!-- amox-release-summary:v0.1.9:end -->
 
 Source review: [agent-review.md](agent-review.md).

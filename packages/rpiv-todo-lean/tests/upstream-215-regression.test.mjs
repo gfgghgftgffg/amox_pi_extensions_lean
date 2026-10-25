@@ -8,7 +8,7 @@ import { createJiti } from "jiti";
 const agentDir = mkdtempSync(join(tmpdir(), "todo-215-agent-"));
 process.env.PI_CODING_AGENT_DIR = agentDir;
 process.env.PI_CODING_AGENT_SESSION_DIR = join(agentDir, "sessions");
-const jiti = createJiti(import.meta.url, { moduleCache: false });
+const jiti = createJiti(import.meta.url, { moduleCache: true });
 const mod = await jiti.import("../index.ts");
 const extension = mod.default ?? mod;
 const store = await jiti.import("@juicesharp/rpiv-todo/state/store.js");

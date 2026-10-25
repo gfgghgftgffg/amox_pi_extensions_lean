@@ -2,7 +2,7 @@
 
 Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo): the
-complete task-management engine with a compact flat schema, preserved RPC/session/overlay behavior,
+complete task-management engine with a compact schema, preserved RPC/session/overlay behavior,
 and per-session isolated overlays.
 
 Original lean facade by [kunkun9527](https://github.com/kunkun9527/rpiv-todo-lean); upstream extension
@@ -13,8 +13,8 @@ is preserved in this package.
 
 * Full task lifecycle: `create`, `update`, `list`, `get`, `delete`, `clear`, status transitions,
   `blockedBy` dependencies, metadata, `/todos` command, and branch replay.
-* Compact provider-facing schema: the native flat schema is kept; verbose field descriptions are
-  stripped and the prompt guidelines are compressed to a single line.
+* Compact provider-facing schema: all native fields, including batch items, are retained. Verbose
+  descriptions and redundant constraints are removed without changing validation; guidelines use one line.
 * Upstream persistence preserved: every state-changing call still appends upstream's
   `rpiv-todo-state` custom entry so replay survives codemode-style calls.
 * RPC/session behavior preserved: per-session state slots, per-session overlays, stale-context
@@ -61,7 +61,7 @@ additional full-plan snapshot.
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 361 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 277 |
 | @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

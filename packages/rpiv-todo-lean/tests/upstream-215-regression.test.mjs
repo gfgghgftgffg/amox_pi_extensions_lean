@@ -13,6 +13,7 @@ const mod = await jiti.import("../index.ts");
 const extension = mod.default ?? mod;
 const store = await jiti.import("@juicesharp/rpiv-todo/state/store.js");
 const { Value } = await jiti.import("typebox/value");
+const { TodoParamsSchema } = await jiti.import("@juicesharp/rpiv-todo/tool/types.ts");
 const sessionId = "batch-facade";
 const ctx = { mode: "rpc", hasUI: false, sessionManager: { getSessionId: () => sessionId, getBranch: () => [] } };
 
@@ -37,6 +38,34 @@ function load() {
 }
 
 beforeEach(() => { store.__resetState(); mod.__resetRpcSessions(); });
+
+test("compact schema preserves upstream validation and does not mutate the upstream schema", () => {
+  const original = JSON.stringify(TodoParamsSchema);
+  const { tool } = load();
+  assert.equal(JSON.stringify(TodoParamsSchema), original);
+  assert.ok(TodoParamsSchema.properties.subject.description);
+  assert.deepEqual(Object.keys(tool.parameters.properties), Object.keys(TodoParamsSchema.properties));
+  assert.deepEqual(Object.keys(tool.parameters.properties.tasks.items.properties), Object.keys(TodoParamsSchema.properties.tasks.items.properties));
+  for (const args of [
+    { action: "list" },
+    { action: "create", subject: "Single", metadata: { count: 1, nested: [null, true] } },
+    { action: "create", tasks: [{ subject: "Batch", description: "Keep", metadata: { "line\nkey": null, nested: { values: [false, 2] } } }] },
+    { action: "update", id: 1, status: "in_progress", addBlockedBy: [2], removeBlockedBy: [3] },
+    { action: "list", status: "deleted", includeDeleted: true },
+    { action: 1 }, { action: "unknown" }, { action: "list", status: "unknown" },
+    { action: "create", subject: 1 }, { action: "create", metadata: [] },
+    { action: "create", metadata: null }, { action: "create", tasks: "invalid" },
+    { action: "create", tasks: [{ subject: 1 }] },
+    { action: "create", tasks: [{ description: "Missing subject" }] },
+    { action: "create", tasks: [{ subject: "Bad metadata", metadata: [] }] },
+    { action: "create", tasks: [{ subject: "Bad dependency", blockedBy: ["1"] }] },
+    { tasks: [{ subject: "Missing action" }] },
+  ]) {
+    const native = [...Value.Errors(TodoParamsSchema, args)].length === 0;
+    const compact = [...Value.Errors(tool.parameters, args)].length === 0;
+    assert.equal(compact, native, JSON.stringify(args));
+  }
+});
 
 test("batch create keeps nested data fields, normalizes upstream arguments and persists one snapshot", async () => {
   const { tool, run, appended } = load();

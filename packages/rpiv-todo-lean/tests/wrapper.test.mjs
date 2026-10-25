@@ -64,13 +64,13 @@ test("exposes the native flat schema without verbose field descriptions", () => 
   const { pi, tool } = loadTool();
 
   assert.equal(tool.name, "todo");
-  assert.equal(tool.description, "Task tracker. action is required: create|update|list|get|delete|clear; create needs subject; update/get/delete need id.");
+  assert.equal(tool.description, "Required action: create|update|list|get|delete|clear. create subject or tasks[]; update/get/delete id.");
   assert.equal(tool.promptSnippet, "");
   assert.equal(tool.promptGuidelines.length, 1);
   assert.deepEqual(findDescriptions(tool.parameters), []);
   assert.deepEqual(Object.keys(tool.parameters.properties), [
     "action", "subject", "description", "activeForm", "status", "blockedBy",
-    "addBlockedBy", "removeBlockedBy", "owner", "metadata", "id", "includeDeleted",
+    "addBlockedBy", "removeBlockedBy", "owner", "metadata", "id", "includeDeleted", "tasks",
   ]);
   assert.deepEqual(tool.parameters.required, ["action"]);
   assert.equal(tool.prepareArguments?.({ subject: "inferred create" }).action, "create");

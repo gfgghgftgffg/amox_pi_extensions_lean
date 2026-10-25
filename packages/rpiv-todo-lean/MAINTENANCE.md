@@ -168,16 +168,18 @@
   rpiv-config 本体不在库存，不声称审查其实现，实际安装由 check 验证。
 - 工具仍仅 todo，六个 action 和 required=[action] 不变。新增可选 tasks 数组，项必填 subject，
   可选 description/activeForm/blockedBy/owner/metadata。顶层仍保留原字段；create 默认 pending、
-  list 默认不含 deleted、clear 重置 nextId=1 均不变。原扁平 schema 自动保留 tasks 的嵌套结构，
-  去描述递归保留名为 description 的实际输入字段，无需复制上游 schema。
+  list 默认不含 deleted、clear 重置 nextId=1 均不变。复制原生 schema 后压缩，保留 tasks 的完整嵌套结构
+  和名为 description 的实际输入字段，不再原地改动上游 schema。字符串 enum 的 type 与无限制 metadata
+  的空 patternProperties 等价冗余项被删除；其余字段、枚举、required、类型与约束保留。
 - create 接受 subject 或非空 tasks 二选一；批量五个 per-task 字段只能放在项内，先完整验证再提交，
   禁止引用同批新 ID，允许引用已有未删除任务。原单个创建仍可用。Reducer create op 从 taskId 改为
   taskIds 数组，本包装不读该 op；content 每项一行 Created，details 仍为全量 tasks/nextId 快照，
   成功整批追加一次 rpiv-todo-state，失败不追加，错误在 details.error 和文本中（不新增 isError）。
 - 上游首次注册 prepareArguments，解码字符串 tasks 数组和字符串对象项，非法 JSON 保留原值供校验报错。
   本仓已有 hook-first 委派，之后才做旧 create/update 推断；本次不扩大 action 推断，批量须显式 action。
-  最小入口修改仅将 create needs subject 改为 subject or tasks[]，单行指南增加原子批量及项／依赖约束。
-  不删除已有规则，不合并额外工具，不引入作者旧版 withHostPlan。
+  常驻描述明确 subject 或 tasks[]，单行指南保留原有多步任务、单个 in_progress、及时完成、变更字段、
+  筛选、清空和依赖增删规则；批量原子性与各项约束在 README 说明并由上游验证。
+  不扩大 action 推断，不引入作者旧版 withHostPlan，也不复制 reducer 或归一化实现。
 - view/format 在无 action 时不显示 undefined，批量调用卡显示数量；renderResult 检测 details.error 或宿主
   context.isError，以 ✗ 和首行错误取代成功状态。模型收到的错误 envelope 不变，由已有 render hook 委派承接。
 - replay 现在检查每项的安全整数 id、subject/status、可选文本、blockedBy 与 metadata 形状及安全整数 nextId；
@@ -185,13 +187,14 @@
   RPC 的 session_start/compact/tree 均调用同一 replay，因此承接修复。
 - index.ts、todo-overlay.ts、state/store.ts、config.ts 与 bridge 的已审查接口不变。依赖的普通 private
   字段／getSnapshot、公开方法、会话函数、事件／命令／快捷键继续成立，stale guard 与异步命令等待保留。
-- 仅新增 tests/upstream-215-regression.test.mjs，真实 facade 覆盖嵌套 schema、双重 JSON 归一化、批量
-  成功／原子拒绝／已有依赖、一次持久化、RPC 生命周期损坏快照回放与 render 委派。先读真实 envelope 后
-  分别断言 content、details 与渲染；无网络路径，不新增无关上游内部测试。中英文 README 更新当前用法。
-- 验证阻塞：append-only 的 wrapper.test.mjs 基线精确要求旧描述、无 tasks 的字段列表及 metadata<=1200，
-  与本次上游 schema 扩展冲突。保留这些断言，不隐藏 tasks、不伪装成功、不改检查设施。check 实际捕获
-  字符代理和契约并运行检查；以输出为准，若该冲突失败则当前候选不可发布，须由维护者解决测试政策冲突。
-  字符代理 ceil(chars/4) 非计费 token；交互式终端与跨平台验证仍属后续固定流程。
+- tests/upstream-215-regression.test.mjs 使用真实 facade 覆盖完整批量字段、双重 JSON 归一化、批量
+  成功／原子拒绝／已有依赖、一次持久化、RPC 生命周期损坏快照回放与 render 委派。新增 schema 等价
+  校验，比较有效及无效输入在原生与压缩 schema 下的结果，并确认原生 schema 不被改动。
+- 维护者已明确批准更新 wrapper.test.mjs 中两处过时契约期望：当前描述与新增 tasks 字段。
+  所有原行为断言和 metadata<=1200 上限保持不变；不隐藏新参数、不按测试切换行为。
+  fixture 使用 jiti moduleCache=true 共享真实状态图，避免 reset/read 另一份 store。
+- 固定 check 重新捕获契约、字符代理并实际执行类型／测试、生产安装和审计，结果以检查日志为准。
+  字符代理 ceil(chars/4) 非计费 token；交互式终端与三平台验收仍由后续流程分别确认。
 
 ## 升级步骤
 

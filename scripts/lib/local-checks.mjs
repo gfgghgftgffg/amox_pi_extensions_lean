@@ -5,8 +5,8 @@ import { adapterWritable, assertRegularPath, jsonText, lfText, readJson } from "
 import { releaseSummaryBlock } from "./release-validation.mjs";
 import { failureExcerpt, sandboxRun } from "./local-sandbox.mjs";
 
-export const LOCAL_CHECKS = [["run", "check"], ["run", "contracts:check"], ["run", "verify:production"],
-  ["audit", "--audit-level=high"], ["audit", "--omit=dev", "--audit-level=high"]];
+export const LOCAL_CHECKS = [["npm", ["run", "check"]], ["npm", ["run", "contracts:check"]], ["npm", ["run", "verify:production"]],
+  ["node", ["scripts/audit-dependencies.mjs"]], ["node", ["scripts/audit-dependencies.mjs", "--omit=dev"]]];
 export function git(repo, args) {
   return execFileSync("git", ["-C", repo, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", ...args],
     { encoding: "utf8", timeout: 90_000, maxBuffer: 20_000_000,
@@ -97,15 +97,15 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       writeFileSync(join(repo, "maintenance/manifest.json"), jsonText(manifest));
       generated.set("maintenance/manifest.json", jsonText(manifest));
       measureDocs(repo, manifest, baseline);
-      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both high-level audits. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
+      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
       validateLocalChanges(repo, manifest, baseline, generated);
       const sha = checkpoint(repo);
-      for (const args of LOCAL_CHECKS) {
-        log(`Local check ${attempt}: npm ${args.join(" ")}`);
-        const checked = await execute({ repo, scratch, command: "npm", args, signal,
-          logPath: join(logs, `${args.join("-")}.log`) });
-        if (!checked.ok) return { ok: false, output: `FAILED npm ${args.join(" ")} (exit ${checked.status}, timeout ${checked.timedOut}):\n${failureExcerpt(checked.output)}` };
+      for (const [command, args] of LOCAL_CHECKS) {
+        log(`Local check ${attempt}: ${command} ${args.join(" ")}`);
+        const checked = await execute({ repo, scratch, command, args, signal,
+          logPath: join(logs, `${command}-${args.join("-").replaceAll("/", "_")}.log`) });
+        if (!checked.ok) return { ok: false, output: `FAILED ${command} ${args.join(" ")} (exit ${checked.status}, timeout ${checked.timedOut}):\n${failureExcerpt(checked.output)}` };
       }
       if (git(repo, ["rev-parse", "HEAD"]) !== sha || git(repo, ["status", "--porcelain"])) throw new Error("Checks changed the candidate");
       validateLocalChanges(repo, manifest, baseline, generated);

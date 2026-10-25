@@ -43,25 +43,34 @@ The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`,
 `action` is normally required; when it is omitted the facade infers `create` from `subject` or
 `update` from `id` plus a mutable field, and otherwise lets upstream report the error.
 
-New tasks default to `pending`. Listing excludes deleted tasks unless `includeDeleted: true`;
-clearing resets task IDs to 1. State persists through `rpiv-todo-state` entries, with legacy tool-result
-replay retained. RPC responses are not expanded with an additional full-plan snapshot.
+New tasks default to `pending`. Create one with `subject`, or create independent tasks atomically with
+`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`. Batch calls require explicit
+`action: "create"`; `tasks` and individual items may be JSON strings and are normalized before validation.
+Use either `subject` or a nonempty `tasks` array. In a batch, put `description`, `activeForm`, `blockedBy`,
+`owner`, and `metadata` on each item. Invalid items reject the whole batch without changing the list.
+Items can depend on existing tasks, but cannot reference another item in the same batch; create prerequisites first.
+
+Listing excludes deleted tasks unless `includeDeleted: true`; clearing resets task IDs to 1.
+State persists through `rpiv-todo-state` entries, with legacy tool-result replay retained. Malformed saved
+snapshots are skipped as a whole, retaining the latest valid snapshot. Failed calls show an error card;
+model-facing errors remain in text content and `details.error`. RPC responses are not expanded with an
+additional full-plan snapshot.
 
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.8 | 247 |
-| @juicesharp/rpiv-todo | 2.13.9 | 882 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 361 |
+| @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.8`
-* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.13.9` and `@juicesharp/rpiv-i18n@2.13.9` (exact)
+* Wrapper: `0.1.9`
+* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.15.0` and `@juicesharp/rpiv-i18n@2.15.0` (exact)
 * Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 
 ## Development

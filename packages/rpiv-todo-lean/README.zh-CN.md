@@ -38,24 +38,32 @@ node scripts/install-extension.mjs rpiv-todo-lean
 通常需要显式传入 `action`；省略时封装会依据 `subject` 推断 `create`，或依据 `id` 加可变字段推断
 `update`，其余情况交由上游报错。
 
-新任务默认 `pending`；list 默认不含已删除任务，`includeDeleted: true` 可包含；clear 重置任务 ID 为 1。
-状态通过 `rpiv-todo-state` 条目持久化，保留历史工具结果回放。RPC 响应不会额外追加全量 Plan 快照。
+新任务默认 `pending`。单个创建传 `subject`，独立任务可原子批量创建：
+`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`。批量调用须显式传
+`action: "create"`；`tasks` 或其中各项为 JSON 字符串时，上游在校验前归一化。
+`subject` 与非空 `tasks` 数组二选一。批量的 `description`、`activeForm`、`blockedBy`、`owner`、
+`metadata` 须放在各项内；任一项无效则整批拒绝，任务列表不变。可依赖已有任务，但不能引用同批其它项，
+依赖链须先创建前置任务。
+
+list 默认不含已删除任务，`includeDeleted: true` 可包含；clear 重置任务 ID 为 1。
+状态通过 `rpiv-todo-state` 条目持久化，保留历史工具结果回放；损坏的已存快照整条跳过，保留最近有效快照。
+失败调用显示错误卡片；模型侧错误仍在文本 content 与 `details.error` 中。RPC 响应不会额外追加全量 Plan 快照。
 
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.8 | 247 |
-| @juicesharp/rpiv-todo | 2.13.9 | 882 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 361 |
+| @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.8`
-* 上游运行时：锁定 `@juicesharp/rpiv-todo@2.13.9` 与 `@juicesharp/rpiv-i18n@2.13.9`（精确版本）
+* 包装层：`0.1.9`
+* 上游运行时：锁定 `@juicesharp/rpiv-todo@2.15.0` 与 `@juicesharp/rpiv-i18n@2.15.0`（精确版本）
 * 开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 
 ## 开发

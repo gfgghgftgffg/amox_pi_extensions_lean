@@ -140,7 +140,7 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.8 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.9 | 149 |
 | pi-web-access | 0.44.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -148,7 +148,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.8`
+* Wrapper: `0.1.9`
 * Upstream runtime: pinned to `pi-web-access@0.44.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

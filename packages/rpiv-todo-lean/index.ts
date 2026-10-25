@@ -25,10 +25,10 @@ function decorateWithCollapsedDisplay<T extends CollapsedDisplayTool>(tool: T): 
 		: tool;
 }
 
-const TOOL_DESCRIPTION = "Task tracker. action is required: create|update|list|get|delete|clear; create needs subject; update/get/delete need id.";
+const TOOL_DESCRIPTION = "Task tracker. action is required: create|update|list|get|delete|clear; create needs subject or tasks[]; update/get/delete need id.";
 const PROMPT_SNIPPET = "";
 const PROMPT_GUIDELINES = [
-	"todo: Use for multi-step tasks. update needs changed fields; list accepts status/includeDeleted; clear removes all; create supports blockedBy; update supports addBlockedBy/removeBlockedBy; keep one in_progress and complete tasks promptly.",
+	"todo: Use for multi-step tasks. create takes subject or tasks:[{subject,...}] atomically; put per-task fields on items, which cannot depend on each other. update needs changed fields; list accepts status/includeDeleted; clear removes all; create supports blockedBy; update supports addBlockedBy/removeBlockedBy; keep one in_progress and complete tasks promptly.",
 ];
 
 function prepareTodoArguments(args: unknown): unknown {

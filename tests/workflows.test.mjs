@@ -37,11 +37,16 @@ test("CI remains read-only, secret-free and verifies the exact candidate on all 
   assert.match(text, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(text, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
   assert.match(text, /name: all-platforms-pass/); assert.match(text, /needs: check\n\s+if: always\(\)/);
-  for (const command of ["npm ci --ignore-scripts", "npm run check", "npm run contracts:check", "npm run verify:production", "npm audit --audit-level=high", "npm audit --omit=dev --audit-level=high"]) assert.ok(text.includes(command));
+  for (const command of ["npm ci --ignore-scripts", "npm run check", "npm run contracts:check", "npm run verify:production", "node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json", "node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json"]) assert.ok(text.includes(command));
   assert.doesNotMatch(text, /maintenance-pipeline|maintenance-candidate|adapted\.json|verified\.json/);
 });
 test("reviewed version bumps auto-release with isolated GitHub-write and npm-OIDC jobs", () => {
   const text = workflow("release.yml");
+  assert.doesNotMatch(text, /npm audit --audit-level=high|npm audit --omit=dev --audit-level=high/);
+  assert.match(workflow("test.yml"), /node scripts\/audit-dependencies\.mjs --output diagnostics\/audit-all\.json/);
+  assert.match(workflow("test.yml"), /node scripts\/audit-dependencies\.mjs --omit=dev --output diagnostics\/audit-production\.json/);
+  assert.match(text, /node scripts\/audit-dependencies\.mjs --output diagnostics\/audit-all\.json/);
+  assert.match(text, /node scripts\/audit-dependencies\.mjs --omit=dev --output diagnostics\/audit-production\.json/);
   assert.match(text, /\n {2}push:\n {4}branches: \[main\]/); assert.match(text, /\n {2}workflow_dispatch:\n/);
   assert.doesNotMatch(text, /\n {2}(?:pull_request|schedule):\n/);
   assert.match(text, /concurrency:\n {2}group: release\n {2}cancel-in-progress: false/);

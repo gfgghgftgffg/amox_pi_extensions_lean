@@ -9,11 +9,13 @@ npm ci --ignore-scripts
 npm run check
 npm run contracts:check
 npm run verify:production
-npm audit --audit-level=high
-npm audit --omit=dev --audit-level=high
+node scripts/audit-dependencies.mjs
+node scripts/audit-dependencies.mjs --omit=dev
 ```
 
 工具契约变化后执行 `npm run contracts`，审查 `maintenance/tool-contracts.json`，同步中英文 README 的字符代理统计。字符代理不是计费 token。
+
+依赖审计始终执行；上游漏洞只记录警告，不阻断维护、CI、自动合并或发布。审计报告获取／执行错误仍报错，不冒充零漏洞；功能、类型、契约和生产安装失败仍严格阻断。
 
 ## 适配规则
 

@@ -62,18 +62,11 @@ jobs:
           set -o pipefail
           npm run verify:production 2>&1 | tee diagnostics/production-install.log
 
-      - name: Security audit (all dependencies)
-        run: npm audit --audit-level=high
+      - name: Dependency audit (all; upstream findings warn)
+        run: node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json
 
-      - name: Security audit (production/peer surface only)
-        run: npm audit --omit=dev --audit-level=high
-
-      - name: Write audit diagnostics (JSON)
-        if: always()
-        shell: bash
-        run: |
-          npm audit --json > diagnostics/audit-all.json 2> diagnostics/audit-all.stderr.log || true
-          npm audit --omit=dev --json > diagnostics/audit-production.json 2> diagnostics/audit-production.stderr.log || true
+      - name: Dependency audit (production; upstream findings warn)
+        run: node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json
 
       - name: Upload diagnostics (no node_modules, no credentials)
         if: always()

@@ -14,9 +14,9 @@
 
 ## 锁定的上游版本
 
-- `@juicesharp/rpiv-todo@2.13.9`（精确固定；`dependencies`；此前为 2.13.8）。
-- `@juicesharp/rpiv-i18n@2.13.9`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
-- 上游 2.13.9 自带传递依赖 `@juicesharp/rpiv-config@^2.13.9`（此前为 ^2.13.8；由 npm 解析，不显式固定）。
+- `@juicesharp/rpiv-todo@2.15.0`（精确固定；`dependencies`；此前为 2.13.9）。
+- `@juicesharp/rpiv-i18n@2.15.0`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
+- 上游 2.15.0 自带传递依赖 `@juicesharp/rpiv-config@^2.15.0`（此前为 ^2.13.9；由 npm 解析，不显式固定）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
@@ -153,6 +153,48 @@
   `d3c6f0812140605a4e55e0a660eb83edc12abbc5` 未采用。本次库存仅有 lean before/after，不声称
   重审未提供的引擎源码。六个 action、默认值与内部 overlay/store 依赖由现有真实集成验证。
 - 本次无门面改动，不加重复回归。check 运行现有全部断言并更新本仓字符代理，结果以其输出为准。
+
+## 本次审查：2.13.9 → 2.15.0
+
+- 精确源码来自 sources.json：`54df50eea935fc9753edc300d5f23c5e28d906d7` →
+  `ce6d3530410812ca504ec294995581a52170f9e1`，同时包含相关 i18n；远端
+  `46dbdfd78ab631bbf3ce41c2618bb173a5ec2725` 未采用。三个 lean 作者 HEAD 均未变，
+  没有本次作者新实现可复用，既往复用决定保留。web 0.44.0、subagents 0.22.0 不变，
+  库存没有其 before/after，不声称审查未发布远端源码。
+- 对比 todo 两版 CHANGELOG、package.json、index.ts、todo.ts、tool/types.ts、state/state-reducer.ts、
+  tool/response-envelope.ts、state/replay.ts、view/format.ts、todo-overlay.ts、state/store.ts、config.ts、
+  state/i18n-bridge.ts；阅读新增 tool/normalize-params.ts。相关 i18n 的 CHANGELOG 新节为空，
+  package.json 更新版本及 config 范围；对比 index.ts 与 loader.ts，无相关接口变化。
+  rpiv-config 本体不在库存，不声称审查其实现，实际安装由 check 验证。
+- 工具仍仅 todo，六个 action 和 required=[action] 不变。新增可选 tasks 数组，项必填 subject，
+  可选 description/activeForm/blockedBy/owner/metadata。顶层仍保留原字段；create 默认 pending、
+  list 默认不含 deleted、clear 重置 nextId=1 均不变。复制原生 schema 后压缩，保留 tasks 的完整嵌套结构
+  和名为 description 的实际输入字段，不再原地改动上游 schema。字符串 enum 的 type 与无限制 metadata
+  的空 patternProperties 等价冗余项被删除；其余字段、枚举、required、类型与约束保留。
+- create 接受 subject 或非空 tasks 二选一；批量五个 per-task 字段只能放在项内，先完整验证再提交，
+  禁止引用同批新 ID，允许引用已有未删除任务。原单个创建仍可用。Reducer create op 从 taskId 改为
+  taskIds 数组，本包装不读该 op；content 每项一行 Created，details 仍为全量 tasks/nextId 快照，
+  成功整批追加一次 rpiv-todo-state，失败不追加，错误在 details.error 和文本中（不新增 isError）。
+- 上游首次注册 prepareArguments，解码字符串 tasks 数组和字符串对象项，非法 JSON 保留原值供校验报错。
+  本仓已有 hook-first 委派，之后才做旧 create/update 推断；本次不扩大 action 推断，批量须显式 action。
+  常驻描述明确 subject 或 tasks[]，单行指南保留原有多步任务、单个 in_progress、及时完成、变更字段、
+  筛选、清空和依赖增删规则；批量原子性与各项约束在 README 说明并由上游验证。
+  不扩大 action 推断，不引入作者旧版 withHostPlan，也不复制 reducer 或归一化实现。
+- view/format 在无 action 时不显示 undefined，批量调用卡显示数量；renderResult 检测 details.error 或宿主
+  context.isError，以 ✗ 和首行错误取代成功状态。模型收到的错误 envelope 不变，由已有 render hook 委派承接。
+- replay 现在检查每项的安全整数 id、subject/status、可选文本、blockedBy 与 metadata 形状及安全整数 nextId；
+  损坏快照整条跳过，保留最近有效快照；自定义条目优先、历史 toolResult 回放和快照浅拷贝规则不变。
+  RPC 的 session_start/compact/tree 均调用同一 replay，因此承接修复。
+- index.ts、todo-overlay.ts、state/store.ts、config.ts 与 bridge 的已审查接口不变。依赖的普通 private
+  字段／getSnapshot、公开方法、会话函数、事件／命令／快捷键继续成立，stale guard 与异步命令等待保留。
+- tests/upstream-215-regression.test.mjs 使用真实 facade 覆盖完整批量字段、双重 JSON 归一化、批量
+  成功／原子拒绝／已有依赖、一次持久化、RPC 生命周期损坏快照回放与 render 委派。新增 schema 等价
+  校验，比较有效及无效输入在原生与压缩 schema 下的结果，并确认原生 schema 不被改动。
+- 维护者已明确批准更新 wrapper.test.mjs 中两处过时契约期望：当前描述与新增 tasks 字段。
+  所有原行为断言和 metadata<=1200 上限保持不变；不隐藏新参数、不按测试切换行为。
+  fixture 使用 jiti moduleCache=true 共享真实状态图，避免 reset/read 另一份 store。
+- 固定 check 重新捕获契约、字符代理并实际执行类型／测试、生产安装和审计，结果以检查日志为准。
+  字符代理 ceil(chars/4) 非计费 token；交互式终端与三平台验收仍由后续流程分别确认。
 
 ## 升级步骤
 

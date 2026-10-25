@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-三个独立的 lean 包装扩展：缩短工具描述和 schema，执行仍调用精确版本的上游依赖。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，工具上下文合计减少约 **94.5%**，不是实际计费 token。
+三个独立的 lean 包装扩展：缩短工具描述和 schema，执行仍调用精确版本的上游依赖。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，工具上下文合计减少约 **94.4%**，不是实际计费 token。
 
 | 扩展 | 工具 | 用途 |
 | --- | --- | --- |

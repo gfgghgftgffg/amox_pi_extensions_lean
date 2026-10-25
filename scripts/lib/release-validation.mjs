@@ -73,7 +73,7 @@ export function releaseNotes({ tag, repository, sha, summary }) {
     "",
     "## 验证",
     "",
-    "macOS、Windows、Linux 的测试、契约检查、三个独立生产安装及安全审计通过。",
+    "macOS、Windows、Linux 的测试、契约检查、三个独立生产安装通过。依赖安全审计已执行，上游漏洞作为警告记录，不阻断发布。",
     `验证提交：\`${sha}\`。`,
     `[详细源码审查](https://github.com/${repository}/blob/${sha}/maintenance/agent-review.md)。`,
     "",

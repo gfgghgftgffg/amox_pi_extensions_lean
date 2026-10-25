@@ -25,10 +25,10 @@ function decorateWithCollapsedDisplay<T extends CollapsedDisplayTool>(tool: T): 
 		: tool;
 }
 
-const TOOL_DESCRIPTION = "Task tracker. action is required: create|update|list|get|delete|clear; create needs subject; update/get/delete need id.";
+const TOOL_DESCRIPTION = "Required action: create|update|list|get|delete|clear. create subject or tasks[]; update/get/delete id.";
 const PROMPT_SNIPPET = "";
 const PROMPT_GUIDELINES = [
-	"todo: Use for multi-step tasks. update needs changed fields; list accepts status/includeDeleted; clear removes all; create supports blockedBy; update supports addBlockedBy/removeBlockedBy; keep one in_progress and complete tasks promptly.",
+	"Multi-step; one in_progress; complete promptly. update changes/addBlockedBy/removeBlockedBy; list status/includeDeleted; clear all; create blockedBy.",
 ];
 
 function prepareTodoArguments(args: unknown): unknown {
@@ -43,12 +43,23 @@ function prepareTodoArguments(args: unknown): unknown {
 	return input;
 }
 
-function removeSchemaDescriptions(value: unknown, seen = new Set<object>(), isPropertiesMap = false): void {
+function compactSchema(value: unknown, seen = new Set<object>(), isPropertiesMap = false): void {
 	if (value === null || typeof value !== "object" || seen.has(value)) return;
 	seen.add(value);
-	if (!isPropertiesMap) delete (value as Record<string, unknown>).description;
+	if (!isPropertiesMap) {
+		const schema = value as Record<string, unknown>;
+		delete schema.description;
+		// A string-only enum already excludes every non-string value.
+		if (schema.type === "string" && Array.isArray(schema.enum)
+			&& schema.enum.length > 0 && schema.enum.every((item) => typeof item === "string")) delete schema.type;
+		const patterns = schema.patternProperties as Record<string, unknown> | undefined;
+		// Unrestricted metadata stays unrestricted without an empty pattern.
+		if (schema.type === "object" && (schema.additionalProperties === undefined || schema.additionalProperties === true)
+			&& patterns && Object.keys(patterns).length === 1 && patterns["^.*$"]
+			&& typeof patterns["^.*$"] === "object" && Object.keys(patterns["^.*$"] as object).length === 0) delete schema.patternProperties;
+	}
 	for (const [key, child] of Object.entries(value)) {
-		removeSchemaDescriptions(child, seen, key === "properties");
+		compactSchema(child, seen, key === "properties");
 	}
 }
 
@@ -339,9 +350,11 @@ export default function (pi: ExtensionAPI): void {
 			if (property === "registerTool") {
 				return (tool: Parameters<ExtensionAPI["registerTool"]>[0]) => {
 					if (tool.name === "todo") {
-						removeSchemaDescriptions(tool.parameters);
+						const parameters = JSON.parse(JSON.stringify(tool.parameters)) as typeof tool.parameters;
+						compactSchema(parameters);
 						return target.registerTool(decorateWithCollapsedDisplay({
 							...tool,
+							parameters,
 							description: TOOL_DESCRIPTION,
 							promptSnippet: PROMPT_SNIPPET,
 							promptGuidelines: PROMPT_GUIDELINES,

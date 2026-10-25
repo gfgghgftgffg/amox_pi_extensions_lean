@@ -127,7 +127,7 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.8 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.9 | 149 |
 | pi-web-access | 0.44.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -135,7 +135,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.8`
+* 包装层：`0.1.9`
 * 上游运行时：锁定 `pi-web-access@0.44.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

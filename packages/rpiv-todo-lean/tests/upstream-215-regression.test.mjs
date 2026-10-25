@@ -11,7 +11,7 @@ process.env.PI_CODING_AGENT_SESSION_DIR = join(agentDir, "sessions");
 const jiti = createJiti(import.meta.url, { moduleCache: false });
 const mod = await jiti.import("../index.ts");
 const extension = mod.default ?? mod;
-const store = await jiti.import("@juicesharp/rpiv-todo/state/store.ts");
+const store = await jiti.import("@juicesharp/rpiv-todo/state/store.js");
 const { Value } = await jiti.import("typebox/value");
 const sessionId = "batch-facade";
 const ctx = { mode: "rpc", hasUI: false, sessionManager: { getSessionId: () => sessionId, getBranch: () => [] } };

@@ -41,6 +41,8 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 固定主机只合并本次维护创建的 PR：精确 head 的 Linux、macOS、Windows 和 `all-platforms-pass` 成功，重新检查 PR/base/main 后，以 head SHA 为条件单次合并。Release 再独立验证合并 SHA 的三个平台，创建 GitHub Release，通过 OIDC 将已验证归档发布到 npm。CI 和 Release 不调用模型；Release notes 复用本地 Pi 的摘要。
 
+可选的 [ntfy 通知](docs/local-scheduler.md#可选-ntfy-通知)覆盖成功、无更新、失败和超时。发布成功通知等待 Release/npm job 成功后再发送；通知失败不改变维护结果。
+
 - [开发与维护策略](docs/maintenance.md)
 - [Linux 维护主机部署](docs/local-scheduler.md)
 - [发布配置、首次 npm 配置与恢复](docs/npm-publishing.zh-CN.md)

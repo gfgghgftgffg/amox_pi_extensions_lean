@@ -41,6 +41,8 @@ Every day at 02:23 UTC (10:23 Beijing time), systemd starts an independent Pi SD
 
 The fixed host merges only its own maintenance PR after exact-head Linux, macOS, Windows and `all-platforms-pass` success, fresh PR/base/main checks and a head-SHA condition. Release independently verifies the merged SHA on all three platforms, creates the GitHub Release and publishes the verified archives to npm through OIDC. CI and Release do not call a model; Release notes reuse the local Pi summary.
 
+Optional [ntfy notifications](docs/local-scheduler.md#可选-ntfy-通知) cover success, no updates, failure and timeout. Release success is reported after the Release/npm job succeeds; notification errors do not change the maintenance result.
+
 - [Development and maintenance policy](docs/maintenance.md)
 - [Linux maintenance-host deployment](docs/local-scheduler.md)
 - [Release configuration, one-time npm setup and recovery](docs/npm-publishing.md)

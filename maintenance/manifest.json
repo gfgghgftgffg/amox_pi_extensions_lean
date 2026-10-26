@@ -19,7 +19,7 @@
       "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
       "upstreamGitHead": "d0e323ac935e8753d11e1853b81c057e39dee4dc",
       "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
-      "leanCommit": "e5e9954a3ec000132d794b2ad88314c71e51a82e"
+      "leanCommit": "6842095b34a3650163bfbbfd9da225ac3ac33e3d"
     },
     {
       "id": "rpiv-todo-lean",
@@ -36,7 +36,7 @@
       ],
       "upstreamGitHead": "ce6d3530410812ca504ec294995581a52170f9e1",
       "leanRepository": "https://github.com/kunkun9527/rpiv-todo-lean.git",
-      "leanCommit": "f1e3fc7bcde2644a89803fa6a3a256fb7422d89f"
+      "leanCommit": "664409f1e91e7eb8375cb0e473321a7075f20de1"
     },
     {
       "id": "pi-subagents-lean",

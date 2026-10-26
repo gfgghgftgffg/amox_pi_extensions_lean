@@ -50,6 +50,7 @@ node scripts/install-extension.mjs pi-web-access-lean
 { "op": "search", "input": "Pi coding agent extensions" }
 ```
 
+显式传入 `op` 和字符串 `input`；高级对象须序列化为 JSON 后放入该字符串。
 批量或高级参数请将 JSON 对象序列化为 `input` 字符串传入；仅在不清楚字段时调用 `help`。
 DeepSeek 搜索使用高级 JSON，例如：
 
@@ -127,7 +128,7 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.9 | 149 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.10 | 149 |
 | pi-web-access | 0.44.0 | 2768 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -135,7 +136,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.9`
+* 包装层：`0.1.10`
 * 上游运行时：锁定 `pi-web-access@0.44.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

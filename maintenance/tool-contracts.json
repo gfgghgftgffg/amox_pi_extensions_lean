@@ -975,7 +975,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -1056,7 +1056,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1114,7 +1114,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.9",
+      "version": "0.1.10",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

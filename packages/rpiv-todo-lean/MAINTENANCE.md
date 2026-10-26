@@ -196,6 +196,31 @@
 - 固定 check 重新捕获契约、字符代理并实际执行类型／测试、生产安装和审计，结果以检查日志为准。
   字符代理 ceil(chars/4) 非计费 token；交互式终端与三平台验收仍由后续流程分别确认。
 
+## 本次 lean-only 审查：作者同步 2.15.0
+
+- 精确作者 before/after：`f1e3fc7bcde2644a89803fa6a3a256fb7422d89f` →
+  `664409f1e91e7eb8375cb0e473321a7075f20de1`，以 sources.json 为准。完整比较两版 index.ts、
+  package.json、中英文 README、wrapper 和 rpc-sessions 测试，并阅读本地入口与当前用法。
+- 入口唯一差异为指南增加 `or a tasks[] batch`。不是新 schema／action／默认值或执行逻辑；本地描述
+  已有 `create subject or tasks[]`，完整批量 schema、hook-first 归一化及原子执行已由前次适配承接。
+  不重复增加常驻文本；中英文 README 保留完整批量约束，并明确已有的单个 in_progress／及时完成指导。
+- 作者 package.json 包装 2.13.12 → 2.15.0，todo/i18n pins 2.13.9 → 2.15.0；本仓已固定 2.15.0。
+  peer/dev 不变，不复制作者包装版本、锁文件或开发依赖。README 更新依赖、测量表及 Pi 1.3 → 1.4，
+  但 Versions 中包装版本和中文依赖仍残留旧值，package description 也保留旧代理；不复用这些数字。
+  本仓版本由固定脚本管理，字符代理由 check 重测。
+- 作者 wrapper 测试新增 tasks 字段期望，并把 metadata 上限 1200 放宽到 1500；本仓已有完整 tasks
+  schema／真实执行回归，不复制重复期望，不放宽 1200 上限。rpc-sessions 两版完全一致。
+- 历史未采用功能没有变化：bare id 推断、较强逐步 workflow 指令及 withHostPlan 仍不引入。
+  withHostPlan 仍在 await 后读取 ctx.mode/sid，未增加 stale 防护；本地保留已有 stale guards、异步命令
+  等待、逐会话覆盖层及原始响应，不替换为作者入口或原地修改上游 schema。
+- 六个 action、完整字段、required=[action]、create=pending、list 默认不含 deleted、clear 重置 nextId=1
+  不变；没有新的本地行为适配。依赖的 overlay/store/replay 接口由已有固定依赖真实集成回归验证。
+- 本次没有引擎 before/after／CHANGELOG，todo/i18n 稳定版仍为 2.15.0 /
+  `ce6d3530410812ca504ec294995581a52170f9e1`；远端 `46dbdfd78ab631bbf3ce41c2618bb173a5ec2725`
+  未采用，不声称重审该远端源码。subagents 引擎 0.22.0 与 lean HEAD 均不变，无本次快照或复用变动。
+- 本次无门面行为变化，不加重复测试或修改既有断言。check 实际执行类型／既有回归／契约、三包独立
+  生产安装和两种审计，并重测字符代理；结果以其输出为准。ceil(chars/4) 非计费 token，Pi 1.4 与交互 UI 未实测。
+
 ## 升级步骤
 
 1. `npm view @juicesharp/rpiv-todo version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码（`tool/types.ts`、`todo.ts`、`todo-overlay.ts`、`index.ts`、`state/*`）及 `CHANGELOG.md`。

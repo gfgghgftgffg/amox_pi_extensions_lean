@@ -222,6 +222,27 @@
 - check 捕获字符代理 ceil(chars/4)、更新测量文档并实际执行类型／回归／契约、独立生产安装与两种审计；
   结果以工具输出为准，字符代理不是计费 token。无真实 Provider／网关请求；跨平台与发布由固定后续流程验证。
 
+## 本次 lean-only 审查：作者同步 0.44.0
+
+- 精确作者 before/after 来自 sources.json：`e5e9954a3ec000132d794b2ad88314c71e51a82e` →
+  `6842095b34a3650163bfbbfd9da225ac3ac33e3d`。完整比较两版 index.ts、package.json、中英文 README
+  和 tests/facade.test.mjs，并阅读本地入口与用法。两版入口逐行一致，无新增／删除工具、参数、默认值或执行行为。
+- 作者 package.json 仅包装版本 0.42.2 → 0.44.0、引擎 pin 0.42.0 → 0.44.0；本仓已固定 0.44.0。
+  peer/dev 未变，仍是作者旧 Pi 基线，不复制其版本、锁文件或开发依赖。README 更新引擎／包装版本、
+  字符代理与测量环境 Pi 1.3 → 1.4；本仓使用 check 的实测代理，不采用其基准。作者 package description
+  仍保留旧百分比，不能当作当前实测证据。
+- 作者 facade 测试只将 help 标题 0.42 改 0.44 并增加 linkup 断言；本仓已有 0.43 Linkup focused
+  回归及 0.44 网关回归，不复制重复测试或改动既有断言。
+- 历史复用决定保持：不引入已有的 op 推断／对象 input／顶层字段合并，也不引入对 rendered content
+  的全局 hint 正则改写。返回对象直接透传，structuredContent 正文和 rendered 工具提示继续区分。
+  中英文 README 明确当前显式 op／字符串 input 用法；单一工具、prepareArguments 委派、loader 丢弃、
+  setActiveTools 拦截和 PDF 独立分支均保留，本地 index.ts 不变。
+- 本次库存仅有两个 lean 仓库快照，没有引擎 before/after 或 CHANGELOG。稳定引擎仍为 0.44.0 /
+  `d0e323ac935e8753d11e1853b81c057e39dee4dc`；远端 `441fdf5e14d18b0a2ebd535bd3cf077d8ce5e92d`
+  未采用，不声称重审该远端实现。内部引擎契约由固定版本及既有真实集成验证。
+- 无本次门面行为变化，不新增测试。check 重新捕获契约／字符代理并实际执行类型、所有既有回归、
+  三包独立生产安装与两种审计；结果以输出为准。ceil(chars/4) 非计费 token；真实服务和 Pi 1.4 未实测。
+
 ## 升级步骤
 
 1. `npm view pi-web-access version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。

@@ -43,7 +43,8 @@ The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`,
 `action` is normally required; when it is omitted the facade infers `create` from `subject` or
 `update` from `id` plus a mutable field, and otherwise lets upstream report the error.
 
-New tasks default to `pending`. Create one with `subject`, or create independent tasks atomically with
+New tasks default to `pending`. For multi-step work, keep one task `in_progress` and mark it
+`completed` promptly when finished. Create one with `subject`, or create independent tasks atomically with
 `{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`. Batch calls require explicit
 `action: "create"`; `tasks` and individual items may be JSON strings and are normalized before validation.
 Use either `subject` or a nonempty `tasks` array. In a batch, put `description`, `activeForm`, `blockedBy`,
@@ -61,7 +62,7 @@ additional full-plan snapshot.
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 277 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.10 | 277 |
 | @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -69,7 +70,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.9`
+* Wrapper: `0.1.10`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.15.0` and `@juicesharp/rpiv-i18n@2.15.0` (exact)
 * Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 

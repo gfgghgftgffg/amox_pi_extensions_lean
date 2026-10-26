@@ -38,7 +38,8 @@ node scripts/install-extension.mjs rpiv-todo-lean
 通常需要显式传入 `action`；省略时封装会依据 `subject` 推断 `create`，或依据 `id` 加可变字段推断
 `update`，其余情况交由上游报错。
 
-新任务默认 `pending`。单个创建传 `subject`，独立任务可原子批量创建：
+新任务默认 `pending`。多步骤工作保持一个任务为 `in_progress`，完成后及时标记为 `completed`。
+单个创建传 `subject`，独立任务可原子批量创建：
 `{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`。批量调用须显式传
 `action: "create"`；`tasks` 或其中各项为 JSON 字符串时，上游在校验前归一化。
 `subject` 与非空 `tasks` 数组二选一。批量的 `description`、`activeForm`、`blockedBy`、`owner`、
@@ -54,7 +55,7 @@ list 默认不含已删除任务，`includeDeleted: true` 可包含；clear 重�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.9 | 277 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.10 | 277 |
 | @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -62,7 +63,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.9`
+* 包装层：`0.1.10`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.15.0` 与 `@juicesharp/rpiv-i18n@2.15.0`（精确版本）
 * 开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 

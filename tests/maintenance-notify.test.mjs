@@ -37,6 +37,12 @@ test("private ntfy config and a single authenticated POST, without redirects or 
       return new Response("{}", { status: 200 });
     });
     assert.equal(posts, 1);
+    writeFileSync(tokenFile, "Token created for fixture user:\n  tk_fixtureTOKEN123\n");
+    await send(config, {}, { title: "测试", reason: "fixture" }, async (_url, options) => {
+      assert.equal(options.headers.authorization, "Bearer tk_fixtureTOKEN123");
+      assert.doesNotMatch(options.body, /tk_fixtureTOKEN123|Token created/);
+      return new Response("{}", { status: 200 });
+    });
     await assert.rejects(send(config, {}, { title: "测试", reason: "fixture" }, async () => new Response(null, { status: 302 })), /not accept/);
     writeFileSync(path, JSON.stringify({ ...config, server: "https://user:secret@ntfy.example.com" })); assert.throws(() => loadConfig(path));
     chmodSync(path, 0o644); assert.throws(() => loadConfig(path));

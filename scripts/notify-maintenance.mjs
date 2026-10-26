@@ -45,8 +45,10 @@ export async function completion(state, serviceResult, { api, now = Date.now, wa
   return { title: "发布等待超时", reason: "PR 已合并，但未能在期限内确认发布结果", failed: true };
 }
 export async function send(config, state, result, fetchImpl = fetch) {
-  const token = privateText(config.tokenFile).trim();
-  if (!token || /\s/.test(token)) throw new Error("Invalid ntfy credential");
+  const text = privateText(config.tokenFile).trim();
+  const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
+  const token = tokens.length === 1 ? tokens[0] : text;
+  if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
   const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `版本：${state.version}` : undefined, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
   const response = await fetchImpl(config.server, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },

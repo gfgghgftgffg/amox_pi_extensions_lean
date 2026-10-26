@@ -59,3 +59,9 @@ journalctl -u amox-pi-actions.service
 单次维护上限 120 分钟，service 130 分钟兜底，模型错误不自动重试。timer 使用 `Persistent=true`，启用前检查是否会补执行。暂停：`sudo systemctl disable --now amox-pi-actions.timer`。确认不再需要后再清理专用失败副本，避免磁盘耗尽。
 
 自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV` 和 `AMOX_MAINTENANCE_STATE`，并同步 unit 的写入权限与 TMPDIR。
+
+## 可选 ntfy 通知
+
+将 `server`、`topic`、`tokenFile` 写入仓库外的 `~/.config/amox-pi-notify.json`，例如 `{"server":"https://ntfy.example.com","topic":"maintenance","tokenFile":"/private/ntfy-token"}`；配置和 token 文件均设为 600。部署上述 service 后，结束钩子会通知成功、无更新、失败和超时；已合并版本等待现有 Release/npm job 的实际结果，不重复执行验收或发布。通知失败不改变原任务结果。未配置时跳过通知。
+
+显式测试：`node scripts/notify-maintenance.mjs --test`。自定义配置路径可用 `AMOX_NOTIFY_CONFIG`。

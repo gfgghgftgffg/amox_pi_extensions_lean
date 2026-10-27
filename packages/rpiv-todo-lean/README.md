@@ -2,8 +2,7 @@
 
 Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo): the
-complete task-management engine with a compact schema, preserved RPC/session/overlay behavior,
-and per-session isolated overlays.
+complete task-management engine behind one compact `todo` tool. Runtime updates follow upstream.
 
 Original lean facade by [kunkun9527](https://github.com/kunkun9527/rpiv-todo-lean); upstream extension
 by [juicesharp](https://github.com/juicesharp/rpiv-mono). Both are MIT-licensed; the original `LICENSE`
@@ -11,14 +10,8 @@ is preserved in this package.
 
 ## Core features
 
-* Full task lifecycle: `create`, `update`, `list`, `get`, `delete`, `clear`, status transitions,
-  `blockedBy` dependencies, metadata, `/todos` command, and branch replay.
-* Compact provider-facing schema: all native fields, including batch items, are retained. Verbose
-  descriptions and redundant constraints are removed without changing validation; guidelines use one line.
-* Upstream persistence preserved: every state-changing call still appends upstream's
-  `rpiv-todo-state` custom entry so replay survives codemode-style calls.
-* RPC/session behavior preserved: per-session state slots, per-session overlays, stale-context
-  handling, and the shortcut/command wrappers from the original lean facade are retained.
+* Keeps upstream task lifecycle, dependencies, batch creation and the `/todos` interface.
+* Compact descriptions and schema retain native fields, validation, persistence and session isolation.
 
 ## Installation
 
@@ -43,39 +36,26 @@ The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`,
 `action` is normally required; when it is omitted the facade infers `create` from `subject` or
 `update` from `id` plus a mutable field, and otherwise lets upstream report the error.
 
-New tasks default to `pending`. For multi-step work, keep one task `in_progress` and mark it
-`completed` promptly when finished. Create one with `subject`, or create independent tasks atomically with
-`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`. Batch calls require explicit
-`action: "create"`; `tasks` and individual items may be JSON strings and are normalized before validation.
-Use either `subject` or a nonempty `tasks` array. In a batch, put `description`, `activeForm`, `blockedBy`,
-`owner`, and `metadata` on each item. Invalid items reject the whole batch without changing the list.
-Items can depend on existing tasks, but cannot reference another item in the same batch; create prerequisites first.
+Create a task with `subject`; batch creation uses `action: "create"` and `tasks`, for example
+`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`.
+Use `id` to update or retrieve a task and `blockedBy` for dependencies.
 
-Listing excludes deleted tasks unless `includeDeleted: true`; clearing resets task IDs to 1.
-State persists through `rpiv-todo-state` entries, with legacy tool-result replay retained. Malformed saved
-snapshots are skipped as a whole, retaining the latest valid snapshot. Failed calls show an error card;
-model-facing errors remain in text content and `details.error`. RPC responses are not expanded with an
-additional full-plan snapshot.
+New tasks default to `pending`. For multi-step work, keep one task `in_progress` and mark it
+`completed` promptly when finished. `list` excludes deleted tasks by default; `clear` empties the list
+and resets IDs. See the [upstream documentation](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo)
+for all fields, batch rules and `/todos` usage.
 
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | Version | Registered character proxy |
-| --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.11 | 277 |
-| @juicesharp/rpiv-todo | 2.15.0 | 1222 |
+| Package | Registered character proxy |
+| --- | ---: |
+| @gfgghgftgffg/rpiv-todo-lean | 277 |
+| @juicesharp/rpiv-todo | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## Versions
-
-* Wrapper: `0.1.11`
-* Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.15.0` and `@juicesharp/rpiv-i18n@2.15.0` (exact)
-* Development test baseline: Pi `1.1.0`, Node `22.22.1`.
-
 ## Development
 
-Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:check`.
-
-Upstream code is an exact-version npm dependency, not copied source. See [MAINTENANCE.md](MAINTENANCE.md) for adaptation details and limitations.
+See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.

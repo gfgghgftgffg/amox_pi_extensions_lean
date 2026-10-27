@@ -2,7 +2,7 @@
 
 Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents): the full subagent/workflow
-runtime behind one `subagent` tool.
+runtime behind one `subagent` tool. Runtime updates follow upstream.
 
 Original lean facade by [kunkun9527](https://github.com/kunkun9527/pi-subagents-lean); upstream
 extension by [tintinweb](https://github.com/tintinweb/pi-subagents). Both are MIT-licensed; the
@@ -63,53 +63,22 @@ preserves that discovery mechanism. After installation: review discovered agent 
 their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, and watch for naming
 collisions with the built-in `general-purpose`, `Explore`, and `Plan` types.
 
-## Runtime behavior and settings
-
-Background agent, group and workflow completions use the steering queue without interrupting running
-tools. `smart` and `async` joins report completed tasks at the parent's next boundary without waiting
-for siblings. A busy parent receives one combined message after its tool batch; an idle parent gets a
-turn after about 200 ms. Use `group` to wait for a turn's batch; a lone spawn and different parent
-turns are not grouped. Pending notifications survive Esc, and reading a finished result before delivery
-suppresses its notification.
-
-A foreground spawn can move to the background with `ctrl+b` while the editor has focus (all foreground
-spawns), or `b` in its viewer (one spawn). It returns an ID and later notifies on completion. The viewer
-follows Pi's fullscreen and scrollbar settings.
-
-Installed packages can declare agents/workflows under `pi.subagents` or `pi-subagents`. These resources
-are enabled by default, rank below your own definitions, and are invisible if configured only by an
-untrusted project. `packageAgents` and `packageWorkflows` in `subagents.json` accept `true`, `false` or
-a package allowlist. Package agents are read-only in `/agents`, with Eject/Disable actions. Reload
-after changing discovery or trust settings to refresh the facade's startup type list.
-
-Agent-file `isolated` applies to workflow children, mentions and RPC spawns, overriding caller values.
-File `isolation` also applies to mentions/RPC; a requested worktree requires a usable git repository.
-Workflow worktrees remain controlled by script options. Children inherit parent project trust;
-a different spawn directory does not become trusted automatically.
-
-With `extensions: true`, children load builtin codemode, tool search and MCP, each with its own MCP
-servers. Disable MCP with agent `exclude_extensions: builtin:mcp`, global `-builtin:mcp` or `--no-mcp`.
-Child tool scope respects exposure/defaultActive and also checks nested `ctx.executeTool` calls.
+Background tasks notify the parent on completion; do not poll or sleep. See the
+[upstream documentation](https://github.com/tintinweb/pi-subagents) for background execution,
+workflows, worktrees and `subagents.json` settings. Reload the extension after changing agent
+definitions, discovery or trust settings to refresh the facade's available type list.
 
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | Version | Registered character proxy |
-| --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.11 | 270 |
-| @tintinweb/pi-subagents | 0.22.0 | 8415 |
+| Package | Registered character proxy |
+| --- | ---: |
+| @gfgghgftgffg/pi-subagents-lean | 270 |
+| @tintinweb/pi-subagents | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## Versions
-
-* Wrapper: `0.1.11`
-* Upstream runtime: pinned to `@tintinweb/pi-subagents@0.22.0` (exact)
-* Requires Pi `>=1.1.0`. Development test baseline: Pi `1.1.0`, Node `22.22.1`.
-
 ## Development
 
-Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:check`.
-
-Upstream code is an exact-version npm dependency, not copied source. See [MAINTENANCE.md](MAINTENANCE.md) for adaptation details and limitations.
+See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.

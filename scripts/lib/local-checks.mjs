@@ -39,23 +39,20 @@ export function validateLocalChanges(repo, manifest, baseline, generated) {
     assertRegularPath(repo, path);
   }
 }
-export function measureDocs(repo, manifest, baseline) {
+export function measureDocs(repo, manifest) {
   const snapshot = readJson(join(repo, "maintenance/tool-contracts.json"));
   let upstreamTotal = 0, leanTotal = 0;
   for (const entry of manifest.packages) {
     const lean = snapshot.lean[entry.packageName], upstream = snapshot.upstream[entry.upstreamPackage];
     upstreamTotal += upstream.totals.registeredProxyTokens; leanTotal += lean.totals.registeredProxyTokens;
-    const old = JSON.parse(baseline.get(`${entry.path}/package.json`).text).version;
     for (const file of ["README.md", "README.zh-CN.md"]) {
       const path = join(repo, entry.path, file);
       let text = readFileSync(path, "utf8");
       const title = file === "README.md" ? "## Context footprint (character proxy)" : "## 上下文占用（字符代理）";
-      const section = `${title}\n\n<!-- amox-measurement:start -->\n| Package | Version | Registered character proxy |\n| --- | --- | ---: |\n| ${entry.packageName} | ${entry.version} | ${lean.totals.registeredProxyTokens} |\n| ${entry.upstreamPackage} | ${entry.upstreamVersion} | ${upstream.totals.registeredProxyTokens} |\n\nFixed ceil(characters / 4), not provider billing tokens.\n<!-- amox-measurement:end -->\n\n`;
+      const section = `${title}\n\n<!-- amox-measurement:start -->\n| Package | Registered character proxy |\n| --- | ---: |\n| ${entry.packageName} | ${lean.totals.registeredProxyTokens} |\n| ${entry.upstreamPackage} | ${upstream.totals.registeredProxyTokens} |\n\nFixed ceil(characters / 4), not provider billing tokens.\n<!-- amox-measurement:end -->\n\n`;
       const start = text.search(file === "README.md" ? /^## (Context|Token|Prompt|Measured).*$/mi : /^## 上下文占用.*$/m);
       const next = start < 0 ? -1 : text.indexOf("\n## ", start + 3);
       text = start < 0 ? `${text.trimEnd()}\n\n${section}` : text.slice(0, start) + section + (next < 0 ? "" : text.slice(next + 1));
-      text = text.replaceAll(`${entry.packageName}@${old}`, `${entry.packageName}@${entry.version}`)
-        .replaceAll(`\`${old}\``, `\`${entry.version}\``);
       writeFileSync(path, text);
     }
   }
@@ -96,7 +93,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       for (const lean of plan.leanPlans.filter((item) => item.changed)) manifest.packages.find((entry) => entry.id === lean.id).leanCommit = lean.remoteHead;
       writeFileSync(join(repo, "maintenance/manifest.json"), jsonText(manifest));
       generated.set("maintenance/manifest.json", jsonText(manifest));
-      measureDocs(repo, manifest, baseline);
+      measureDocs(repo, manifest);
       const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
       validateLocalChanges(repo, manifest, baseline, generated);

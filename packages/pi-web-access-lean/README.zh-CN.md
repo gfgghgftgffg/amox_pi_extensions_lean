@@ -2,20 +2,16 @@
 
 隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
 [`pi-web-access`](https://github.com/nicobailon/pi-web-access) 的精简封装：完整保留上游检索与抓取引擎，
-将四个对模型可见的工具合并为一个 `web_access` 工具。
+将四个对模型可见的工具合并为一个 `web_access` 工具。运行时随上游更新。
 
 原 lean 封装作者 [kunkun9527](https://github.com/kunkun9527/pi-web-access-lean)，上游引擎作者
 [Nico Bailon](https://github.com/nicobailon/pi-web-access)。两者均为 MIT 协议，本包保留原始 `LICENSE`。
 
 ## 核心特性
 
-* 完整上游能力：网页搜索、结果翻页续取、事实与来源核验、网页抓取、GitHub/YouTube/PDF 提取、Provider
-  路由、Curator、已存结果检索全部沿用上游实现。
-* 单一工具入口：上游 `web_search`、`source_check`、`fetch_content`、`get_search_content` 被捕获后由
-  `web_access` 路由，不会重复注册。
-* 本地 PDF 直读：`op: "fetch"` 支持 Unix/Windows 路径与 `file:///`，提取 Markdown 并返回页数与字符数。
-* 高级参数按需展开：`help` 返回当前上游完整描述与参数 Schema。
-* 工具列表全程不变：丢弃上游 `web_enable` 加载器，并拦截上游的 `setActiveTools` 调用。
+* 将上游搜索、核验、抓取和已存结果工具路由到 `web_access`，不重复注册。
+* 本地 PDF 直读支持 Unix/Windows 路径和 `file:///`，返回 Markdown、页数与字符数。
+* 高级参数按需展开：`help` 返回已安装上游的完整描述与 Schema。
 
 ## 安装
 
@@ -50,132 +46,35 @@ node scripts/install-extension.mjs pi-web-access-lean
 { "op": "search", "input": "Pi coding agent extensions" }
 ```
 
-显式传入 `op` 和字符串 `input`；批量或高级参数须序列化为 JSON 对象字符串，仅在不清楚字段时调用 `help`。
-DeepSeek 搜索使用高级 JSON，例如：
-
-```json
-{ "op": "search", "input": "{\"query\":\"Pi extensions\",\"provider\":\"deepseek\"}" }
-```
-
-在 `web-search.json` 设置 `deepseekApiKey`，或设置 `DEEPSEEK_API_KEY`。DeepSeek 按成功搜索计费，
-需要显式选择（包括配置路由）；`auto` 与 `all` 不会使用它。域名与时间过滤表达式也计入 128 字符查询限制。
-设置 `includeContent: true` 时，DeepSeek 返回的页面正文会保存供 `op: "get"` 读取，不再重复抓取已覆盖页面。
-`help` 的 `search` 或 `check` 会列出当前 Provider 选项，包括 Linkup。在高级 JSON 中选择
-`"provider":"linkup"`，并设置 `linkupApiKey` 或 `LINKUP_API_KEY`。Linkup 消耗账号额度，
-`auto`/`all` 不包含它；`web-search.json` 的 `linkupDepth` 可选 `flash`、`fast`（默认）、`standard` 或 `deep`。
-
-配置的默认 Provider 数组全部失败且每项错误均匹配 `fallbackOn` 时，可回退到尚未尝试的
-`searchRouting.providers`。工具 JSON 中使用名称或逗号分隔字符串，例如 `"provider":"brave,exa"`；
-显式列表不回退。本门面仍兼容数组及字符串化数组；未知名称报错，不再自动选择 auto。
-搜索 `model` 仅适用于显式选择单个 `openai`、`xai`、`mistral` 或 `gemini`（仅 API）Provider，
-不能搭配 `summary-review`，失败后不换模型重试。
-9router 使用 `"provider":"ninerouter"`，配置 `ninerouterBaseUrl`（例如 `https://router.example/v1`）
-或 `NINEROUTER_BASE_URL`；后端默认 `serper`，可用 `ninerouterProvider` / `NINEROUTER_SEARCH_PROVIDER`
-指定，API key 可选；auto/all 不包含它。
-`searchRouting.fallbackOn` 还接受 `empty`、`domain-miss`、`off-topic`（最后一项须设置
-`searchRouting.offTopicModel`）；`searchRouting.timeoutMs` 设置 1–600000 ms 的总路由预算。
-所有回答均被跳过时返回第一个。DuckDuckGo 请求串行且至少间隔两秒，遇到 bot check 后退避，
-可按配置回退 quota/network 错误。`op: "check"` 的工具文本现在包含每个来源最多 4000 字符的段落。
-xAI 网关可配置绝对 HTTP(S) 地址 `xaiResponsesUrl`，并设置 `xaiApiKey` 或 `XAI_API_KEY`；
-自定义端点仅使用该 key，不使用 Pi 的 xAI 登录凭据。`xaiSearchTimeoutMs` 默认 60,000，
-接受正整数并封顶 600,000。
-
-即使上游设置 `toolExposure: "deferred"` 和 `toolActivation: "none"`，门面 `web_access` 仍直接可用，
-不会延迟加载或移除其定义。上游要求 `"none"` 搭配 `"deferred"`，并拒绝 deferred 与 `"eager"` 组合。
-
-Provider 网关在 `web-search.json` 配置，例如
-`"deepseekBaseUrl": "https://gateway.example/deepseek"` 或
-`"serpapiBaseUrl": "https://gateway.example/serpapi"`。端点路径追加到网关前缀之后
-（DeepSeek 追加 `/v1/tools/search` 或 `/v1/tools/fetch`）。对应环境变量优先于配置，例如
-`PI_DEEPSEEK_BASE_URL`、`PI_OLLAMA_BASE_URL`、`SERPAPI_BASE_URL`、`JINA_SEARCH_BASE_URL` 和
-`MISTRAL_SEARCH_BASE_URL`；普通的 `DEEPSEEK_BASE_URL`、`OLLAMA_BASE_URL` 不读取。
-基础地址默认必须使用 HTTPS（loopback 主机可用 HTTP）。设置 `allowHttpBaseUrls: true` 或
-`PI_WEB_ACCESS_ALLOW_HTTP_BASE_URLS=true` 可允许其它主机使用 HTTP；API key 明文传输，仅用于可信网络。
-地址不能含内嵌凭据、查询参数或 fragment。
-未配置时保留官方端点。迁移后的 Provider API 调用最多跟随五次重定向，跨 origin 时移除对应凭据
-header 或 `api_key` 查询参数。Jina 搜索拒绝 `.`、`..` 查询。这些属于配置与传输行为，工具参数
-仍按原方式放进高级 JSON。
-
-页面回答与搜索摘要在宿主支持时使用 registry 的 `streamSimple` 路径，支持虚拟模型。
-`summaryModel` 和 `queryRewriteModel` 可设为 `current[:level]` 或 `provider/model-id[:level]`，
-只使用所选辅助模型；显式摘要模型失败时返回确定性摘要及原因，不再悄悄切换云模型，非法选择器报错。
-查询改写同样不换模型，仍遵守模型作用域限制。
-Azure OpenAI 搜索通过 `openaiResponsesUrl` / `openaiSearchModel` 指定 `/openai/v1/responses` 端点与
-部署名；Azure API key 使用 `api-key`，Entra token 使用 Bearer。Azure 拒绝 `openaiUseAlphaSearch`，
-Bing grounding 适用微软单独计费与隐私条款。Exa 返回发布日期／作者，`publication` 类别还含 DOI／引用数；
-旧 `research paper` 仍是别名。
-Windows 的 `!command` 凭据源优先使用 Git Bash 或 PATH 中的
-`bash.exe`，缺失时回退默认命令 shell。Gemini 的 `geminiAuth: "adc"` 在未显式配置且不存在 ADC 文件时
-可使用 GCE 附加服务账号；`GCE_METADATA_HOST` 可覆盖元数据主机，`METADATA_SERVER_DETECTION=none`
-可禁用检测。
-
-## 抓取配置
-
-提取具体类型化字段时，在 `web-search.json` 显式设置
-`"fetch":{"allowedModes":["readable","raw","answer","extract"]}`，再传高级 JSON，例如：
-
-```json
-{ "op": "fetch", "input": "{\"url\":\"https://example.com/pricing\",\"mode\":\"extract\",\"fields\":{\"price\":\"number: Pro monthly price\"}}" }
-```
-
-extract 将抓取的页面正文发送给 Cloudflare Clairic，使用 Pi 的 `cloudflare-workers-ai` 凭据
-（`CLOUDFLARE_API_KEY`、`CLOUDFLARE_ACCOUNT_ID`，可选 `CLOUDFLARE_GATEWAY_ID`）。`fields` 将 1–16 个
-名称映射到 `text`、`number`、`integer`、`date`、`list` 等类型，可加 `: 查找说明`。
-结果区分已提取值、不确定猜测与缺失值，文本／数字可附来源行。类型化数据在
-`structuredContent.urls[].extraction` 和 `details.extractions`，`urls[].content` 与 `op: "get"`
-仍为抓取正文。提取失败也可能已成功抓取并存储页面，须检查 extraction.error。
-extract 默认关闭，不能设为默认模式，拒绝 `auth`。本地 PDF 直读仅提取 Markdown，明确拒绝
-`mode: "extract"`；远端 PDF URL 走上游路径。启用 extract 后 `help` 的 `fetch` 才显示 `fields`。
-
-readable 抓取在已提取有效文本时接受完整的短静态 HTML 页面；运行脚本的页面仍可能被判为不完整，
-并继续尝试配置的其它 Provider。启用 DeepSeek Fetch 托管回退时，在现有 `fetchRouting.providers`
-加入 `"deepseek"`，设置 `fetchRouting.allowRemoteHostedProviders: true`，并使用搜索的同一个
-DeepSeek key。目标 URL 会发送给 DeepSeek。默认抓取顺序不包含它，同源重定向限制开启时不可用。
-
-在 `web-search.json` 设置 `fetchContent.userAgent` 可指定直接 HTTP 页面抓取的 User-Agent：
-
-```json
-{ "fetchContent": { "userAgent": "My Reader/1.0" } }
-```
-
-未设或 null 保留 `OpenAI File Downloader, XaiImageApiFetch/1.0`。字符串会 trim；空白、非字符串、
-非 ASCII 或 CR/LF 会在远端请求及 Provider 回退前报错。这是配置项，不是工具参数。显式配置在
-`localhost`、`127.0.0.0/8` 或 `::1` 的 SearXNG 不必全局放行 `ssrf.allowRanges`；
-豁免不允许跳转到其它本地 origin，也不允许普通页面 fetch 访问本地服务。
-
-按需限制同源重定向时，将高级 JSON 放入 `input`：
+显式传入 `op` 和字符串 `input`；批量或高级参数须序列化为 JSON 对象字符串，例如：
 
 ```json
 { "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
 ```
 
-也可在 `web-search.json` 设置 `fetchContent.redirects: "same-origin"`。每次重定向必须保持原始
-URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也不尝试 Provider 回退。启用后，无法观察
-重定向链的路径（托管提取、Jina、GitHub、YouTube）不可用。默认没有这项限制；`help` 的 `fetch`
-会说明这个高级参数。
+不清楚参数时，用 `help` 并将 `input` 设为对应操作名，读取已安装运行时的完整描述与 Schema。
+上游结果中的工具提示需换成对应的 `web_access` 操作；页面正文不改写。
 
-页面字面正文保持原样。上游提示保留原工具名：将 `get_search_content({ ... })` 换为 `web_access`
-的 `op: "get"`，同一参数对象序列化进 `input`；search/fetch 提示分别使用 `op: "search"` 或 `"fetch"`。
+## 配置与限制
+
+Provider、凭据、搜索路由和抓取选项沿用上游的 `web-search.json`，通常位于 `~/.pi/agent/`；
+配置路径、环境变量、支持的服务和计费规则见[上游文档](https://github.com/nicobailon/pi-web-access#configuration)。
+外部服务可能接收查询和页面内容并产生费用，使用前检查对应服务的配置。
+
+本地 PDF 直读仅提取 Markdown，不支持上游结构化 `extract` 模式；远端 PDF 由上游处理。
+`web_access` 始终直接注册，上游的动态工具加载设置不会延迟或移除这个入口。
 
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
-| Package | Version | Registered character proxy |
-| --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.11 | 149 |
-| pi-web-access | 0.45.0 | 1110 |
+| Package | Registered character proxy |
+| --- | ---: |
+| @gfgghgftgffg/pi-web-access-lean | 149 |
+| pi-web-access | 1110 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## 版本
-
-* 包装层：`0.1.11`
-* 上游运行时：锁定 `pi-web-access@0.45.0`（精确版本）
-* 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
-
 ## 开发
 
-在仓库根目录运行：`npm ci`、`npm run check`、`npm run contracts:check`。
-
-上游代码以精确版本的 npm 依赖引入，不复制源码。适配细节与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+[开发检查与维护策略](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)；适配细节见 [MAINTENANCE.md](MAINTENANCE.md)。

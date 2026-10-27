@@ -2,7 +2,7 @@
 
 隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) 的精简封装：完整 Subagent/Workflow
-运行时收束为一个 `subagent` 工具。
+运行时收束为一个 `subagent` 工具。运行时随上游更新。
 
 原 lean 封装作者 [kunkun9527](https://github.com/kunkun9527/pi-subagents-lean)，上游扩展作者
 [tintinweb](https://github.com/tintinweb/pi-subagents)。两者均为 MIT 协议，本包保留原始 `LICENSE`。
@@ -57,48 +57,21 @@ node scripts/install-extension.mjs pi-subagents-lean
 但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
 
-## 运行行为与设置
-
-后台 Agent、分组和 Workflow 的完成通知使用 steering 队列，不打断正在运行的工具。`smart` 和
-`async` join 在父会话下一边界报告完成项，不等待同批其它任务。忙碌父会话在工具批次后一次收到
-合并消息；空闲父会话约 200 ms 后启动一轮。需要等待整批时使用 `group`；单个任务和跨 turn
-任务不分组。Esc 后保留待发通知，发送前读取已完成结果即可取消其通知。
-
-前台任务可在编辑器有焦点时按 `ctrl+b` 全部转后台，或在 viewer 按 `b` 将单个任务转后台；
-调用返回 ID，完成后通知。viewer 遵循 Pi 的全屏模式与滚动条设置。
-
-已安装的包可在 `pi.subagents` 或 `pi-subagents` 声明 Agent/Workflow；默认启用，优先级低于用户
-自己的定义，仅由不受信任项目配置的包不可见。`subagents.json` 中的 `packageAgents` 与
-`packageWorkflows` 支持 `true`、`false` 或包白名单。包 Agent 在 `/agents` 中只读，可 Eject／Disable。
-发现或 trust 设置变更后重新加载扩展，刷新门面的启动名单。
-
-Agent 文件的 `isolated` 对 Workflow 子任务、mention 和 RPC 生效，优先于调用参数；文件的
-`isolation` 同样适用于 mention/RPC，worktree 要求可用的 git 仓库。Workflow 的 worktree 仍由脚本
-选项决定。子会话继承父会话项目 trust，跨目录派生不会自动信任目标目录。
-
-`extensions: true` 的子会话加载内置 codemode、tool search 和 MCP，每个子会话使用自己的 MCP
-服务器。可用 Agent 的 `exclude_extensions: builtin:mcp`、全局 `-builtin:mcp` 或 `--no-mcp` 关闭 MCP。
-子工具作用域尊重 exposure/defaultActive，也检查嵌套的 `ctx.executeTool` 调用。
+后台任务完成后会通知父会话，无需轮询或等待。后台执行、Workflow、worktree 和
+`subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)。
+修改 Agent 定义、发现范围或 trust 设置后重新加载扩展，刷新门面的可用类型名单。
 
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
-| Package | Version | Registered character proxy |
-| --- | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 0.1.11 | 270 |
-| @tintinweb/pi-subagents | 0.22.0 | 8415 |
+| Package | Registered character proxy |
+| --- | ---: |
+| @gfgghgftgffg/pi-subagents-lean | 270 |
+| @tintinweb/pi-subagents | 8415 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## 版本
-
-* 包装层：`0.1.11`
-* 上游运行时：锁定 `@tintinweb/pi-subagents@0.22.0`（精确版本）
-* 要求 Pi `>=1.1.0`。开发测试基线：Pi `1.1.0`、Node `22.22.1`。
-
 ## 开发
 
-在仓库根目录运行：`npm ci`、`npm run check`、`npm run contracts:check`。
-
-上游代码以精确版本的 npm 依赖引入，不复制源码。适配细节与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
+[开发检查与维护策略](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)；适配细节见 [MAINTENANCE.md](MAINTENANCE.md)。

@@ -5,7 +5,8 @@ import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-age
 // validating its schemas with the old @sinclair/typebox guard is unsupported.
 import { Type } from "typebox";
 import { Value } from "typebox/value";
-import subagents from "@tintinweb/pi-subagents/src/index.ts";
+// Use the upstream-published build; do not load its TypeScript source at startup.
+import subagents from "@tintinweb/pi-subagents/dist/index.js";
 import { Text } from "@earendil-works/pi-tui";
 const COLLAPSED_DISPLAY_SERVICE = Symbol.for(
   "@local/pi-collapsed-tools.display-service.v1",

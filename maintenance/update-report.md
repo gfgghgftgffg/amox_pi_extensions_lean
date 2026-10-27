@@ -1,15 +1,14 @@
-# Local upstream maintenance
+# Local release maintenance
 
-Base: d2afbd3b33f843b2191b7fda825ef14db769c71e
-Release after verified merge: v0.1.11
+Base: 96ab57ee46d30a17bd6382bbf9703ff75a62c4b8
+Release after verified merge: v0.1.12
 
-<!-- amox-release-summary:v0.1.11:start -->
-- Upgrade the web runtime to pi-web-access 0.45.0, retaining the single compact web_access facade; preserve legacy provider normalization and list current allowed providers through on-demand help.
-- Make search model selection, comma-separated providers, 9router and opt-in typed field extraction available through advanced JSON/help. Document Cloudflare page-text transfer, typed extraction errors versus stored page bodies, strict helper-model selection, routing budgets/fallback and gateway configuration in English and Chinese.
-- Explicitly reject field-extract mode on the independent local PDF path so fields cannot be silently ignored. Preserve upstream source-check passage output and all original response objects.
-- Add focused offline facade regressions with DNS/fetch mocks before imports, absolute URLs and fake credentials. Correct the new invalid-model regression to assert the actual rejected promise observed in the first check; all baseline assertions remain intact. Refresh exact-source review, maintenance notes, contracts and character-proxy measurements; todo and subagents runtime pins remain unchanged.
-<!-- amox-release-summary:v0.1.11:end -->
+<!-- amox-release-summary:v0.1.12:start -->
+- Reduce subagents startup overhead by loading the upstream npm package's existing dist/index.js instead of src/index.ts. Preserve the single subagent facade, tool schemas, parameter validation, workflow forwarding and render delegation. Lean entrypoints remain TypeScript; web/todo behavior and all upstream dependency pins are unchanged.
+- Keep typecheck, scope/workflow/registry regressions, Task Router identity and contract capture aligned with the compiled runtime. Require the published dist entry in fresh production installs and compare upstream source/dist tool contracts in isolated real Pi sessions.
+- Preserve the dist policy in daily maintenance: missing distribution files, stale contracts or runtime regressions block acceptance rather than silently falling back to source. The existing systemd schedule, permissions, exact-head three-platform CI and independent Release/npm OIDC pipeline remain unchanged.
+<!-- amox-release-summary:v0.1.12:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.
+Local validation covers typechecks, regressions, contracts, independent production installs and both dependency audits. Upstream advisory findings remain warnings; audit execution errors remain blockers. Exact-head three-platform PR CI is required before merge, and Release independently verifies the merged SHA before publishing verified archives to npm.

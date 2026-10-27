@@ -9,7 +9,7 @@
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
       "version": "0.22.0",
-      "entry": "node_modules/@tintinweb/pi-subagents/src/index.ts",
+      "entry": "node_modules/@tintinweb/pi-subagents/dist/index.js",
       "registeredTools": [
         "Agent",
         "SubagentWorkflow",
@@ -777,7 +777,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -858,7 +858,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -916,7 +916,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.11",
+      "version": "0.1.12",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

@@ -14,11 +14,10 @@ mkdirSync(agentDir, { recursive: true });
 process.env.PI_CODING_AGENT_DIR = agentDir;
 process.env.PI_CODING_AGENT_SESSION_DIR = join(root, "sessions");
 const jiti = createJiti(import.meta.url);
-const { installExtensionToolScope } = await jiti.import("@tintinweb/pi-subagents/src/agent-runner.ts");
-const { createWorkflowHost } = await jiti.import("@tintinweb/pi-subagents/src/workflow/host.ts");
-// Match the host's .js specifier: on Windows jiti's direct .ts import can
-// resolve a second registry instance through a differently separated path.
-const { registerAgents } = await jiti.import("@tintinweb/pi-subagents/src/agent-types.js");
+const { installExtensionToolScope } = await jiti.import("@tintinweb/pi-subagents/dist/agent-runner.js");
+const { createWorkflowHost } = await jiti.import("@tintinweb/pi-subagents/dist/workflow/host.js");
+// Use the same compiled registry as the production runtime on every platform.
+const { registerAgents } = await jiti.import("@tintinweb/pi-subagents/dist/agent-types.js");
 const { createSubagentsFacade } = await jiti.import("../index.ts");
 
 // The new handoff result/update shapes must travel through the facade intact.

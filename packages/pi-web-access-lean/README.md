@@ -72,7 +72,19 @@ Linkup uses account credits and is excluded from `auto`/`all`; `linkupDepth` in 
 accepts `flash`, `fast` (default), `standard`, or `deep`.
 
 A configured default provider array can fall back to untried `searchRouting.providers` only when
-every failure matches `fallbackOn`. A provider array explicitly passed in a call remains strict.
+every failure matches `fallbackOn`. In tool-call JSON, use a provider name or comma-separated names
+such as `"provider":"brave,exa"`; explicit lists remain strict. Legacy arrays and stringified arrays
+remain accepted by this facade. Unknown names fail instead of selecting auto.
+Search `model` selects a model for exactly one explicit `openai`, `xai`, `mistral`, or `gemini` provider
+(Gemini API only); it cannot be combined with `summary-review` and never retries another model.
+Select `"provider":"ninerouter"` for 9router and set `ninerouterBaseUrl` (for example
+`https://router.example/v1`) or `NINEROUTER_BASE_URL`. Its backend defaults to `serper`, configurable
+with `ninerouterProvider` / `NINEROUTER_SEARCH_PROVIDER`; its API key is optional. Auto/all exclude it.
+`searchRouting.fallbackOn` also accepts `empty`, `domain-miss`, and `off-topic` (the last needs
+`searchRouting.offTopicModel`). `searchRouting.timeoutMs` sets a total route budget of 1–600000 ms.
+If all answers are passed over, the first is returned. DuckDuckGo serializes requests at least two
+seconds apart and backs off after bot checks, allowing configured quota/network fallback.
+`op: "check"` now includes source passages in its rendered output, up to 4000 characters per source.
 For xAI gateways, configure an absolute HTTP(S) `xaiResponsesUrl` and `xaiApiKey` or `XAI_API_KEY`;
 a custom endpoint receives that key and does not use Pi's xAI sign-in. `xaiSearchTimeoutMs` defaults
 to 60,000 and accepts a positive integer capped at 600,000.
@@ -87,19 +99,48 @@ Provider gateways are configured in `web-search.json`, for example
 configured prefix (DeepSeek adds `/v1/tools/search` or `/v1/tools/fetch`). Matching environment
 variables override config: `PI_DEEPSEEK_BASE_URL`, `PI_OLLAMA_BASE_URL`, `SERPAPI_BASE_URL`,
 `JINA_SEARCH_BASE_URL`, and `MISTRAL_SEARCH_BASE_URL` are examples. Bare `DEEPSEEK_BASE_URL` and
-`OLLAMA_BASE_URL` are ignored. Bases must use HTTPS (HTTP is accepted only for loopback hosts),
-without embedded credentials, query parameters or fragments. Official endpoints remain the default.
+`OLLAMA_BASE_URL` are ignored. Bases require HTTPS by default (loopback HTTP is accepted).
+`allowHttpBaseUrls: true` or `PI_WEB_ACCESS_ALLOW_HTTP_BASE_URLS=true` also permits HTTP on other
+hosts; use only trusted networks because API keys travel unencrypted. Bases cannot contain embedded
+credentials, query parameters or fragments. Official endpoints remain the default.
 Migrated provider API calls follow at most five redirects and remove their credential headers or
 `api_key` query parameter on cross-origin redirects. Jina search rejects `.` and `..` queries.
 These are configuration and transport behaviors; use advanced JSON for tool arguments as before.
 
 Page answers and search summaries use the host registry's `streamSimple` path when available,
-including virtual models. On Windows, `!command` credential sources prefer Git Bash or `bash.exe`
+including virtual models. Set `summaryModel` or `queryRewriteModel` to `current[:level]` or
+`provider/model-id[:level]` to select one helper model. An explicit summary model never silently
+switches to a cloud model: failure yields a deterministic summary with a reason; an invalid selector
+errors. Query rewriting also uses only the selected model. Scope restrictions still apply.
+Azure OpenAI search uses your `/openai/v1/responses` endpoint and deployment name via
+`openaiResponsesUrl` / `openaiSearchModel`; Azure API keys use `api-key`, Entra tokens use Bearer.
+Azure rejects `openaiUseAlphaSearch`; Bing grounding has separate Microsoft billing/privacy terms.
+Exa results include publication dates/authors and, for category `publication`, DOI/citation metadata;
+the older `research paper` category remains an alias.
+On Windows, `!command` credential sources prefer Git Bash or `bash.exe`
 on PATH, with the default command shell as fallback. Gemini `geminiAuth: "adc"` can use an attached
 GCE service account when no ADC file is configured or present; `GCE_METADATA_HOST` overrides the
 metadata host and `METADATA_SERVER_DETECTION=none` disables detection.
 
 ## Fetch configuration
+
+For specific typed values, opt in with `"fetch":{"allowedModes":["readable","raw","answer","extract"]}`
+in `web-search.json`, then pass advanced JSON, for example:
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/pricing\",\"mode\":\"extract\",\"fields\":{\"price\":\"number: Pro monthly price\"}}" }
+```
+
+Extract sends fetched page text to Cloudflare Clairic using Pi's `cloudflare-workers-ai` credentials
+(`CLOUDFLARE_API_KEY` and `CLOUDFLARE_ACCOUNT_ID`; optional `CLOUDFLARE_GATEWAY_ID`). `fields` maps
+1–16 names to types such as `text`, `number`, `integer`, `date`, or `list`, optionally followed by
+`: what to find`. Results distinguish extracted values, uncertain guesses and missing values;
+text/number results may include a source line. Typed data is in `structuredContent.urls[].extraction`
+and `details.extractions`, while `urls[].content` and `op: "get"` retain the fetched page body.
+An extraction failure can coexist with a successful stored fetch; inspect the extraction error.
+Extract is disabled by default, cannot be the default mode, and rejects `auth`. The local PDF direct
+path supports Markdown extraction only and explicitly rejects `mode: "extract"`; remote PDF URLs
+use the upstream path. `help` for `fetch` shows `fields` only when extract is enabled.
 
 Readable fetch accepts short static HTML pages once useful text is extracted; pages running
 scripts may still be treated as incomplete and try other configured providers.
@@ -141,15 +182,15 @@ as `input`; translate upstream search/fetch hints to `op: "search"` or `"fetch"`
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.10 | 149 |
-| pi-web-access | 0.44.0 | 2768 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.11 | 149 |
+| pi-web-access | 0.45.0 | 1110 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Versions
 
-* Wrapper: `0.1.10`
+* Wrapper: `0.1.11`
 * Upstream runtime: pinned to `pi-web-access@0.44.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 

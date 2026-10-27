@@ -62,7 +62,7 @@ additional full-plan snapshot.
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.10 | 277 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.11 | 277 |
 | @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -70,7 +70,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## Versions
 
-* Wrapper: `0.1.10`
+* Wrapper: `0.1.11`
 * Upstream runtime: pinned to `@juicesharp/rpiv-todo@2.15.0` and `@juicesharp/rpiv-i18n@2.15.0` (exact)
 * Development test baseline: Pi `1.1.0`, Node `22.22.1`.
 

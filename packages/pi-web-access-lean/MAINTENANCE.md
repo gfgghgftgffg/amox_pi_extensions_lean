@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.44.0`（精确固定；`dependencies`；此前为 0.43.0）。
+- `pi-web-access@0.45.0`（精确固定；`dependencies`；此前为 0.44.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -242,6 +242,48 @@
   未采用，不声称重审该远端实现。内部引擎契约由固定版本及既有真实集成验证。
 - 无本次门面行为变化，不新增测试。check 重新捕获契约／字符代理并实际执行类型、所有既有回归、
   三包独立生产安装与两种审计；结果以输出为准。ceil(chars/4) 非计费 token；真实服务和 Pi 1.4 未实测。
+
+## 本次审查：0.44.0 → 0.45.0
+
+- sources.json 精确发布源码：`d0e323ac935e8753d11e1853b81c057e39dee4dc` →
+  `35e57ef30f4b8ac771f4062a381493993af41ebe`；远端 `d95fb1eb4350b90bd4285cbc84958085d136aa43`
+  未采用。先阅读三个包维护记录；三个 lean 作者 HEAD 均未变化，无新作者源码可复用。
+  todo/i18n 2.15.0、subagents 0.22.0 不变，库存无其新引擎快照，不声称审查未发布源码。
+- 比较新旧 CHANGELOG、package.json、index.ts 的业务工具 schema／执行注册、fetch-params.ts、
+  tool-arguments.ts、web-tool-contract.ts、web-tool-core.ts 的配置／响应层与 source-check.ts 段落算法；
+  阅读新 ninerouter.ts、field-extract.ts、docs/field-extract.md、upgrade-notice.ts、DuckDuckGo 限流，
+  核对 gemini-search.ts provider parser／模型校验／路由与 summary-model-scope.ts 选择器、摘要／改写入口。
+  范围是门面兼容边界，并非每个 Provider 的完整实现或全仓安全审计。
+- 无业务工具增删。search 新增可选 model；fetch 新增 opt-in extract 模式与 fields。常驻 op/input 不扩张，
+  低频参数从真实 schema 的 help 与 JSON 委派披露。numResults=5、workflow=none、fetch 默认 readable
+  和原 allowedModes=[readable,raw,answer] 不变。运行时依赖／peer 范围相同。
+- provider schema 从枚举／数组联合变为 string，建议名称或逗号列表；未知名称严格报错。真实 parser 仍接受
+  数组及字符串化数组，配置列表不变。0.45 hook 仅归一化 queries/domainFilter，故本地 search 先调用上游
+  parseStringifiedArrays(parsed,[provider])，再委派原 hook，保留已有 hook 契约及全部基线断言。
+  help 增加上游 getAllowedSearchProviders() 名单，保留 Provider 发现能力，尊重配置 allowlist；不硬编码名单。
+  两个内部模块按需 import，沿用本仓入口／PDF 类型 stub 边界；不复制上游实现。
+- model 只支持显式单个 openai/xai/mistral/gemini（API）；不能搭配 summary-review，错误不换模型。
+  新 ninerouter 显式选择或配置路由，auto/all 不含；需要 BaseUrl，POST base/search，后端默认 serper，key 可选。
+- extract 配置实际为 fetch.allowedModes（CHANGELOG 一处写 fetchContent.allowedModes，以源码为准），
+  不能设为 defaultMode，fields 为 1–16 个命名类型／说明，先校验后抓取，拒绝 auth。页面发送 Cloudflare
+  Clairic，使用 Pi getProviderAuth；默认不启用。0.80 阈值、类型校验、文本来源行／notFound 判定由上游承接。
+  rendered content 是字段与存储提示；structuredContent.urls[].extraction 是类型化结果／错误；urls[].content
+  与 get 返回原页面。提取失败不等同抓取失败，成功抓取仍可能 isError 非 true。测试按真实形状分别断言。
+  本地 PDF 是独立直读分支，新增明确拒绝 mode=extract，避免静默忽略 fields；不扩展其既有 answer 行为。
+- source_check 工具文本新增每来源最多 4000 字符的 passage，details.artifact 保留；句子识别保留 example.com，
+  优先 claim 匹配并识别 API/TLS/429 等短词。无自动语义支持／反驳判断的新宣称。
+- 路由 fallbackOn 增 empty/domain-miss/off-topic，后者须 classifier 配置；timeoutMs 为 1–600000 总预算，
+  包含 availability 检查；最终可返回首个被跳过的成功响应。DuckDuckGo 串行、最少两秒间隔，bot check
+  退避从五分钟倍增至一小时，30 秒预算包含排队，超时报 network 以允许回退。
+- summaryModel 与 queryRewriteModel 支持 current[:level] 或 provider/model-id[:level]，显式模型不换云模型；
+  摘要失败退确定性文本并记录原因，非法选择器报错。Azure 搜索与 Exa publication 元数据及 HTTP gateway
+  opt-in 按上游 CHANGELOG 更新双语当前用法，未声称真实服务端验证。session_start 承接一次升级提示，
+  fresh install/downgrade 不提示。四默认路由、五参数 execute、loader 丢弃及 active-list 拦截继续有效。
+- 新增 upstream-045-regression.test.mjs 仅覆盖门面 help／逗号 Provider／非法 model、extract 字段与响应分层、
+  存储续取、提取错误与 source check passages、本地 PDF 新拒绝路径。DNS/fetch 在导入前 mock，使用绝对 URL
+  与虚构凭据，拒绝意外目标；不加入无关上游测试，不修改既有断言。
+- check 实际捕获契约与 ceil(chars/4) 字符代理，执行类型／全部回归／契约、三包生产安装及两种审计；
+  结果以输出为准。字符代理不是计费 token；真实 Cloudflare／Azure／9router、交互升级 UI 未实测。
 
 ## 升级步骤
 

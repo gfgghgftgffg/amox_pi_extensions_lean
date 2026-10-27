@@ -66,7 +66,17 @@ DeepSeek 搜索使用高级 JSON，例如：
 `auto`/`all` 不包含它；`web-search.json` 的 `linkupDepth` 可选 `flash`、`fast`（默认）、`standard` 或 `deep`。
 
 配置的默认 Provider 数组全部失败且每项错误均匹配 `fallbackOn` 时，可回退到尚未尝试的
-`searchRouting.providers`；单次调用显式传入的 Provider 数组不回退。
+`searchRouting.providers`。工具 JSON 中使用名称或逗号分隔字符串，例如 `"provider":"brave,exa"`；
+显式列表不回退。本门面仍兼容数组及字符串化数组；未知名称报错，不再自动选择 auto。
+搜索 `model` 仅适用于显式选择单个 `openai`、`xai`、`mistral` 或 `gemini`（仅 API）Provider，
+不能搭配 `summary-review`，失败后不换模型重试。
+9router 使用 `"provider":"ninerouter"`，配置 `ninerouterBaseUrl`（例如 `https://router.example/v1`）
+或 `NINEROUTER_BASE_URL`；后端默认 `serper`，可用 `ninerouterProvider` / `NINEROUTER_SEARCH_PROVIDER`
+指定，API key 可选；auto/all 不包含它。
+`searchRouting.fallbackOn` 还接受 `empty`、`domain-miss`、`off-topic`（最后一项须设置
+`searchRouting.offTopicModel`）；`searchRouting.timeoutMs` 设置 1–600000 ms 的总路由预算。
+所有回答均被跳过时返回第一个。DuckDuckGo 请求串行且至少间隔两秒，遇到 bot check 后退避，
+可按配置回退 quota/network 错误。`op: "check"` 的工具文本现在包含每个来源最多 4000 字符的段落。
 xAI 网关可配置绝对 HTTP(S) 地址 `xaiResponsesUrl`，并设置 `xaiApiKey` 或 `XAI_API_KEY`；
 自定义端点仅使用该 key，不使用 Pi 的 xAI 登录凭据。`xaiSearchTimeoutMs` 默认 60,000，
 接受正整数并封顶 600,000。
@@ -80,18 +90,43 @@ Provider 网关在 `web-search.json` 配置，例如
 （DeepSeek 追加 `/v1/tools/search` 或 `/v1/tools/fetch`）。对应环境变量优先于配置，例如
 `PI_DEEPSEEK_BASE_URL`、`PI_OLLAMA_BASE_URL`、`SERPAPI_BASE_URL`、`JINA_SEARCH_BASE_URL` 和
 `MISTRAL_SEARCH_BASE_URL`；普通的 `DEEPSEEK_BASE_URL`、`OLLAMA_BASE_URL` 不读取。
-基础地址必须使用 HTTPS（仅 loopback 主机可用 HTTP），不能含内嵌凭据、查询参数或 fragment。
+基础地址默认必须使用 HTTPS（loopback 主机可用 HTTP）。设置 `allowHttpBaseUrls: true` 或
+`PI_WEB_ACCESS_ALLOW_HTTP_BASE_URLS=true` 可允许其它主机使用 HTTP；API key 明文传输，仅用于可信网络。
+地址不能含内嵌凭据、查询参数或 fragment。
 未配置时保留官方端点。迁移后的 Provider API 调用最多跟随五次重定向，跨 origin 时移除对应凭据
 header 或 `api_key` 查询参数。Jina 搜索拒绝 `.`、`..` 查询。这些属于配置与传输行为，工具参数
 仍按原方式放进高级 JSON。
 
-页面回答与搜索摘要在宿主支持时使用 registry 的
-`streamSimple` 路径，支持虚拟模型。Windows 的 `!command` 凭据源优先使用 Git Bash 或 PATH 中的
+页面回答与搜索摘要在宿主支持时使用 registry 的 `streamSimple` 路径，支持虚拟模型。
+`summaryModel` 和 `queryRewriteModel` 可设为 `current[:level]` 或 `provider/model-id[:level]`，
+只使用所选辅助模型；显式摘要模型失败时返回确定性摘要及原因，不再悄悄切换云模型，非法选择器报错。
+查询改写同样不换模型，仍遵守模型作用域限制。
+Azure OpenAI 搜索通过 `openaiResponsesUrl` / `openaiSearchModel` 指定 `/openai/v1/responses` 端点与
+部署名；Azure API key 使用 `api-key`，Entra token 使用 Bearer。Azure 拒绝 `openaiUseAlphaSearch`，
+Bing grounding 适用微软单独计费与隐私条款。Exa 返回发布日期／作者，`publication` 类别还含 DOI／引用数；
+旧 `research paper` 仍是别名。
+Windows 的 `!command` 凭据源优先使用 Git Bash 或 PATH 中的
 `bash.exe`，缺失时回退默认命令 shell。Gemini 的 `geminiAuth: "adc"` 在未显式配置且不存在 ADC 文件时
 可使用 GCE 附加服务账号；`GCE_METADATA_HOST` 可覆盖元数据主机，`METADATA_SERVER_DETECTION=none`
 可禁用检测。
 
 ## 抓取配置
+
+提取具体类型化字段时，在 `web-search.json` 显式设置
+`"fetch":{"allowedModes":["readable","raw","answer","extract"]}`，再传高级 JSON，例如：
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/pricing\",\"mode\":\"extract\",\"fields\":{\"price\":\"number: Pro monthly price\"}}" }
+```
+
+extract 将抓取的页面正文发送给 Cloudflare Clairic，使用 Pi 的 `cloudflare-workers-ai` 凭据
+（`CLOUDFLARE_API_KEY`、`CLOUDFLARE_ACCOUNT_ID`，可选 `CLOUDFLARE_GATEWAY_ID`）。`fields` 将 1–16 个
+名称映射到 `text`、`number`、`integer`、`date`、`list` 等类型，可加 `: 查找说明`。
+结果区分已提取值、不确定猜测与缺失值，文本／数字可附来源行。类型化数据在
+`structuredContent.urls[].extraction` 和 `details.extractions`，`urls[].content` 与 `op: "get"`
+仍为抓取正文。提取失败也可能已成功抓取并存储页面，须检查 extraction.error。
+extract 默认关闭，不能设为默认模式，拒绝 `auth`。本地 PDF 直读仅提取 Markdown，明确拒绝
+`mode: "extract"`；远端 PDF URL 走上游路径。启用 extract 后 `help` 的 `fetch` 才显示 `fields`。
 
 readable 抓取在已提取有效文本时接受完整的短静态 HTML 页面；运行脚本的页面仍可能被判为不完整，
 并继续尝试配置的其它 Provider。启用 DeepSeek Fetch 托管回退时，在现有 `fetchRouting.providers`
@@ -128,15 +163,15 @@ URL 的协议、主机名和有效端口；拒绝时不返回页面正文，也�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/pi-web-access-lean | 0.1.10 | 149 |
-| pi-web-access | 0.44.0 | 2768 |
+| @gfgghgftgffg/pi-web-access-lean | 0.1.11 | 149 |
+| pi-web-access | 0.45.0 | 1110 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 版本
 
-* 包装层：`0.1.10`
+* 包装层：`0.1.11`
 * 上游运行时：锁定 `pi-web-access@0.44.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 

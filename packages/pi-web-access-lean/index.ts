@@ -92,7 +92,7 @@ function parseInput(input: string, inputName: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
-function helpResult(
+async function helpResult(
   operation: string,
   tools: Map<string, CapturedTool>,
 ) {
@@ -109,9 +109,15 @@ function helpResult(
 
   const tool = tools.get(route.toolName);
   if (!tool) throw new Error(`web_access could not find upstream tool: ${route.toolName}`);
+  // 0.45's compact provider schema omits names; keep discovery in on-demand help.
+  const providerModule = "pi-web-access/gemini-search.ts";
+  const providerHelp = (operation === "search" || operation === "check")
+    ? `Providers: auto, all, ${(await import(providerModule)).getAllowedSearchProviders().join(", ")}`
+    : undefined;
   const text = [
     `${operation} routes to ${route.toolName}`,
     tool.description,
+    providerHelp,
     "Advanced input must be a JSON object string matching this schema:",
     JSON.stringify(tool.parameters, null, 2),
   ].filter(Boolean).join("\n\n");
@@ -167,6 +173,13 @@ async function executeLocalPDF(
   parsed: Record<string, unknown>,
   signal?: AbortSignal,
 ) {
+  if (parsed.mode === "extract") {
+    return {
+      content: [{ type: "text" as const, text: "Error: Local PDF direct extraction does not support mode extract; use a remote PDF URL or omit mode." }],
+      details: { error: "Local PDF direct extraction does not support mode extract" },
+      isError: true,
+    };
+  }
   if (parsed.mode === "raw") {
     return {
       content: [{ type: "text" as const, text: "Error: Unsupported content type in raw mode: application/pdf" }],
@@ -266,12 +279,15 @@ export function createWebAccessFacade(
         if (!tool) {
           throw new Error(`web_access could not find upstream tool: ${route.toolName}`);
         }
-        // Upstream 0.36+ normalizes stringified arrays in `prepareArguments`
-        // (e.g. provider: "[\"parallel-mcp\"]"). The facade executes upstream
-        // tools directly, so apply the same pre-validation normalization here.
-        const prepared = typeof tool.prepareArguments === "function"
-          ? tool.prepareArguments(parsed)
+        // Preserve legacy provider-array normalization; 0.45 moved provider parsing
+        // into execute while its hook now handles only queries/domainFilter.
+        const argumentsModule = "pi-web-access/tool-arguments.ts";
+        const compatible = params.op === "search"
+          ? (await import(argumentsModule)).parseStringifiedArrays(parsed, ["provider"])
           : parsed;
+        const prepared = typeof tool.prepareArguments === "function"
+          ? tool.prepareArguments(compatible)
+          : compatible;
         return tool.execute(
           callId,
           prepared,

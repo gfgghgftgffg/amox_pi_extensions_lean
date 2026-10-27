@@ -1,15 +1,14 @@
 # Local upstream maintenance
 
-Base: 5c73343fa1007ce4d2c98c102782bd55b6a523ed
-Release after verified merge: v0.1.10
+Base: d2afbd3b33f843b2191b7fda825ef14db769c71e
+Release after verified merge: v0.1.11
 
-<!-- amox-release-summary:v0.1.10:start -->
-- Review the exact web and todo lean-author updates against the current adapters: web source is unchanged, and todo's added batch hint is already covered by the local description, full tasks schema and atomic batch support.
-- Clarify web usage in English and Chinese: pass an explicit op and string input, serializing advanced parameter objects as JSON. Preserve literal page text and the distinction between rendered hints, structured content and stored bodies.
-- Clarify existing todo guidance in both languages: keep one task in_progress and mark it completed promptly, while retaining documented batch constraints and upstream normalization.
-- Record package metadata, README and test reuse decisions in both maintenance records and the current source review. Retain existing adapter behavior, stale-context guards, session isolation and all baseline assertions, including the 1200-character todo metadata ceiling; do not import the author's relaxed budget or Pi 1.4 benchmarks.
-- Recapture local contracts and character proxies and validate the unchanged runtime pins (web 0.44.0, todo/i18n 2.15.0, subagents 0.22.0) through typechecks, regressions, independent production installs and both dependency audits.
-<!-- amox-release-summary:v0.1.10:end -->
+<!-- amox-release-summary:v0.1.11:start -->
+- Update pi-web-access to 0.45.0 while retaining one web_access tool and its compact op/input schema; preserve legacy provider-array normalization and restore provider discovery in on-demand help using upstream helpers.
+- Expose per-call search model selection, comma-separated providers and 9router through advanced JSON/help; document strict model selection, routing budgets and weak-result fallback, DuckDuckGo backoff, helper model configuration, Azure search and gateway HTTP opt-in in both languages.
+- Support upstream opt-in typed field extraction through fetch JSON/help, document Cloudflare credentials and page-text transfer, and distinguish rendered fields from structured extraction results and stored original pages. Explicitly reject this new mode on the independent local PDF path.
+- Add focused offline facade regressions for new provider/model/help, extract validation and response layers, source-check passages and local PDF rejection; retain all baseline assertions. Refresh source review, maintenance notes, contracts and measured character proxies; todo/i18n and subagents engine versions remain unchanged.
+<!-- amox-release-summary:v0.1.11:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

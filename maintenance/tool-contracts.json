@@ -247,7 +247,7 @@
     },
     "pi-web-access": {
       "package": "pi-web-access",
-      "version": "0.44.0",
+      "version": "0.45.0",
       "entry": "node_modules/pi-web-access/dist/index.js",
       "registeredTools": [
         "web_search",
@@ -263,40 +263,39 @@
         "get_search_content"
       ],
       "totals": {
-        "registeredProxyTokens": 2768,
-        "activeProxyTokens": 2702
+        "registeredProxyTokens": 1110,
+        "activeProxyTokens": 1044
       },
       "tools": [
         {
           "name": "web_search",
           "active": true,
           "source": "cli",
-          "description": "Search the web and return source-linked results or provider answers. Full results are stored for retrieval with get_search_content using the returned responseId. For research, prefer queries with 2-4 varied angles over a single query. Omit provider to use the configured default; set it only to override that.",
+          "description": "Search the web for sources or answers. Full results are stored for retrieval with get_search_content by responseId. Prefer 2-4 varied queries.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
             "type": "object",
             "properties": {
               "query": {
-                "type": "string",
-                "description": "Single search query. For research tasks, prefer 'queries' with multiple varied angles instead."
+                "type": "string"
               },
               "queries": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Multiple queries searched concurrently (up to three at a time), each returning source-linked search results or a provider answer. Prefer this for research — vary phrasing, scope, and angle across 2-4 queries to maximize coverage. Good: ['React vs Vue performance benchmarks 2026', 'React vs Vue developer experience comparison', 'React ecosystem size vs Vue ecosystem']. Bad: ['React vs Vue', 'React vs Vue comparison', 'React vs Vue review'] (too similar, redundant results)."
+                "description": "Run concurrently (up to three at a time); vary the angle"
               },
               "numResults": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 20,
-                "description": "Results per query (default: 5, max: 20)"
+                "description": "Default 5"
               },
               "includeContent": {
                 "type": "boolean",
-                "description": "Fetch full page content (async)"
+                "description": "Also fetch full page content"
               },
               "recencyFilter": {
                 "type": "string",
@@ -305,118 +304,26 @@
                   "week",
                   "month",
                   "year"
-                ],
-                "description": "Filter by recency"
+                ]
               },
               "domainFilter": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Limit to domains (prefix with - to exclude)"
+                "description": "Prefix - to exclude"
               },
               "category": {
                 "type": "string",
-                "description": "Exa only: result category, e.g. news, research paper"
+                "description": "Exa only, e.g. news"
+              },
+              "model": {
+                "type": "string",
+                "description": "Model ID; needs provider openai, gemini, xai, mistral"
               },
               "provider": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "auto",
-                      "all",
-                      "openai",
-                      "brave",
-                      "parallel",
-                      "parallel-mcp",
-                      "tinyfish",
-                      "search1api",
-                      "searchinfinity",
-                      "querit",
-                      "tavily",
-                      "you",
-                      "firecrawl",
-                      "jina",
-                      "searxng",
-                      "degoog",
-                      "duckduckgo",
-                      "perplexity",
-                      "gemini",
-                      "kimi",
-                      "exa",
-                      "serpdive",
-                      "kagi",
-                      "ollama",
-                      "anysearch",
-                      "xai",
-                      "mistral",
-                      "brightdata",
-                      "serpbase",
-                      "serpapi",
-                      "serper",
-                      "serply",
-                      "valyu",
-                      "bocha",
-                      "xcrawl",
-                      "baizhi",
-                      "zai",
-                      "keenable",
-                      "ceramic",
-                      "deepseek",
-                      "linkup"
-                    ]
-                  },
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "openai",
-                        "brave",
-                        "parallel",
-                        "parallel-mcp",
-                        "tinyfish",
-                        "search1api",
-                        "searchinfinity",
-                        "querit",
-                        "tavily",
-                        "you",
-                        "firecrawl",
-                        "jina",
-                        "searxng",
-                        "degoog",
-                        "duckduckgo",
-                        "perplexity",
-                        "gemini",
-                        "kimi",
-                        "exa",
-                        "serpdive",
-                        "kagi",
-                        "ollama",
-                        "anysearch",
-                        "xai",
-                        "mistral",
-                        "brightdata",
-                        "serpbase",
-                        "serpapi",
-                        "serper",
-                        "serply",
-                        "valyu",
-                        "bocha",
-                        "xcrawl",
-                        "baizhi",
-                        "zai",
-                        "keenable",
-                        "ceramic",
-                        "deepseek",
-                        "linkup"
-                      ]
-                    },
-                    "minItems": 1
-                  }
-                ],
-                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek, Linkup) remain excluded; omit this field to use the configured provider, or use auto when none is configured"
+                "type": "string",
+                "description": "auto, all, a name, or comma-separated names; omit for the configured default."
               },
               "workflow": {
                 "type": "string",
@@ -425,28 +332,28 @@
                   "summary-review",
                   "auto-summary"
                 ],
-                "description": "Search workflow mode: none = no curator (default), summary-review = open curator with auto summary draft, auto-summary = generate summary without opening curator"
+                "description": "Default none; summary-review opens the curator; auto-summary summarizes"
               },
               "proxy": {
                 "type": "string",
-                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for every outbound request in this call (search APIs and content fetches). Node fetch ignores HTTP(S)_PROXY env vars, so set this (or `proxy` in web-search.json) when direct access is blocked; empty string forces direct access."
+                "description": "http(s) or socks proxy URL (env proxy vars ignored); \"\" forces direct"
               }
             }
           },
           "chars": {
-            "description": 309,
-            "schema": 3351,
+            "description": 142,
+            "schema": 1076,
             "snippet": 0,
             "guidelines": 0,
-            "total": 3660
+            "total": 1218
           },
-          "proxyTokens": 915
+          "proxyTokens": 305
         },
         {
           "name": "source_check",
           "active": true,
           "source": "cli",
-          "description": "Gather web sources for a claim and return a bounded machine-readable research artifact with exact passage citations for manual review.",
+          "description": "Gather cited web passages about a claim for manual review.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
@@ -457,24 +364,24 @@
             "properties": {
               "claim": {
                 "type": "string",
-                "description": "The assertion to gather web sources for."
+                "description": "Assertion to check"
               },
               "queries": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Search queries (default: the claim)."
+                "description": "Default: the claim"
               },
               "numResults": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 20,
-                "description": "Results per query (default: 5, max: 20)."
+                "description": "Default 5"
               },
               "fetchContent": {
                 "type": "boolean",
-                "description": "Fetch up to 5 result pages for exact passage extraction."
+                "description": "Fetch top 5 pages for exact passages"
               },
               "recencyFilter": {
                 "type": "string",
@@ -483,158 +390,60 @@
                   "week",
                   "month",
                   "year"
-                ],
-                "description": "Filter by recency."
+                ]
               },
               "domainFilter": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 },
-                "description": "Limit to domains; prefix with - to exclude."
+                "description": "Prefix - to exclude"
               },
               "provider": {
-                "anyOf": [
-                  {
-                    "type": "string",
-                    "enum": [
-                      "auto",
-                      "all",
-                      "openai",
-                      "brave",
-                      "parallel",
-                      "parallel-mcp",
-                      "tinyfish",
-                      "search1api",
-                      "searchinfinity",
-                      "querit",
-                      "tavily",
-                      "you",
-                      "firecrawl",
-                      "jina",
-                      "searxng",
-                      "degoog",
-                      "duckduckgo",
-                      "perplexity",
-                      "gemini",
-                      "kimi",
-                      "exa",
-                      "serpdive",
-                      "kagi",
-                      "ollama",
-                      "anysearch",
-                      "xai",
-                      "mistral",
-                      "brightdata",
-                      "serpbase",
-                      "serpapi",
-                      "serper",
-                      "serply",
-                      "valyu",
-                      "bocha",
-                      "xcrawl",
-                      "baizhi",
-                      "zai",
-                      "keenable",
-                      "ceramic",
-                      "deepseek",
-                      "linkup"
-                    ]
-                  },
-                  {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "openai",
-                        "brave",
-                        "parallel",
-                        "parallel-mcp",
-                        "tinyfish",
-                        "search1api",
-                        "searchinfinity",
-                        "querit",
-                        "tavily",
-                        "you",
-                        "firecrawl",
-                        "jina",
-                        "searxng",
-                        "degoog",
-                        "duckduckgo",
-                        "perplexity",
-                        "gemini",
-                        "kimi",
-                        "exa",
-                        "serpdive",
-                        "kagi",
-                        "ollama",
-                        "anysearch",
-                        "xai",
-                        "mistral",
-                        "brightdata",
-                        "serpbase",
-                        "serpapi",
-                        "serper",
-                        "serply",
-                        "valyu",
-                        "bocha",
-                        "xcrawl",
-                        "baizhi",
-                        "zai",
-                        "keenable",
-                        "ceramic",
-                        "deepseek",
-                        "linkup"
-                      ]
-                    },
-                    "minItems": 1
-                  }
-                ],
-                "description": "Search provider or non-empty list of allowed providers to search simultaneously; all searches eligible allowed providers (OpenAI, Brave, Parallel, TinyFish, Search1API, Searchinfinity, Querit, Tavily, Firecrawl, Jina, SearXNG, Perplexity, Gemini, Exa, SERPdive, Kagi, Ollama, Bocha); explicit-only allowed providers (Parallel MCP, You.com, degoog, DuckDuckGo, Kimi, Anysearch, xAI, Mistral, Bright Data, SerpBase, SerpApi, Serper, Serply, Valyu, XCrawl, Baizhi, Z.ai, Keenable, Ceramic, DeepSeek, Linkup) remain excluded"
+                "type": "string",
+                "description": "auto, all, a name, or comma-separated names; omit for the configured default."
               },
               "proxy": {
                 "type": "string",
-                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for every outbound request in this call (search APIs and result-page fetches). Empty string forces direct access."
+                "description": "http(s) or socks proxy URL; \"\" forces direct"
               }
             }
           },
           "chars": {
-            "description": 134,
-            "schema": 2351,
+            "description": 58,
+            "schema": 749,
             "snippet": 0,
             "guidelines": 0,
-            "total": 2485
+            "total": 807
           },
-          "proxyTokens": 622
+          "proxyTokens": 202
         },
         {
           "name": "fetch_content",
           "active": true,
           "source": "cli",
-          "description": "Fetch URL(s). Available modes: readable (default): extract readable content as markdown; raw: return the exact textual body using direct HTTP only; answer: answer a prompt using only fetched content. Direct image URLs return resized image content when supported by the selected mode. Supports YouTube transcripts, GitHub repositories, PDFs, and local videos when supported by the selected mode. Full original content is stored for retrieval with get_search_content.",
+          "description": "Fetch web pages, PDFs, GitHub repos, images, YouTube and local video, as the mode allows. Full content is stored for retrieval with get_search_content.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
             "type": "object",
             "properties": {
               "url": {
-                "type": "string",
-                "description": "Single URL to fetch"
+                "type": "string"
               },
               "urls": {
                 "type": "array",
                 "items": {
                   "type": "string"
-                },
-                "description": "Multiple URLs (parallel)"
+                }
               },
               "forceClone": {
                 "type": "boolean",
-                "description": "Force cloning large GitHub repositories that exceed the size threshold"
+                "description": "Clone GitHub repos over the size limit"
               },
               "prompt": {
                 "type": "string",
-                "description": "Question or instruction for video analysis, or the page-local question required by answer mode."
+                "description": "Question for video analysis or answer mode"
               },
               "mode": {
                 "type": "string",
@@ -643,25 +452,25 @@
                   "raw",
                   "answer"
                 ],
-                "description": "Fetch mode. readable (default): extract readable content as markdown; raw: return the exact textual body using direct HTTP only; answer: answer a prompt using only fetched content."
+                "description": "readable (default): extract readable content as markdown; raw: return the exact textual body using direct HTTP only; answer: answer a prompt using only fetched content."
               },
               "answerModel": {
                 "type": "string",
-                "description": "Optional provider/model-id override for answer mode. Defaults to fetch.answerProvider + fetch.answerModel when configured, otherwise the current Pi model."
+                "description": "provider/model-id for answer mode"
               },
               "timestamp": {
                 "type": "string",
-                "description": "Extract video frame(s) at a timestamp or time range. Single: '1:23:45', '23:45', or '85' (seconds). Range: '23:41-25:00' extracts evenly-spaced frames across that span (default 6). Use frames with ranges to control density; single+frames uses a fixed 5s interval. YouTube requires yt-dlp + ffmpeg; local videos require ffmpeg. Use a range when you know the approximate area but not the exact moment — you'll get a contact sheet to visually identify the right frame."
+                "description": "Video frame time ('1:23:45') or range ('23:41-25:00'); needs ffmpeg"
               },
               "frames": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 12,
-                "description": "Number of frames to extract. Use with timestamp range for custom density, with single timestamp to get N frames at 5s intervals, or alone to sample across the entire video. Requires yt-dlp + ffmpeg for YouTube, ffmpeg for local video."
+                "description": "Frames over a range, 5s apart from one time, or over the video"
               },
               "model": {
                 "type": "string",
-                "description": "Override the Gemini model for video/YouTube analysis (e.g. 'gemini-3.6-flash'). Defaults to config or gemini-3.6-flash."
+                "description": "Gemini model for video analysis"
               },
               "auth": {
                 "anyOf": [
@@ -672,35 +481,35 @@
                     "type": "boolean"
                   }
                 ],
-                "description": "Opt into an authFetch profile for local browser-cookie fetching. Use a profile name, or true only when exactly one profile exists."
+                "description": "authFetch profile name, or true for the only one"
               },
               "proxy": {
                 "type": "string",
-                "description": "http(s) or socks proxy URL (e.g. http://host:port or socks5h://host:port) used for this fetch. Needed when the target is unreachable directly; localhost and NO_PROXY hosts always bypass the proxy. Empty string forces direct access."
+                "description": "http(s) or socks proxy URL; \"\" forces direct"
               },
               "redirects": {
                 "type": "string",
                 "enum": [
                   "same-origin"
                 ],
-                "description": "Refuse cross-origin redirects: every redirect target must match the requested URL's scheme, hostname and effective port, and extraction paths whose redirect chain cannot be observed are refused instead of used."
+                "description": "Refuse cross-origin redirects"
               }
             }
           },
           "chars": {
-            "description": 465,
-            "schema": 2636,
+            "description": 151,
+            "schema": 1235,
             "snippet": 0,
             "guidelines": 0,
-            "total": 3101
+            "total": 1386
           },
-          "proxyTokens": 776
+          "proxyTokens": 347
         },
         {
           "name": "get_search_content",
           "active": true,
           "source": "cli",
-          "description": "Retrieve bounded pages of full stored search results or fetched content, or find matching passages, from a previous web_search, source_check, or fetch_content call.",
+          "description": "Page through or search stored content from web_search, source_check, or fetch_content by responseId.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
@@ -710,37 +519,31 @@
             ],
             "properties": {
               "responseId": {
-                "type": "string",
-                "description": "The responseId from web_search, source_check, or fetch_content"
+                "type": "string"
               },
               "query": {
-                "type": "string",
-                "description": "Get content for this query (web_search)"
+                "type": "string"
               },
               "queryIndex": {
                 "type": "integer",
-                "minimum": 0,
-                "description": "Get content for query at index"
+                "minimum": 0
               },
               "url": {
-                "type": "string",
-                "description": "Get content for this URL"
+                "type": "string"
               },
               "urlIndex": {
                 "type": "integer",
-                "minimum": 0,
-                "description": "Get content for URL at index"
+                "minimum": 0
               },
               "offset": {
                 "type": "integer",
-                "minimum": 0,
-                "description": "Character offset in stored search or fetched URL content (default 0). Ignored when findText is supplied."
+                "minimum": 0
               },
               "limit": {
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 30000,
-                "description": "Requested maximum stored-content characters (default and max use maxInlineContentChars). Search-page continuation guidance shares the global output cap and may reduce returnedChars. Ignored when findText is supplied."
+                "description": "Characters, default the maximum"
               },
               "findText": {
                 "anyOf": [
@@ -760,7 +563,7 @@
                     "maxItems": 10
                   }
                 ],
-                "description": "Text or texts to find in the selected stored content. When supplied, offset and limit are ignored."
+                "description": "Find passages instead of paging"
               },
               "findMode": {
                 "type": "string",
@@ -768,19 +571,18 @@
                   "exact",
                   "case-insensitive",
                   "fuzzy"
-                ],
-                "description": "Matching mode for findText (default: case-insensitive). Requires findText."
+                ]
               }
             }
           },
           "chars": {
-            "description": 164,
-            "schema": 1392,
+            "description": 100,
+            "schema": 660,
             "snippet": 0,
             "guidelines": 0,
-            "total": 1556
+            "total": 760
           },
-          "proxyTokens": 389
+          "proxyTokens": 190
         },
         {
           "name": "web_enable",
@@ -975,7 +777,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -1056,7 +858,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1114,7 +916,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.10",
+      "version": "0.1.11",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

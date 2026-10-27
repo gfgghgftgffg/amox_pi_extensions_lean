@@ -55,7 +55,7 @@ list 默认不含已删除任务，`includeDeleted: true` 可包含；clear 重�
 <!-- amox-measurement:start -->
 | Package | Version | Registered character proxy |
 | --- | --- | ---: |
-| @gfgghgftgffg/rpiv-todo-lean | 0.1.10 | 277 |
+| @gfgghgftgffg/rpiv-todo-lean | 0.1.11 | 277 |
 | @juicesharp/rpiv-todo | 2.15.0 | 1222 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
@@ -63,7 +63,7 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 ## 版本
 
-* 包装层：`0.1.10`
+* 包装层：`0.1.11`
 * 上游运行时：锁定 `@juicesharp/rpiv-todo@2.15.0` 与 `@juicesharp/rpiv-i18n@2.15.0`（精确版本）
 * 开发测试基线：Pi `1.1.0`、Node `22.22.1`。
 

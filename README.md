@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Three independent lean wrappers. Tool descriptions and schemas are shortened; execution still uses exact-version upstream dependencies. The current [tool snapshot](maintenance/tool-contracts.json) shows about **94.4%** less tool-context text by character count, not billed tokens.
+Three independent lean wrappers. Tool descriptions and schemas are shortened; execution still uses exact-version upstream dependencies. The current [tool snapshot](maintenance/tool-contracts.json) shows about **93.5%** less tool-context text by character count, not billed tokens.
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |

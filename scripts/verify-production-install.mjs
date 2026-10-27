@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import { installPackedExtension, packageEntries } from "./lib/extension-package.mjs";
 import { checkedRun } from "./lib/process.mjs";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
+import { resolveUpstreamRuntimeEntry } from "./lib/upstream-runtime.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
@@ -34,6 +35,10 @@ try {
     }
     const upstream = JSON.parse(readFileSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"), "package.json"), "utf8"));
     check(upstream.version === entry.upstreamVersion, `${entry.upstreamPackage} is pinned to ${entry.upstreamVersion}`);
+    if (entry.upstreamEntry !== undefined) {
+      resolveUpstreamRuntimeEntry(join(prefix, "node_modules", ...entry.upstreamPackage.split("/")), entry.upstreamEntry);
+      check(true, `${entry.upstreamPackage}/${entry.upstreamEntry} exists in the fresh production install`);
+    }
     const workDir = join(tempRoot, "workers");
     mkdirSync(workDir, { recursive: true });
     const input = join(workDir, `${entry.id}.input.json`);

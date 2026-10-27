@@ -44,6 +44,8 @@ sudo systemctl start amox-pi-actions.service
 sudo systemctl enable --now amox-pi-actions.timer
 ```
 
+服务每次克隆远端 `main`，不会把维护工作区未提交或未合并的修改带入候选。subagents 使用上游现成的 `dist/index.js`；同一套本地 gate、三平台 CI 与 Release 独立验收检查其产物存在、源码/dist 契约一致和真实 dist 回归。该策略不改变 unit、调度或权限，代码合入远端后下一次任务自动采用，无需重启 timer。
+
 没有上游更新或已有维护 PR 时跳过模型；有更新时，真实运行会产生模型费用。`--run --local-only` 可只验证本地适配，不推送、创建 PR 或自动合并，也不检查远端待处理 PR。不要机械执行多次付费验证；无更新成功不等于模型适配已验证。
 
 ## 日常检查与恢复

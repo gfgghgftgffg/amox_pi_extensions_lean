@@ -8,7 +8,7 @@
     "skipLibCheck": true,
     "allowImportingTsExtensions": true,
     "paths": {
-      "@tintinweb/pi-subagents/src/index.ts": [
+      "@tintinweb/pi-subagents/dist/index.js": [
         "./tests/types/pi-subagents.d.ts"
       ]
     }

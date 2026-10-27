@@ -74,7 +74,7 @@ test("one host session loads exactly the three facades and no upstream engines",
 
 test("Task Router ext: selector identity is unchanged by the monorepo bundle", async () => {
   const jiti = createJiti(import.meta.url, { moduleCache: false });
-  const { extensionCanonicalNames } = await jiti.import("@tintinweb/pi-subagents/src/agent-runner.ts");
+  const { extensionCanonicalNames } = await jiti.import("@tintinweb/pi-subagents/dist/agent-runner.js");
 
   for (const entryPath of entryPaths) {
     const expected = entryPath.replaceAll("\\", "/").split("/").slice(-2)[0].toLowerCase();

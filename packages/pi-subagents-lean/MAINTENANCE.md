@@ -33,11 +33,11 @@
 | `README*.md` | 重写为单仓说明、重新测量的字符代理数据与新版本号。 |
 | `LICENSE` | 原样保留。 |
 | `package-lock.json` | 删除；版本由单仓根 `package-lock.json` 统一锁定。 |
-| `tsconfig.json`、`tests/types/pi-subagents.d.ts` | 未改动（上游源码仍用本地 stub 类型做 typecheck）。 |
+| `tsconfig.json`、`tests/types/pi-subagents.d.ts` | 对上游 `dist/index.js` 使用本地 stub 类型做 typecheck；stub 不参与运行时解析。 |
 
 ## 依赖的上游内部细节
 
-- 入口 `@tintinweb/pi-subagents/src/index.ts` 默认导出扩展函数；工具名 `Agent`、`get_subagent_result`、
+- 生产入口固定为 npm 包自带的 `@tintinweb/pi-subagents/dist/index.js`，默认导出扩展函数；工具名 `Agent`、`get_subagent_result`、
   `steer_subagent`、`SubagentWorkflow`，执行签名 `execute(callId, params, signal, onUpdate, ctx)`。
 - 从 `Agent.parameters.properties.subagent_type.description` 用正则解析启动时的可用类型列表：
   `The type of specialized agent to use. Available types: <list>. Custom agents from ... are also available.`
@@ -172,12 +172,20 @@
   未发布远端。既有内部依赖继续由固定依赖与真实集成／契约验证；不启动维护 subagent 或模型任务。
 - 无本次门面变化，不加重复测试；check 重测字符代理并实际执行已有回归，结果以输出为准。
 
+## 运行时产物与验收
+
+- lean 自身仍为 `index.ts`，仅上游入口切换到现成的 `dist/index.js`；不复制、修改或重新编译上游实现，web/todo 不变。
+- `maintenance/manifest.json` 的 `upstreamEntry` 固定分发入口。契约捕获与独立生产安装都要求该文件存在，不按上游 `pi.extensions` 回退到源码。
+- 作用域、workflow 与注册表回归统一导入 `dist`，避免测试源码而生产运行 JS，或生成第二份状态注册表。
+- `tests/dist-runtime.test.mjs` 在独立真实宿主进程中比较同一 npm 包的源码/dist 工具契约与 session 初始化。它只作产物一致性检查，生产不会加载源码。产物缺失、契约不一致或 dist 回归失败均阻断每日维护和发布。
+- Git 的 `src` 仍是源码审查依据；不要求上游 Git 仓库提交 dist，实际分发产物以固定 npm 版本的新鲜生产安装为准。
+
 ## 升级步骤
 
 1. `npm view @tintinweb/pi-subagents version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。
 2. 更新根与工作区 `package.json` 的精确依赖与 peer 下限，`npm install --ignore-scripts` 刷新 lockfile。
 3. 核对：工具名是否变化、`subagent_type` 描述格式是否变化、Schema 构建库是否仍为 typebox v1、
-   `execute`/`renderCall`/`renderResult` 签名是否变化。仅版本变化时不需要改 `index.ts`。
+   `execute`/`renderCall`/`renderResult` 签名是否变化，以及 npm 包是否仍提供可用的 `dist/index.js`。仅版本变化时不需要改 `index.ts`；不得退回源码绕过编译产物失败。
 4. `npm run contracts` 重建快照，`npm test`、`npm run typecheck`、`npm run contracts:check`、
    `node scripts/verify-production-install.mjs`。
 5. 更新本文件与 README 的版本号/字符代理数字；同步 `maintenance/manifest.json`。

@@ -22,6 +22,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
 import { checkedSnapshotOutput, writeSnapshotCopy } from "./lib/snapshot-output.mjs";
+import { resolveUpstreamRuntimeEntry } from "./lib/upstream-runtime.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -49,13 +50,16 @@ const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
 const manifestById = new Map(manifest.packages.map((entry) => [entry.id, entry]));
 const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
 
-function resolveInstalledPackage(name) {
+function resolveInstalledPackage(name, runtimeEntry) {
   const packageDir = join(repoRoot, "node_modules", ...name.split("/"));
   const packageJsonPath = join(packageDir, "package.json");
   if (!existsSync(packageJsonPath)) {
     throw new Error(`Upstream package is not installed: ${name} (run npm install first)`);
   }
   const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
+  if (runtimeEntry !== undefined) {
+    return { packageDir, entryPath: resolveUpstreamRuntimeEntry(packageDir, runtimeEntry), version: pkg.version };
+  }
   let entry = pkg.pi?.extensions?.[0] ?? pkg.main ?? "index.js";
   let entryPath = resolve(packageDir, entry);
   if (existsSync(entryPath) && statSync(entryPath).isDirectory()) entryPath = resolve(entryPath, "index.js");
@@ -84,7 +88,7 @@ function buildTargets() {
       const mapping = manifestById.get(id);
       if (!mapping) throw new Error(`maintenance/manifest.json has no entry for ${id}`);
       const leanEntry = resolve(packageDir, pkg.pi?.extensions?.[0] ?? "index.ts");
-      const upstream = resolveInstalledPackage(mapping.upstreamPackage);
+      const upstream = resolveInstalledPackage(mapping.upstreamPackage, mapping.upstreamEntry);
       targets.push({
         id,
         kind: "lean",

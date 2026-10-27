@@ -63,9 +63,7 @@ test("0.45 comma-separated providers reach 9router; invalid provider and ambiguo
   assert.equal(JSON.parse(requests.find(r => r.url === "https://router.example/v1/search").body).provider, "serper");
   requests.length = 0;
   await assert.rejects(call(tool, "search", { query: "pricing", provider: "bogus" }), /Unknown search provider/);
-  const invalid = await call(tool, "search", { query: "pricing", model: "offline-model" });
-  assert.equal(invalid.isError, true);
-  assert.match(text(invalid), /model requires one explicit provider/);
+  await assert.rejects(call(tool, "search", { query: "pricing", model: "offline-model" }), /model requires one explicit provider/);
   assert.equal(requests.length, 0);
 });
 

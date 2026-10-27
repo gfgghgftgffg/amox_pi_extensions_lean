@@ -78,13 +78,4 @@ Fixed ceil(characters / 4), not provider billing tokens.
 
 Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:check`.
 
-## Maintenance
-
-Adaptation points, pinned upstream metadata, upgrade history, source-review decisions, and limitations
-live in [MAINTENANCE.md](MAINTENANCE.md). This README describes current usage, not individual releases.
-
-## License
-
-MIT. This package wraps the MIT-licensed
-[`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo);
-upstream code is consumed as a pinned npm dependency and is never copied into this repository.
+Upstream code is an exact-version npm dependency, not copied source. See [MAINTENANCE.md](MAINTENANCE.md) for adaptation details and limitations.

@@ -54,9 +54,8 @@ registrations.
 { "op": "search", "input": "Pi coding agent extensions" }
 ```
 
-Pass an explicit `op` and a string `input`; advanced objects must be serialized as JSON inside that string.
-Pass a JSON object string as `input` for batch/advanced parameters. Use `help` only when the field
-names are unclear. DeepSeek search uses advanced JSON, for example:
+Pass an explicit `op` and a string `input`; serialize batch or advanced parameters as a JSON object
+inside that string. Use `help` only when the field names are unclear. DeepSeek search uses advanced JSON, for example:
 
 ```json
 { "op": "search", "input": "{\"query\":\"Pi extensions\",\"provider\":\"deepseek\"}" }
@@ -191,19 +190,11 @@ Fixed ceil(characters / 4), not provider billing tokens.
 ## Versions
 
 * Wrapper: `0.1.11`
-* Upstream runtime: pinned to `pi-web-access@0.44.0` (exact)
+* Upstream runtime: pinned to `pi-web-access@0.45.0` (exact)
 * Pi host tested: `1.1.0`; Node `22.22.1`
 
 ## Development
 
 Run from the repository root: `npm ci`, `npm run check`, `npm run contracts:check`.
 
-## Maintenance
-
-Adaptation points, pinned upstream metadata, upgrade history, source-review decisions, and limitations
-live in [MAINTENANCE.md](MAINTENANCE.md). This README describes current usage, not individual releases.
-
-## License
-
-MIT. This package wraps the MIT-licensed [`pi-web-access`](https://github.com/nicobailon/pi-web-access);
-upstream code is consumed as a pinned npm dependency and is never copied into this repository.
+Upstream code is an exact-version npm dependency, not copied source. See [MAINTENANCE.md](MAINTENANCE.md) for adaptation details and limitations.

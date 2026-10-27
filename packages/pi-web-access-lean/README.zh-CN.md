@@ -50,8 +50,7 @@ node scripts/install-extension.mjs pi-web-access-lean
 { "op": "search", "input": "Pi coding agent extensions" }
 ```
 
-显式传入 `op` 和字符串 `input`；高级对象须序列化为 JSON 后放入该字符串。
-批量或高级参数请将 JSON 对象序列化为 `input` 字符串传入；仅在不清楚字段时调用 `help`。
+显式传入 `op` 和字符串 `input`；批量或高级参数须序列化为 JSON 对象字符串，仅在不清楚字段时调用 `help`。
 DeepSeek 搜索使用高级 JSON，例如：
 
 ```json
@@ -172,19 +171,11 @@ Fixed ceil(characters / 4), not provider billing tokens.
 ## 版本
 
 * 包装层：`0.1.11`
-* 上游运行时：锁定 `pi-web-access@0.44.0`（精确版本）
+* 上游运行时：锁定 `pi-web-access@0.45.0`（精确版本）
 * 已测试 Pi 宿主：`1.1.0`；Node `22.22.1`
 
 ## 开发
 
 在仓库根目录运行：`npm ci`、`npm run check`、`npm run contracts:check`。
 
-## 维护说明
-
-适配点、上游元数据、升级历史、源码审查决定与限制见 [MAINTENANCE.md](MAINTENANCE.md)。
-README 只说明当前用法，不记录逐次发布过程。
-
-## 协议与致谢
-
-MIT。本项目封装 MIT 协议的 [`pi-web-access`](https://github.com/nicobailon/pi-web-access)；上游代码以固定
-npm 依赖方式使用，未复制进本仓库。
+上游代码以精确版本的 npm 依赖引入，不复制源码。适配细节与限制见 [MAINTENANCE.md](MAINTENANCE.md)。

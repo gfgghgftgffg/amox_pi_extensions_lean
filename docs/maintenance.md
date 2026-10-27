@@ -22,7 +22,7 @@ node scripts/audit-dependencies.mjs --omit=dev
 - 对比 manifest 中当前版本与目标稳定版本的精确源码和 CHANGELOG；lean 作者更新逐项审查，不直接覆盖本仓库。
 - 保持最小改动，不复制上游实现，不改 node_modules。保留既有测试断言，只补与门面变化有关的回归。
 - 依赖保持精确版本；Pi 开发 SDK、Action SHA 和维护宿主代码单独审查、更新及部署。
-- README 只描述当前安装、用法、配置、限制、版本与测量，中英文同步。技术审查保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
+- README 只描述当前介绍、安装、用法、配置、限制、版本与测量，中英文同步。部署细节链接到对应 docs，不重复铺陈；不加入历史背景、排查过程或发布流水账。技术审查保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
 
 [每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 会话加载；只有 `list/read/write/edit/check` 工具，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。失败后修复同一候选，不重新生成候选或凭口头声明通过。
 

@@ -247,7 +247,7 @@
     },
     "pi-web-access": {
       "package": "pi-web-access",
-      "version": "0.45.0",
+      "version": "0.46.0",
       "entry": "node_modules/pi-web-access/dist/index.js",
       "registeredTools": [
         "web_search",
@@ -777,7 +777,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -858,7 +858,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -916,7 +916,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.12",
+      "version": "0.1.13",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

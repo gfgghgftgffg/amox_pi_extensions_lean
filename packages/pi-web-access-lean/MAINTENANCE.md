@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.45.0`（精确固定；`dependencies`；此前为 0.44.0）。
+- `pi-web-access@0.46.0`（精确固定；`dependencies`；此前为 0.45.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -284,6 +284,49 @@
   与虚构凭据，拒绝意外目标；不加入无关上游测试，不修改既有断言。
 - check 实际捕获契约与 ceil(chars/4) 字符代理，执行类型／全部回归／契约、三包生产安装及两种审计；
   结果以输出为准。字符代理不是计费 token；真实 Cloudflare／Azure／9router、交互升级 UI 未实测。
+
+## 本次审查：0.45.0 → 0.46.0
+
+- sources.json 的精确发布源码：`35e57ef30f4b8ac771f4062a381493993af41ebe` →
+  `4af1a7f7757d450ba0afefe2d98737384dc9a9b4`。规划中的 current upstreamGitHead 已指向目标，
+  本次 before 以库存记录为准；较新远端 `fc63125608faef80c446687c79edd2626f511019` 未采用。
+  三个 lean 作者 HEAD 均未变化，无新作者源码可复用；todo/i18n 2.15.0、subagents 0.22.0 不变，
+  没有其新引擎快照，不声称审查未发布远端代码。subagents 继续使用 npm 自带 dist/index.js。
+- 比较两版 CHANGELOG、package.json、index.ts 的 search/check/fetch/get 注册与执行边界、完整
+  fetch-params.ts、web-tool-contract.ts、pdf-extract.ts 返回接口／Markdown 写入、extract.ts 的路由表、
+  HTTP／PDF 分支、source-check.ts 证据结构。阅读新 cloudflare-search.ts、searchapi.ts、tabstack.ts
+  的配置、请求及响应转换，核对 gemini-search.ts 的 provider 表与 all 排除列表。范围为门面兼容审查，
+  并非逐文件安全审计或每个服务的端到端验证。
+- 无业务工具增删、无调用字段／required 变化；numResults=5、workflow=none、默认 readable 不变。
+  Provider 新增 cloudflare/searchapi/tabstack，均不进 auto/all；按需 help 调用 getAllowedSearchProviders
+  自动披露，JSON 委派可直接选择，无需扩张常驻 op/input schema。依赖与 peer 范围不变。
+- Cloudflare Search 默认 ceramic（可配置 exa/linkup），使用配置／环境 account 与 key，通过 AI Gateway，
+  不使用 Pi 登录 key；默认 gateway=default。SearchApi 请求 Google organic_results，最多一个结果页，
+  支持 site 及时间过滤。Tabstack Research 默认 fast、可 balanced，读取 SSE complete.report 和 citedPages；
+  不发送 domain／recency／numResults，以保留报告引用的全部来源。均为服务配置而非新门面参数。
+- Exa／Tabstack hosted fetch 新增到可选路由，默认顺序不变，须配置 providers 并允许远端托管；
+  页地址会发给外部服务。fetchContent.curl 为新配置，未配置仍用 Node fetch；curl 路径省略默认 UA，
+  auth 仍走 Node。混合大小写 Content-Type 在分支判断前转小写，PDF 可由 MIME 识别，不依赖扩展名。
+- PDFExtractResult 移除 pages/chars，保留 title/content/outputPath；content 与写入的 Markdown 一致，
+  页数仅在已知时存在于分隔线前的 > Pages 元数据。最小修复本地直读：返回保存提示加完整 Markdown，
+  totalChars=content.length，pages 从该头部恢复，未知则省略，避免正文伪造页数字段。
+  测试类型 stub 属保护路径，未修改；入口在调用边界声明已核对的真实返回形状，不依赖旧计数字段。
+  既有 pages=5 与保存提示断言原样保留。raw／extract 拒绝、大小限制与禁用／abort 分支不变。
+- 远端 readable PDF 的 structuredContent.urls[].content 与存储内容本身包含保存路径提示和 Markdown；
+  不能假定它是去掉提示后的纯正文。answer/extract 传给模型的是 result.content；本地直读仍不新增
+  存储 responseId 或模型问答功能。get rendered text 还可能有标题／分页提示，分别断言内容及长度。
+- source_check 新增 snippet_source=generated／passage.origin=provider_summary 标记，CHANGELOG 说明
+  OpenAI/xAI 摘要会标明不是页面引文；没有自动语义核验的新承诺。上游还记录 Exa 免费搜索错误分类、
+  摘要候选失败原因汇总、answer 最低 thinking、reload 后 proxy 与 curl redirect／短响应／URL glob 修复；
+  这些由固定依赖承接，未复制实现，未为无门面改动的内部实现添加测试或声称已实测。
+- 默认名路由、五参数 execute、prepareArguments、provider 字符串数组兼容、loader 丢弃、
+  setActiveTools 拦截与单一直接注册继续成立。历史作者容错扩展／全局 hint rewrite 的不复用决定保持。
+- 仅新增 upstream-046-regression.test.mjs：真实门面三个 Provider 的 help／JSON 请求与结果、local PDF
+  Markdown／计数／未知页数及正文误导行、远端混合 MIME PDF 和 get 续取。导入前离线 DNS/fetch mocks、
+  绝对 HTTPS URL、虚构 key、拒绝意外目标；区分 rendered／structured／stored 数据。无无关上游测试。
+- 双语 README 更新现有 PDF 特性段落；check 实际重捕获契约及 ceil(chars/4) 字符代理并更新测量，执行
+  类型／全部回归、三包独立生产安装及两种审计，结果以输出为准。代理不是计费 token。真实付费服务、
+  curl-impersonate 与交互行为未实测；三平台 CI 与 Release 由固定后续流程独立验证。
 
 ## 升级步骤
 

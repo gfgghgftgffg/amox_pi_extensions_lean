@@ -104,9 +104,9 @@ test("sandbox mounts only the running Node executable and uses a fixed private r
   const root = mkdtempSync(join(tmpdir(), "amox-node-mount-"));
   try {
     const args = sandboxArgs({ repo: root, scratch: join(root, "scratch"), network: false });
-    const target = args.indexOf("/opt/amox-runtime/node");
-    assert.equal(args[target - 2], "--ro-bind");
-    assert.equal(args[target - 1], realpathSync(process.execPath));
+    const mount = args.findIndex((arg, index) => arg === "--ro-bind" && args[index + 2] === "/opt/amox-runtime/node");
+    assert.ok(mount >= 0, "private Node target must be a read-only bind");
+    assert.equal(args[mount + 1], realpathSync(process.execPath));
     assert.ok(!args.includes("--share-net"));
     const path = args.indexOf("PATH");
     assert.equal(args[path - 1], "--setenv");

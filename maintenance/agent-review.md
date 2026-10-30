@@ -16,7 +16,13 @@ Remote readable PDF content intentionally contains the saved-path notice plus Ma
 
 Mixed-case MIME normalization and optional curl transport are delegated upstream. Source-check artifacts can now identify generated snippets/provider-summary passages. Other changelog fixes include Exa free-search errors, summary-model diagnostics, minimum answer thinking, proxy reload persistence and curl redirect/partial-response/URL handling. Those internal fixes are consumed via the pinned dependency; this review does not claim live validation of all those paths.
 
-Default-name routing, five-argument execution, prepareArguments delegation, legacy provider-array compatibility, loader suppression and active-tool interception remain applicable. The single resident web_access tool and op/input schema remain stable. Subagents still uses the npm-provided dist/index.js; lean packages retain index.ts, and web/todo retain their runtime entries. No upstream implementation, node_modules, SDK version, CI or publication/check infrastructure is changed.
+Default-name routing, five-argument execution, prepareArguments delegation, legacy provider-array compatibility, loader suppression and active-tool interception remain applicable. The single resident web_access tool and op/input schema remain stable. Subagents still uses the npm-provided dist/index.js; lean packages retain index.ts, and web/todo retain their runtime entries. No upstream implementation, node_modules, SDK version, CI workflow or publication infrastructure is changed. The host-side sandbox portability fix is described below.
+
+## Host sandbox portability
+
+The Linux sandbox read-only mounts `realpathSync(process.execPath)` at `/opt/amox-runtime/node` and prepends only that fixed directory to its sanitized PATH. This supports setup-node tool-cache installations without assuming `/usr/bin/node` exists. Only the executable is exposed, not its parent distribution directory, the host PATH or additional host home files. The sandbox command uses `node` through that fixed PATH.
+
+The original credential, hidden-host-home and read-only-source assertions are preserved, with an additional assertion that the executed binary is the private mount. New regressions verify the executable-only mount and run the real sandbox from a copied Node executable outside `/usr`, asserting that its toolchain directory and fake credential stay hidden and candidate writes still fail with EROFS. These are owner-authorized host-side changes after the automated adaptation stopped; no automated model is allowed to rewrite protected check infrastructure.
 
 ## Documentation and verification
 

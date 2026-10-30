@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Unreleased tag vX.Y.Z matching all package versions; existing releases: re-run failed jobs on their original run"
+        description: "Unreleased tag vX.Y.Z matching the root release batch; npm versions are independent; existing releases: re-run failed jobs on their original run"
         required: true
         type: string
 
@@ -29,6 +29,7 @@ jobs:
     outputs:
       should_release: ${{ steps.plan.outputs.should_release }}
       tag: ${{ steps.plan.outputs.tag }}
+      base_sha: ${{ steps.plan.outputs.base_sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -48,6 +49,8 @@ jobs:
     name: Verify immutable SHA (${{ matrix.os }}, no secrets)
     needs: plan
     if: needs.plan.outputs.should_release == 'true'
+    env:
+      AMOX_CHECK_BASE: ${{ needs.plan.outputs.base_sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -58,6 +61,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -68,9 +72,9 @@ jobs:
           EXPECTED_SHA: ${{ github.sha }}
         run: node scripts/create-release.mjs --verify-only
       - run: npm ci --ignore-scripts
-      - run: npm run check
-      - run: npm run contracts:check
-      - run: npm run verify:production
+      - run: node scripts/check-changes.mjs check
+      - run: node scripts/check-changes.mjs contracts
+      - run: node scripts/check-changes.mjs production
       - run: node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json
       - run: node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json
       - run: node scripts/release-assets.mjs --build

@@ -9,6 +9,7 @@ import { chooseRelease } from "../scripts/release-plan.mjs";
 import { validateReleaseAssets } from "../scripts/release-assets.mjs";
 import { jsonText, readJson } from "../scripts/lib/files.mjs";
 import { modelConfig } from "../scripts/lib/local-pi.mjs";
+import { releaseFixture } from "./helpers/package-release-fixture.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 test("automatic release requires a version bump, manual release must match", () => {
@@ -33,6 +34,7 @@ test("model credentials are required and compatible endpoint config never execut
 });
 
 test("release assets accept exactly the three identity-bound archives and reject tampering", () => {
+  const fixture = releaseFixture(), root = fixture.root;
   const dir = mkdtempSync(join(tmpdir(), "amox-release-assets-test-"));
   try {
     const version = readJson(join(root, "package.json")).version;
@@ -51,5 +53,5 @@ test("release assets accept exactly the three identity-bound archives and reject
     files[0].filename = `${entries[0].packageName.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`; save();
     writeFileSync(join(dir, files[0].filename), "tampered");
     assert.throws(() => validateReleaseAssets({ repoRoot: root, dir }), /hash/);
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { fixture.cleanup(); rmSync(dir, { recursive: true, force: true }); }
 });

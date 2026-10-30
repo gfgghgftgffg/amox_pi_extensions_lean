@@ -18,6 +18,8 @@ concurrency:
 jobs:
   check:
     name: check + contracts + production + audit (${{ matrix.os }})
+    env:
+      AMOX_CHECK_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
     strategy:
       fail-fast: false
       matrix:
@@ -29,6 +31,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
           # Verify the exact candidate SHA, not a changing synthetic merge tree.
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
@@ -48,19 +51,19 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          npm run check 2>&1 | tee diagnostics/check.log
+          node scripts/check-changes.mjs check 2>&1 | tee diagnostics/check.log
 
       - name: Verify tracked tool-contract snapshot
         shell: bash
         run: |
           set -o pipefail
-          npm run contracts:check 2>&1 | tee diagnostics/contracts-check.log
+          node scripts/check-changes.mjs contracts 2>&1 | tee diagnostics/contracts-check.log
 
       - name: Verify fresh production install (self-contained host)
         shell: bash
         run: |
           set -o pipefail
-          npm run verify:production 2>&1 | tee diagnostics/production-install.log
+          node scripts/check-changes.mjs production 2>&1 | tee diagnostics/production-install.log
 
       - name: Dependency audit (all; upstream findings warn)
         run: node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json

@@ -22,6 +22,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { extractReleaseSummary, releaseNotes, validateReleaseContext } from "./lib/release-validation.mjs";
 import { validateReleaseAssets } from "./release-assets.mjs";
+import { releaseEntries } from "./lib/package-selection.mjs";
 
 function git(args, options = {}) {
   return execFileSync("git", args, { encoding: "utf8", ...options }).trim();
@@ -68,7 +69,8 @@ try {
   // Never call a model here. Reject missing/stale evidence before token use
   // or reserving a tag, including the read-only verification preflight.
   const summary = extractReleaseSummary({ report: readFileSync(resolve("maintenance/update-report.md"), "utf8"), tag });
-  const notes = releaseNotes({ tag, repository, sha: expectedSha, summary });
+  const packages = releaseEntries(process.cwd());
+  const notes = releaseNotes({ tag, repository, sha: expectedSha, summary, packages });
 
   if (process.argv.includes("--verify-only")) {
     console.log(`Release context verified: tag=${tag} version=${packageVersion} sha=${headSha} (no token used)`);

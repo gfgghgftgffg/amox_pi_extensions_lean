@@ -5,6 +5,8 @@ import { isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 import { githubClient, loadPublishToken } from "./lib/github-maintenance.mjs";
+import { validServerFailure } from "./lib/remote-errors.mjs";
+import { MAX_SERVER_RETRIES, RETRY_DELAY_MS } from "./lib/maintenance-retries.mjs";
 
 const repo = "gfgghgftgffg/amox_pi_extensions_lean";
 const safeLink = value => typeof value === "string" && new RegExp(`^https://github\\.com/${repo}/(?:pull/\\d+|actions/runs/\\d+)$`).test(value) ? value : undefined;
@@ -19,6 +21,20 @@ export function loadConfig(path) {
   return { ...config, server: url.href.replace(/\/?$/, "/") };
 }
 export async function completion(state, serviceResult, { api, now = Date.now, wait = delay, timeoutMs = 90 * 60000 } = {}) {
+  const retry = state.retry;
+  const knownServerFailure = state.status === "failed" && validServerFailure(state.failure);
+  if (knownServerFailure && state.publicationStarted === false && state.repairPending === false && !state.pr && !state.mergeSha
+    && ["success", "exit-code"].includes(serviceResult) && retry?.status === "scheduled"
+    && Number.isInteger(retry.count) && retry.count >= 0 && retry.count < MAX_SERVER_RETRIES
+    && retry.limit === MAX_SERVER_RETRIES && Number.isFinite(Date.parse(retry.dueAt))) {
+    const due = new Date(retry.dueAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", hour12: false });
+    return { title: "等待重试", pending: true, reason: `HTTP ${state.failure.httpStatus}；等待 ${RETRY_DELAY_MS / 3600000} 小时，计划于北京时间 ${due} 执行第 ${retry.count + 1}/${MAX_SERVER_RETRIES} 次重试` };
+  }
+  if (knownServerFailure && retry?.status === "exhausted" && retry.count === MAX_SERVER_RETRIES && retry.limit === MAX_SERVER_RETRIES) {
+    return { title: "重试耗尽", reason: `HTTP ${state.failure.httpStatus}；已用完 ${MAX_SERVER_RETRIES} 次自动重试，请人工检查`, failed: true };
+  }
+  if (knownServerFailure && state.publicationStarted === true) return { title: "需人工核对", reason: "已进入推送或发布阶段；为避免重复写入，未自动重跑", failed: true };
+  if (knownServerFailure && state.repairPending === true) return { title: "需人工修复", reason: "当前候选仍有未通过的验收，未另起候选自动重跑", failed: true };
   if (serviceResult !== "success" || state.status === "failed") {
     const reason = serviceResult === "timeout" ? "维护进程超时" : /No unchanged|checks|Protected/i.test(state.message || "") ? "本地验收未完成" : "维护任务失败，请查看服务日志";
     return { title: "失败", reason, failed: true };
@@ -49,10 +65,13 @@ export async function send(config, state, result, fetchImpl = fetch) {
   const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
   const token = tokens.length === 1 ? tokens[0] : text;
   if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
-  const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `版本：${state.version}` : undefined, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
+  const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
+    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean)$/.test(item?.name ?? "")
+    && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 3).map(item => `${item.name}@${item.version}`);
+  const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
   const response = await fetchImpl(config.server, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed ? 4 : 3, tags: [result.failed ? "warning" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
+    body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed ? 4 : 3, tags: [result.failed ? "warning" : result.pending ? "hourglass_flowing_sand" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
   if (!response.ok) throw new Error("ntfy did not accept the notification");
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -66,6 +85,12 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       else {
         if (!process.env.SERVICE_RESULT) throw new Error("Run through the service, or use --test");
         try { state = JSON.parse(readFileSync(join(root, "last-run.json"), "utf8")); } catch { /* A failed process may leave no state. */ }
+        if (/^[a-f0-9]{32}$/.test(process.env.INVOCATION_ID ?? "") && state.serviceInvocation !== process.env.INVOCATION_ID) {
+          // Polls that are not due and lock losers did not run maintenance.
+          // Never notify from another service invocation's stale last-run file.
+          if (["success", "exec-condition"].includes(process.env.SERVICE_RESULT)) process.exit(0);
+          state = {};
+        }
         let api;
         try { if (state.status === "merged-after-ci" && process.env.SERVICE_RESULT === "success") api = githubClient(repo, loadPublishToken(process.env.AMOX_PUBLISH_ENV || join(homedir(), ".config/amox-pi-actions.env"))); }
         catch { result = { title: "状态查询失败", reason: "无法读取 GitHub 发布核验凭据", failed: true }; }

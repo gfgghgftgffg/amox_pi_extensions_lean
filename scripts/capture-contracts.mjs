@@ -2,7 +2,7 @@
 /**
  * Reusable contract-capture entrypoint for tests and maintenance tooling.
  *
- * Loads every maintained lean facade AND its pinned upstream engine in
+ * Loads selected maintained lean facades AND their pinned upstream engines in
  * separate isolated Pi print-mode sessions (one child process per target), then
  * records each registered tool's description / schema / snippet / guideline
  * character counts and the fixed `ceil(chars / 4)` character proxy.
@@ -11,6 +11,7 @@
  *   node scripts/capture-contracts.mjs                   # print report
  *   node scripts/capture-contracts.mjs --write           # refresh maintenance/tool-contracts.json
  *   node scripts/capture-contracts.mjs --check           # fail if the snapshot is stale
+ *   node scripts/capture-contracts.mjs --check --packages pi-web-access-lean # check only web
  *   node scripts/capture-contracts.mjs --output <file>   # write a JSON snapshot elsewhere (never overwrites the accepted one)
  *
  * The estimator is a character proxy, NOT provider tokenization or billing.
@@ -23,6 +24,7 @@ import { fileURLToPath } from "node:url";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
 import { checkedSnapshotOutput, writeSnapshotCopy } from "./lib/snapshot-output.mjs";
 import { resolveUpstreamRuntimeEntry } from "./lib/upstream-runtime.mjs";
+import { parsePackageIds, selectEntries } from "./lib/package-selection.mjs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, "..");
@@ -47,6 +49,8 @@ const mode = writeRequested ? "write" : checkRequested ? "check" : outputPath !=
 
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
 const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+const packageIds = parsePackageIds(process.argv.slice(2), { flags: ["--write", "--check"], values: ["--output"] });
+const selectedIds = new Set(selectEntries(manifest.packages, packageIds).map((entry) => entry.id));
 const manifestById = new Map(manifest.packages.map((entry) => [entry.id, entry]));
 const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
 
@@ -81,6 +85,7 @@ function buildTargets() {
   for (const workspace of rootPackage.workspaces ?? []) {
     const base = workspace.replace(/\/\*$/, "");
     for (const id of readdirSync(join(repoRoot, base)).sort()) {
+      if (!selectedIds.has(id)) continue;
       const packageDir = join(repoRoot, base, id);
       const packageJsonPath = join(packageDir, "package.json");
       if (!existsSync(packageJsonPath)) continue;
@@ -228,7 +233,15 @@ function printReport(snapshot) {
 if (mode === "output") checkedSnapshotOutput(outputPath, snapshotPath);
 const targets = buildTargets();
 const captures = targets.map(captureTarget);
-const snapshot = snapshotFrom(captures);
+let snapshot = snapshotFrom(captures);
+if (packageIds !== undefined && mode !== "report") {
+  // Keep every unselected contract byte-for-byte equivalent as JSON data.
+  // A partial capture cannot initialize a new complete baseline.
+  const previous = JSON.parse(readFileSync(snapshotPath, "utf8"));
+  snapshot = { ...previous, environment: snapshot.environment,
+    upstream: { ...previous.upstream, ...snapshot.upstream },
+    lean: { ...previous.lean, ...snapshot.lean } };
+}
 
 if (mode === "report") {
   printReport(snapshot);

@@ -4,6 +4,12 @@
 
 三个扩展包已在 npm 公开发布。[Release](../.github/workflows/release.yml) 通过 OIDC 发布已验证的 GitHub Release 归档；用户只需执行 README 中的安装命令。
 
+## 按包独立发布
+
+每个 npm 包独立维护版本。根 private 包版本和 GitHub `vX.Y.Z` tag 仅标识发布批次，不是三个 npm 包的统一版本。受保护的 `maintenance/manifest.json` release 选择记录批次版本、精确 base 和包 ID；只给选中的包升版、打包和发布，未变化的包保持版本，不查询 registry 或重新上传。`assets.json` 分别记录每个归档的包版本。
+
+本地检查、精确提交三平台 CI 和独立 Release 验收共用受影响范围；共享代码或依赖变化扩大验收，不会自动扩大 npm 发布选择。
+
 ## 发布配置
 
 每个包分别配置 npm Trusted Publisher：`@gfgghgftgffg/pi-web-access-lean`、`@gfgghgftgffg/rpiv-todo-lean`、`@gfgghgftgffg/pi-subagents-lean`。
@@ -24,9 +30,9 @@
 
 每个缺失归档只通过 `--ignore-scripts --fetch-retries=0` 提交一次，再共享十分钟只读 GET 可见性检查。已存在且一致的版本跳过；integrity 冲突或写入结果不明就停止。不盲目重复上传、不覆盖版本、不倒退 `latest`。
 
-先检查精确的 Release 运行和三个 registry 版本。修复原因后，在 artifact 保留期内（7 天）对同一次运行选择 **Re-run failed jobs**。不要为已有 tag 重新启动完整 Release。artifact 已过期时，使用已验证的 GitHub Release 附件恢复，写入前核对身份和哈希，不重新打包工作树。GitHub Release 成功不能单独证明 npm 发布成功。
+先检查精确的 Release 运行和本批选中包的 registry 版本。修复原因后，在 artifact 保留期内（7 天）对同一次运行选择 **Re-run failed jobs**。不要为已有 tag 重新启动完整 Release。artifact 已过期时，使用已验证的 GitHub Release 附件恢复，写入前核对身份和哈希，不重新打包工作树。GitHub Release 成功不能单独证明 npm 发布成功。
 
-手动完整 Release 只用于尚未发布、与根目录、三个包和 manifest 版本一致的 tag。回滚不会撤回 npm 版本，修复应发布更高版本。
+手动 Release 只用于尚未发布且与根目录批次版本、受保护 release 选择一致的 tag；各个选中包分别匹配自身 manifest 版本，不要求等于 tag。回滚不会撤回 npm 版本，修复应发布更高版本。
 
 ## 新 VPS 检查表
 

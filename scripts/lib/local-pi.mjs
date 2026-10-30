@@ -4,6 +4,7 @@ import { Type } from "typebox";
 import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
 import { createAgentSession, createExtensionRuntime, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { adapterWritable, assertRegularPath, fileInventory, lfText, readJson } from "./files.mjs";
+import { RemoteHttpError, isTransientServerStatus, sdkHttpStatus } from "./remote-errors.mjs";
 export function loadDailyPrompt() {
   return readFileSync(new URL("../../maintenance/daily-update.md", import.meta.url), "utf8");
 }
@@ -24,7 +25,7 @@ export function loadModelConfig(path) {
   return modelConfig(readJson(path));
 }
 const result = (text, extra = {}) => ({ content: [{ type: "text", text }], details: undefined, ...extra });
-export function createLocalTools({ repo, context, manifest, baseline, gate, plan }) {
+export function createLocalTools({ repo, context, manifest, baseline, gate, plan, onCheckResult = () => {} }) {
   const reads = new Set();
   const scopes = { repo, upstream: context };
   const inventory = { repo: fileInventory(repo), upstream: fileInventory(context) };
@@ -71,8 +72,11 @@ export function createLocalTools({ repo, context, manifest, baseline, gate, plan
             for (const revision of ["before", "after"]) if (![...reads].some((path) => path.startsWith(`upstream:${entry.id}/${family}-${revision}/`) && /\.(ts|js|mjs)$/.test(path))) throw new Error(`Read ${entry.id} ${family}-${revision} source first`);
           }
         }
-        const checked = await gate.check(summary, signal);
-        return result(checked.output, checked.ok ? { terminate: true } : { isError: true });
+        try {
+          const checked = await gate.check(summary, signal);
+          onCheckResult(checked.ok);
+          return result(checked.output, checked.ok ? { terminate: true } : { isError: true });
+        } catch (error) { onCheckResult(false); throw error; }
       } },
   ];
 }
@@ -118,11 +122,15 @@ export async function openLocalPi({ repo, scratch, config, tools, log = console.
         await session.prompt(brief);
         const error = session.messages.slice(before).find((message) => message.role === "assistant" && ["error", "aborted"].includes(message.stopReason));
         if (error) {
-          const code = String(error.errorMessage ?? "").match(/\b(?:HTTP|API error)\s*\(?([45]\d\d)/i)?.[1] || "unknown";
+          const code = sdkHttpStatus(error.errorMessage, config.provider) ?? "unknown";
           diagnostic = `Local Pi model failed: status=${code}, stop_reason=${error.stopReason}, turns=${turns}; no provider body/transcript published`;
+          if (error.stopReason === "error" && isTransientServerStatus(Number(code))) {
+            throw new RemoteHttpError(diagnostic, { httpStatus: Number(code), phase: "model" });
+          }
           throw new Error(diagnostic);
         }
-      } catch {
+      } catch (error) {
+        if (error instanceof RemoteHttpError) throw error;
         throw new Error(diagnostic || "Local Pi SDK request failed; provider body/transcript suppressed, no automatic retry");
       } finally { clearTimeout(timer); modelMs += Date.now() - start; }
     },

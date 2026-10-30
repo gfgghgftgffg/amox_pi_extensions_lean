@@ -31,9 +31,13 @@ test("private ntfy config and a single authenticated POST, without redirects or 
     writeFileSync(tokenFile, "fake-private-token\n", { mode: 0o600 });
     writeFileSync(path, JSON.stringify({ server: "https://ntfy.example.com", topic: "maintenance", tokenFile }), { mode: 0o600 });
     const config = loadConfig(path); let posts = 0;
-    await send(config, { message: "do not forward fake-private-token" }, { title: "测试", reason: "fixture" }, async (url, options) => {
+    await send(config, { version: "9.0.0", packages: [{ name: "@gfgghgftgffg/pi-web-access-lean", version: "1.2.4" }, { name: "fake-private-token", version: "1.0.0" }], message: "do not forward fake-private-token" }, { title: "测试", reason: "fixture" }, async (url, options) => {
       posts++; assert.equal(url, "https://ntfy.example.com/"); assert.equal(options.redirect, "manual");
       assert.equal(options.headers.authorization, "Bearer fake-private-token"); assert.doesNotMatch(options.body, /fake-private-token/);
+      const payload = JSON.parse(options.body);
+      assert.match(payload.message, /发布批次：9\.0\.0/);
+      assert.match(payload.message, /pi-web-access-lean@1\.2\.4/);
+      assert.doesNotMatch(payload.message, /rpiv-todo-lean|pi-subagents-lean/);
       return new Response("{}", { status: 200 });
     });
     assert.equal(posts, 1);

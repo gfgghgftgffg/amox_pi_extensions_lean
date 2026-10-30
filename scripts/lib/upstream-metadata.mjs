@@ -9,6 +9,7 @@
 import { isExactStableVersion, looksLikePrerelease } from "./semver.mjs";
 import { readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { RemoteHttpError, gitReadHttpError } from "./remote-errors.mjs";
 
 // Strict end-of-string: JavaScript $ also accepts a trailing newline.
 const HEX40 = /^[0-9a-f]{40}(?![\s\S])/;
@@ -80,7 +81,7 @@ async function fetchNpmLatest({ name, fetchImpl, registry }) {
     throw new Error(`npm registry 响应非法 (${name})`);
   }
   if (!response.ok) {
-    throw new Error(`npm registry HTTP ${response.status} (${name})`);
+    throw new RemoteHttpError(`npm registry HTTP ${response.status} (${name})`, { httpStatus: response.status, phase: "upstream-read" });
   }
   let body;
   try {
@@ -110,6 +111,8 @@ export function defaultGitHeadResolver(url, { timeoutMs = 90_000 } = {}) {
     throw new Error(`git ls-remote 执行失败 (${url}): ${result.error.message}`);
   }
   if (result.status !== 0) {
+    const serverError = gitReadHttpError(result.stderr);
+    if (serverError) throw serverError;
     throw new Error(`git ls-remote 失败 (${url}): ${(result.stderr ?? "").trim() || `exit ${result.status}`}`);
   }
   const line = (result.stdout ?? "").trim().split("\n").find((candidate) => candidate.trim().length > 0) ?? "";

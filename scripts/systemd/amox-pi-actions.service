@@ -1,6 +1,6 @@
 [Unit]
 Description=Daily local Pi maintenance for amox lean extensions
-Wants=network-online.target
+Wants=network-online.target amox-pi-actions-retry.timer
 After=network-online.target
 
 [Service]

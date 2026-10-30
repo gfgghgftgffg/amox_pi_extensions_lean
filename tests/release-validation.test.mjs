@@ -135,16 +135,17 @@ test("missing or stale summaries fail before token use, gh calls or tag reservat
   } finally { rmSync(dir, { recursive: true, force: true }); rmSync(fakeDir, { recursive: true, force: true }); }
 });
 
-test("release attaches three validated archives and the integrity manifest", () => {
+test("release attaches only the selected validated archives and the integrity manifest", async () => {
   const dir = mkdtempSync(join(tmpdir(), "amox-release-attachments-"));
   const logPath = join(dir, "gh.log");
   const fakeDir = fakeGhDir(logPath);
   try {
     const assetsDir = join(dir, "assets");
     mkdirSync(assetsDir);
-    const entries = JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8")).packages;
+    const { releaseEntries } = await import("../scripts/lib/package-selection.mjs");
+    const entries = releaseEntries(repoRoot);
     const files = entries.map((entry) => {
-      const filename = `${entry.packageName.replace(/^@/, "").replaceAll("/", "-")}-${rootVersion}.tgz`;
+      const filename = `${entry.packageName.replace(/^@/, "").replaceAll("/", "-")}-${entry.version}.tgz`;
       const bytes = Buffer.from(entry.packageName);
       writeFileSync(join(assetsDir, filename), bytes);
       return { package: entry.packageName, filename, sha256: createHash("sha256").update(bytes).digest("hex"), integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}` };

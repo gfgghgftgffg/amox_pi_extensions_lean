@@ -4,13 +4,21 @@ import { join } from "node:path";
 import { adapterWritable, assertRegularPath, jsonText, lfText, readJson } from "./files.mjs";
 import { releaseSummaryBlock } from "./release-validation.mjs";
 import { failureExcerpt, sandboxRun } from "./local-sandbox.mjs";
+import { maintenancePackageIds } from "./package-selection.mjs";
+import { checkCommands, loadCheckScope } from "./check-scope.mjs";
+import { gitReadHttpError } from "./remote-errors.mjs";
 
-export const LOCAL_CHECKS = [["npm", ["run", "check"]], ["npm", ["run", "contracts:check"]], ["npm", ["run", "verify:production"]],
-  ["node", ["scripts/audit-dependencies.mjs"]], ["node", ["scripts/audit-dependencies.mjs", "--omit=dev"]]];
+export const LOCAL_CHECKS = checkCommands({ full: true });
 export function git(repo, args) {
-  return execFileSync("git", ["-C", repo, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", ...args],
-    { encoding: "utf8", timeout: 90_000, maxBuffer: 20_000_000,
-      env: { PATH: "/usr/bin:/bin", HOME: process.env.HOME, LANG: "C.UTF-8", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
+  try {
+    return execFileSync("git", ["-C", repo, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", ...args],
+      { encoding: "utf8", timeout: 90_000, maxBuffer: 20_000_000,
+        env: { PATH: "/usr/bin:/bin", HOME: process.env.HOME, LANG: "C.UTF-8", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
+  } catch (error) {
+    // Never classify push/commit errors as permission to replay publication.
+    if (args[0] === "clone") throw gitReadHttpError(error.stderr) ?? error;
+    throw error;
+  }
 }
 export function checkpoint(repo) {
   git(repo, ["add", "--all"]);
@@ -39,12 +47,13 @@ export function validateLocalChanges(repo, manifest, baseline, generated) {
     assertRegularPath(repo, path);
   }
 }
-export function measureDocs(repo, manifest) {
+export function measureDocs(repo, manifest, packageIds = manifest.packages.map((entry) => entry.id)) {
   const snapshot = readJson(join(repo, "maintenance/tool-contracts.json"));
   let upstreamTotal = 0, leanTotal = 0;
   for (const entry of manifest.packages) {
     const lean = snapshot.lean[entry.packageName], upstream = snapshot.upstream[entry.upstreamPackage];
     upstreamTotal += upstream.totals.registeredProxyTokens; leanTotal += lean.totals.registeredProxyTokens;
+    if (!packageIds.includes(entry.id)) continue;
     for (const file of ["README.md", "README.zh-CN.md"]) {
       const path = join(repo, entry.path, file);
       let text = readFileSync(path, "utf8");
@@ -83,7 +92,10 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       const logs = join(scratch, `checks-${++attempt}`); mkdirSync(logs, { recursive: true });
       const snapshot = join(scratch, "tool-contracts.json");
       writeFileSync(snapshot, readFileSync(join(repo, "maintenance/tool-contracts.json")));
-      const capture = await execute({ repo, scratch, command: "npm", args: ["run", "contracts"], signal,
+      const packageIds = manifest.release?.packageIds ?? maintenancePackageIds(plan);
+      const captureScope = loadCheckScope(repo, baseCommit);
+      const captureArgs = captureScope.full ? ["run", "contracts"] : ["run", "contracts", "--", "--packages", captureScope.packageIds.join(",")];
+      const capture = await execute({ repo, scratch, command: "npm", args: captureArgs, signal,
         writable: [[snapshot, "/workspace/maintenance/tool-contracts.json"]], logPath: join(logs, "contracts.log") });
       if (!capture.ok) return { ok: false, output: `Contract capture failed:\n${capture.output.slice(-45000)}` };
       writeFileSync(join(repo, "maintenance/tool-contracts.json"), readFileSync(snapshot));
@@ -93,12 +105,14 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       for (const lean of plan.leanPlans.filter((item) => item.changed)) manifest.packages.find((entry) => entry.id === lean.id).leanCommit = lean.remoteHead;
       writeFileSync(join(repo, "maintenance/manifest.json"), jsonText(manifest));
       generated.set("maintenance/manifest.json", jsonText(manifest));
-      measureDocs(repo, manifest);
+      measureDocs(repo, manifest, packageIds);
       const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
       validateLocalChanges(repo, manifest, baseline, generated);
       const sha = checkpoint(repo);
-      for (const [command, args] of LOCAL_CHECKS) {
+      const scope = loadCheckScope(repo, baseCommit);
+      log(`Verification scope: ${JSON.stringify(scope)}`);
+      for (const [command, args] of checkCommands(scope)) {
         log(`Local check ${attempt}: ${command} ${args.join(" ")}`);
         const checked = await execute({ repo, scratch, command, args, signal,
           logPath: join(logs, `${command}-${args.join("-").replaceAll("/", "_")}.log`) });

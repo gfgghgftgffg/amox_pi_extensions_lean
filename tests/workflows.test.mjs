@@ -37,7 +37,9 @@ test("CI remains read-only, secret-free and verifies the exact candidate on all 
   assert.match(text, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(text, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
   assert.match(text, /name: all-platforms-pass/); assert.match(text, /needs: check\n\s+if: always\(\)/);
-  for (const command of ["npm ci --ignore-scripts", "npm run check", "npm run contracts:check", "npm run verify:production", "node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json", "node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json"]) assert.ok(text.includes(command));
+  for (const command of ["npm ci --ignore-scripts", "node scripts/check-changes.mjs check", "node scripts/check-changes.mjs contracts", "node scripts/check-changes.mjs production", "node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json", "node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json"]) assert.ok(text.includes(command));
+  assert.match(text, /AMOX_CHECK_BASE: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.before \}\}/);
+  assert.match(text, /fetch-depth: 0/);
   assert.doesNotMatch(text, /maintenance-pipeline|maintenance-candidate|adapted\.json|verified\.json/);
 });
 test("reviewed version bumps auto-release with isolated GitHub-write and npm-OIDC jobs", () => {

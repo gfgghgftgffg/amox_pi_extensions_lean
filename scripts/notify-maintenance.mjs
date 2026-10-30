@@ -49,7 +49,10 @@ export async function send(config, state, result, fetchImpl = fetch) {
   const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
   const token = tokens.length === 1 ? tokens[0] : text;
   if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
-  const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `版本：${state.version}` : undefined, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
+  const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
+    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean)$/.test(item?.name ?? "")
+    && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 3).map(item => `${item.name}@${item.version}`);
+  const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
   const response = await fetchImpl(config.server, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
     body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed ? 4 : 3, tags: [result.failed ? "warning" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });

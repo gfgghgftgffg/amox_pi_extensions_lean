@@ -4,6 +4,8 @@ import { writeFileSync } from "node:fs";
 import { readJson } from "./lib/files.mjs";
 import { compareExactStableVersions, isExactStableVersion } from "./lib/semver.mjs";
 import { validateReleaseTag } from "./lib/release-validation.mjs";
+import { releaseEntries } from "./lib/package-selection.mjs";
+import { validateReleaseChanges } from "./lib/check-scope.mjs";
 
 export function chooseRelease({ event, requestedTag, currentVersion, previousVersion }) {
   if (!isExactStableVersion(currentVersion)) throw new Error("Invalid current version");
@@ -22,9 +24,7 @@ if (process.argv.includes("--run")) {
   try {
     const current = readJson("package.json");
     const manifest = readJson("maintenance/manifest.json");
-    for (const entry of manifest.packages) {
-      if (entry.version !== current.version || readJson(`${entry.path}/package.json`).version !== current.version) throw new Error("Root, package and manifest release versions must be synchronized");
-    }
+    releaseEntries(process.cwd());
     let previousVersion;
     if (process.env.GITHUB_EVENT_NAME === "push") {
       const before = process.env.RELEASE_BEFORE_SHA;
@@ -32,7 +32,13 @@ if (process.argv.includes("--run")) {
       previousVersion = JSON.parse(execFileSync("git", ["show", `${before}:package.json`], { encoding: "utf8" })).version;
     }
     const result = chooseRelease({ event: process.env.GITHUB_EVENT_NAME, requestedTag: process.env.RELEASE_TAG, currentVersion: current.version, previousVersion });
-    for (const [name, value] of [["should_release", String(result.shouldRelease)], ["tag", result.tag]]) {
+    const baseSha = manifest.release?.baseCommit ?? process.env.RELEASE_BEFORE_SHA ?? "";
+    if (result.shouldRelease) {
+      if (!manifest.release) throw new Error("An explicit package release selection is required for publication");
+      const comparison = process.env.GITHUB_EVENT_NAME === "push" ? process.env.RELEASE_BEFORE_SHA : manifest.release?.baseCommit;
+      if (comparison) validateReleaseChanges(process.cwd(), comparison);
+    }
+    for (const [name, value] of [["should_release", String(result.shouldRelease)], ["tag", result.tag], ["base_sha", baseSha]]) {
       console.log(`${name}=${value}`);
       if (process.env.GITHUB_OUTPUT) writeFileSync(process.env.GITHUB_OUTPUT, `${name}=${value}\n`, { flag: "a" });
     }

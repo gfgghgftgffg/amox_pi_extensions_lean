@@ -9,10 +9,12 @@ import { installPackedExtension, packageEntries } from "./lib/extension-package.
 import { checkedRun } from "./lib/process.mjs";
 import { resolveHostModulePath } from "./lib/isolated-pi-session.mjs";
 import { resolveUpstreamRuntimeEntry } from "./lib/upstream-runtime.mjs";
+import { parsePackageIds } from "./lib/package-selection.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
-const entries = packageEntries(repoRoot);
+const allEntries = packageEntries(repoRoot);
+const entries = packageEntries(repoRoot, parsePackageIds(process.argv.slice(2), { flags: ["--keep"] }));
 console.log(`Host module (from dev checkout): ${hostModulePath}`);
 const tempRoot = mkdtempSync(join(tmpdir(), "amox-production-install-"));
 const failures = [];
@@ -26,7 +28,7 @@ try {
     console.log(`\nIndependent production install: ${entry.packageName}`);
     const prefix = join(tempRoot, entry.id);
     const packageDir = installPackedExtension({ repoRoot, entry, prefix, outDir: join(tempRoot, "archives") });
-    for (const sibling of entries.filter((item) => item.id !== entry.id)) {
+    for (const sibling of allEntries.filter((item) => item.id !== entry.id)) {
       check(!existsSync(join(prefix, "node_modules", ...sibling.packageName.split("/"))), `${sibling.packageName} is NOT installed`);
       check(!existsSync(join(prefix, "node_modules", ...sibling.upstreamPackage.split("/"))), `${sibling.upstreamPackage} is NOT installed`);
     }

@@ -2,9 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { checkedRun } from "./process.mjs";
+import { selectEntries } from "./package-selection.mjs";
 
-export function packageEntries(repoRoot) {
-  return JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8")).packages;
+export function packageEntries(repoRoot, ids) {
+  return selectEntries(JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8")).packages, ids);
 }
 
 export function selectPackage(repoRoot, id) {

@@ -5,6 +5,7 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkedRun } from "../scripts/lib/process.mjs";
+import { workspaceVersions } from "../scripts/lib/package-selection.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const rootPackage = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
@@ -52,13 +53,13 @@ test("no lifecycle hooks anywhere in the workspace tree", () => {
 
 test("workspace package metadata matches maintenance/manifest.json", () => {
   assert.equal(manifest.schemaVersion, 1);
+  assert.doesNotThrow(() => workspaceVersions(repoRoot));
   assert.equal(workspacePackages.length, 3);
   for (const { entry, dir, pkg } of workspacePackages) {
     assert.equal(entry.id, entry.path.split("/").pop());
     assert.equal(pkg.name, entry.packageName);
     assert.equal(pkg.name, `@gfgghgftgffg/${entry.id}`);
-    assert.equal(pkg.version, rootPackage.version);
-    assert.equal(pkg.version, entry.version);
+    assert.equal(pkg.version, entry.version, "each package tracks its own version, not the release batch");
     assert.equal(pkg.license, "MIT");
     assert.equal(pkg.repository.directory, entry.path);
     assert.match(pkg.repository.url, /gfgghgftgffg\/amox_pi_extensions_lean\.git/);

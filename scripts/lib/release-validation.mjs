@@ -60,7 +60,7 @@ export function extractReleaseSummary({ report, tag }) {
   return summary;
 }
 
-export function releaseNotes({ tag, repository, sha, summary }) {
+export function releaseNotes({ tag, repository, sha, summary, packages = [] }) {
   const checked = validateReleaseTag(tag);
   if (!checked.ok) throw new Error(checked.error);
   releaseSummaryBlock({ version: checked.version, summary });
@@ -71,9 +71,10 @@ export function releaseNotes({ tag, repository, sha, summary }) {
     "",
     summary.trim(),
     "",
+    ...(packages.length ? ["## 本批 npm 包", "", ...packages.map((entry) => `- ${entry.packageName}@${entry.version}`), ""] : []),
     "## 验证",
     "",
-    "macOS、Windows、Linux 的测试、契约检查、三个独立生产安装通过。依赖安全审计已执行，上游漏洞作为警告记录，不阻断发布。",
+    "本批受影响扩展的 macOS、Windows、Linux 测试、契约检查及独立生产安装通过；共享变更扩大验收范围。依赖安全审计已执行，上游漏洞作为警告记录，不阻断发布。",
     `验证提交：\`${sha}\`。`,
     `[详细源码审查](https://github.com/${repository}/blob/${sha}/maintenance/agent-review.md)。`,
     "",
@@ -98,7 +99,7 @@ export function releaseNotes({ tag, repository, sha, summary }) {
     "node scripts/install-extension.mjs pi-subagents-lean",
     "```",
     "",
-    "附件包含三个独立 .tgz 安装包和 assets.json 哈希清单。npm 发布是后续独立 job，以它的实际结果为准。",
+    "附件仅包含本批发布包的 .tgz 安装包和 assets.json 哈希清单；未选中的包不重新发布。npm 发布是后续独立 job，以它的实际结果为准。",
     `首次配置、旧来源迁移和失败恢复见 https://github.com/${repository}/blob/${sha}/docs/npm-publishing.zh-CN.md 。`,
   ].join("\n");
 }

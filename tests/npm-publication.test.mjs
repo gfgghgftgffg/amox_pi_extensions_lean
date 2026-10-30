@@ -9,12 +9,14 @@ import { spawnSync } from "node:child_process";
 import { gzipSync, gunzipSync } from "node:zlib";
 import { packageEntries, packExtension } from "../scripts/lib/extension-package.mjs";
 import { readJson } from "../scripts/lib/files.mjs";
+import { releaseFixture } from "./helpers/package-release-fixture.mjs";
 import { NPM_REGISTRY, publishArchive, publishNpmArchives, validateNpmArchive, waitForPublishedArchive } from "../scripts/publish-npm.mjs";
 
-const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repository = "gfgghgftgffg/amox_pi_extensions_lean";
 
 test("npm publication validates actual packs, preflights all identities and recovers partial publication without retries", async (t) => {
+  const fixture = releaseFixture(), root = fixture.root;
   const dir = mkdtempSync(join(tmpdir(), "amox-npm-publish-test-"));
   try {
     const version = readJson(join(root, "package.json")).version, entries = packageEntries(root);
@@ -106,13 +108,14 @@ test("npm publication validates actual packs, preflights all identities and reco
       assert.equal(count, 1);
     });
     await t.test("real CLI rejects local publication and stale SHA before registry access", () => {
-      const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).stdout.trim();
-      const env = { ...process.env, GITHUB_REPOSITORY: repository, RELEASE_TAG: `v${version}`, EXPECTED_SHA: sha, GITHUB_ACTIONS: "false", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "", ACTIONS_ID_TOKEN_REQUEST_URL: "" };
-      const invoke = (extra) => spawnSync(process.execPath, ["scripts/publish-npm.mjs", "--assets-dir", dir, "--publish"], { cwd: root, env: { ...env, ...extra }, encoding: "utf8" });
+      const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim();
+      const batchVersion = readJson(join(repoRoot, "package.json")).version;
+      const env = { ...process.env, GITHUB_REPOSITORY: repository, RELEASE_TAG: `v${batchVersion}`, EXPECTED_SHA: sha, GITHUB_ACTIONS: "false", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "", ACTIONS_ID_TOKEN_REQUEST_URL: "" };
+      const invoke = (extra) => spawnSync(process.execPath, ["scripts/publish-npm.mjs", "--assets-dir", dir, "--publish"], { cwd: repoRoot, env: { ...env, ...extra }, encoding: "utf8" });
       const local = invoke({}); assert.equal(local.status, 1); assert.match(local.stderr, /requires.*OIDC/);
       const stale = invoke({ EXPECTED_SHA: "f".repeat(40) }); assert.equal(stale.status, 1); assert.match(stale.stderr, /checkout HEAD/);
     });
-  } finally { rmSync(dir, { recursive: true, force: true }); }
+  } finally { fixture.cleanup(); rmSync(dir, { recursive: true, force: true }); }
 });
 
 test("post-publish propagation waits use only bounded GETs without accepting conflicts", async () => {

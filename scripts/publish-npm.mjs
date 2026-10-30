@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Publish only the three archives produced by Release verification. No package
+// Publish only the selected archives produced by Release verification. No package
 // installation, build, lifecycle hook, model call or automatic publish retry.
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -106,10 +106,11 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
   // first write. Known conflicts/first-publication setup cannot half-publish.
   for (const asset of assets) {
     const entry = entries.find((entry) => entry.packageName === asset.package);
-    validateNpmArchive({ repoRoot, asset, entry, version, repository });
+    validateNpmArchive({ repoRoot, asset, entry, version: asset.version, repository });
   }
   const plan = [];
   for (const asset of assets) {
+    const version = asset.version;
     const existing = await registryMetadata(asset.package, version, fetchImpl);
     if (existing && !matchesIntegrity(existing, asset)) throw new Error(`Immutable npm version conflicts with verified archive: ${asset.package}@${version}`);
     const packageMetadata = await registryMetadata(asset.package, null, fetchImpl);
@@ -121,6 +122,7 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
   }
   const completed = [], uploaded = [];
   for (const { asset, exists } of plan) {
+    const version = asset.version;
     if (exists) { log(`Already published, matching verified integrity: ${asset.package}@${version}`); completed.push(asset.package); continue; }
     if (dryRun) { log(`Would publish verified archive: ${asset.package}@${version}`); continue; }
     try { await publish(asset.path); }
@@ -130,11 +132,11 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
     log(`Upload returned success; public verification pending: ${asset.package}@${version}`);
   }
   // Submit each missing archive once before waiting for registry propagation;
-  // a slow read for package one must not prevent packages two/three uploading.
+  // a slow read for one package must not prevent other selected uploads.
   const deadline = Date.now() + 600_000;
   for (const asset of uploaded) {
-    await waitForPublishedArchive({ asset, version, fetchImpl, log, timeoutMs: Math.max(0, deadline - Date.now()) });
-    log(`Published and registry integrity verified: ${asset.package}@${version}`);
+    await waitForPublishedArchive({ asset, version: asset.version, fetchImpl, log, timeoutMs: Math.max(0, deadline - Date.now()) });
+    log(`Published and registry integrity verified: ${asset.package}@${asset.version}`);
   }
   return { version, packages: assets.map((asset) => asset.package), dryRun };
 }

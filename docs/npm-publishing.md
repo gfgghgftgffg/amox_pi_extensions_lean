@@ -4,6 +4,12 @@
 
 All three extension packages are public on npm. [Release](../.github/workflows/release.yml) publishes verified GitHub Release archives through OIDC; users only need the README installation commands.
 
+## Independent package releases
+
+Each npm package has its own version. The private root version and GitHub `vX.Y.Z` tag identify a release batch, not a shared npm version. The protected `maintenance/manifest.json` release selection records the batch version, exact base commit and selected package IDs. Only selected packages are version-bumped, packed and published; unchanged packages keep their versions and are not queried or uploaded. `assets.json` records each archive’s own package version.
+
+Local checks, exact-head three-platform CI and independent Release verification use the same affected-package scope. Shared code/dependency changes expand verification without automatically publishing unaffected packages.
+
 ## Publishing configuration
 
 Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, and `@gfgghgftgffg/pi-subagents-lean`.
@@ -24,9 +30,9 @@ Only the npm job has `id-token: write`; it has read-only repository access and i
 
 Each missing archive is submitted once with `--ignore-scripts --fetch-retries=0`, followed by a shared ten-minute GET-only visibility check. Matching existing versions skip; integrity conflicts or uncertain writes stop. Never blindly repeat an upload, overwrite a version or move `latest` backwards.
 
-Inspect the exact Release run and all three registry versions first. After resolving the cause, use **Re-run failed jobs** on the same run within artifact retention (7 days). Do not start a new full Release for an existing tag. If artifacts expired, recover from verified GitHub Release assets, checking identity and hashes before any write; do not repack a working tree. GitHub Release success alone does not prove npm publication succeeded.
+Inspect the exact Release run and the selected packages’ registry versions first. After resolving the cause, use **Re-run failed jobs** on the same run within artifact retention (7 days). Do not start a new full Release for an existing tag. If artifacts expired, recover from verified GitHub Release assets, checking identity and hashes before any write; do not repack a working tree. GitHub Release success alone does not prove npm publication succeeded.
 
-A manual full Release is only for an unreleased tag matching the root, three packages and manifest versions. Rollback does not retract npm versions; publish a higher repair version.
+A manual Release is only for an unreleased tag matching the root batch version and the protected release selection; each selected package must match its own manifest version, independently of that tag. Rollback does not retract npm versions; publish a higher repair version.
 
 ## New VPS checklist
 

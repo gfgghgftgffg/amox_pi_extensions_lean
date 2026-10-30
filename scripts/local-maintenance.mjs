@@ -11,6 +11,7 @@ import { collectSources } from "./lib/upstream-sources.mjs";
 import { checkpoint, createCheckGate, git, protectedBaseline, validateLocalChanges } from "./lib/local-checks.mjs";
 import { sandboxRun } from "./lib/local-sandbox.mjs";
 import { githubClient, loadPublishToken } from "./lib/github-maintenance.mjs";
+import { maintenancePackageIds, selectEntries } from "./lib/package-selection.mjs";
 
 export const DEFAULT_REPO = "gfgghgftgffg/amox_pi_extensions_lean";
 const script = fileURLToPath(import.meta.url), sourceRoot = resolve(dirname(script), "..");
@@ -20,18 +21,21 @@ export function launcherEnvironment(stateRoot) {
     ...(process.env.AMOX_MODEL_CONFIG ? { AMOX_MODEL_CONFIG: process.env.AMOX_MODEL_CONFIG } : {}),
     ...(process.env.AMOX_PUBLISH_ENV ? { AMOX_PUBLISH_ENV: process.env.AMOX_PUBLISH_ENV } : {}) };
 }
-export async function stageVersions({ work, state, scratch, execute = sandboxRun }) {
+export async function stageVersions({ work, state, scratch, baseCommit = git(work, ["rev-parse", "HEAD"]), execute = sandboxRun }) {
   const { manifest, workspaces, plan } = state;
   const root = JSON.parse(readFileSync(join(work, "package.json"), "utf8"));
   const version = nextPatch(root.version), generated = new Map();
+  const packageIds = selectEntries(manifest.packages, maintenancePackageIds(plan)).map((entry) => entry.id);
   const save = (path, value) => { const text = jsonText(value); writeFileSync(join(work, path), text); generated.set(path, text); };
   root.version = version; save("package.json", root);
   const nextManifest = applyPlanToManifest(manifest, plan);
+  nextManifest.release = { version, baseCommit, packageIds };
   for (const entry of nextManifest.packages) {
-    entry.version = version;
+    if (!packageIds.includes(entry.id)) continue;
     const workspace = workspaces.find((item) => item.id === entry.id);
     const pkg = applyPlanToWorkspacePackage(workspace.pkg, plan.packagePlans.find((item) => item.id === entry.id));
-    pkg.version = version; save(workspace.packageJsonPath, pkg);
+    entry.version = nextPatch(workspace.pkg.version);
+    pkg.version = entry.version; save(workspace.packageJsonPath, pkg);
   }
   save("maintenance/manifest.json", nextManifest);
   const writable = [[join(work, "package-lock.json"), "/workspace/package-lock.json"]];
@@ -42,7 +46,7 @@ export async function stageVersions({ work, state, scratch, execute = sandboxRun
     writable, logPath: join(scratch, "install.log") });
   if (!installed.ok) throw new Error(`Credential-free install failed; inspect ${join(scratch, "install.log")}`);
   generated.set("package-lock.json", readFileSync(join(work, "package-lock.json"), "utf8"));
-  return { manifest: nextManifest, generated, version };
+  return { manifest: nextManifest, generated, version, packageIds };
 }
 
 export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(homedir(), ".local/state/amox-pi-maintenance"),
@@ -78,7 +82,7 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
     status({ status: "collecting-source", baseCommit });
     const baseline = protectedBaseline(work, state.manifest);
     collectSources({ repoRoot: work, outDir: runDir, plan: state.plan, manifest: state.manifest });
-    const { manifest, generated, version } = await stageVersions({ work, state, scratch });
+    const { manifest, generated, version, packageIds } = await stageVersions({ work, state, scratch, baseCommit });
     validateLocalChanges(work, manifest, baseline, generated);
     checkpoint(work);
     const gate = createCheckGate({ repo: work, scratch, manifest, plan: state.plan, baseCommit, baseline, generated, log });
@@ -88,7 +92,8 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
     const branch = `maintenance/local-${new Date().toISOString().replace(/[^0-9]/g, "")}-${baseCommit.slice(0, 7)}`;
     git(work, ["switch", "--quiet", "-c", branch]);
     git(work, ["remote", "set-url", "origin", `git@github.com:${repository}.git`]);
-    status({ status: "adapting", baseCommit, branch, version });
+    status({ status: "adapting", baseCommit, branch, version,
+      packages: manifest.packages.filter((entry) => packageIds.includes(entry.id)).map((entry) => ({ name: entry.packageName, version: entry.version })) });
     await pi.prompt(`Review and minimally adapt this staged upstream update. Dependency/version changes are already made by the fixed script. Read the exact before/after sources, update docs and source review, and run check with substantive release bullets. Fix actual failures IN THIS SAME CANDIDATE. Network regressions need offline DNS/fetch mocks before imports and valid absolute URLs. Distinguish rendered tool text from structured content/body; inspect real response shape before asserting. Do not add unrelated upstream tests. Stop on uncertainty.\n\nPlan:\n${jsonText(state.plan)}`);
     let sha = gate.verified();
     if (localOnly) { status({ status: "local-verified-only", baseCommit, branch, sha, version }); log("Local-only validation passed; no push, PR, CI or release performed."); return; }

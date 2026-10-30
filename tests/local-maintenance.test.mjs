@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
@@ -8,7 +9,7 @@ import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { createLocalTools, openLocalPi } from "../scripts/lib/local-pi.mjs";
 import { githubClient } from "../scripts/lib/github-maintenance.mjs";
 import { launcherEnvironment } from "../scripts/local-maintenance.mjs";
-import { sandboxRun } from "../scripts/lib/local-sandbox.mjs";
+import { sandboxArgs, sandboxRun } from "../scripts/lib/local-sandbox.mjs";
 
 // One real SDK conversation exercises failure -> repair -> recheck on the same
 // file, without a model request or recursive execution of this test suite.
@@ -92,9 +93,47 @@ test("execution sandbox has no host credentials or host home and cannot rewrite 
     const launch = launcherEnvironment(root);
     assert.equal(launch.TMPDIR, join(root, "tmp")); assert.ok(existsSync(launch.TMPDIR));
     assert.equal(launch.GH_TOKEN, undefined, "launcher passes disk-backed TMP, not publication credentials");
-    const code = `const a=require('node:assert/strict'),f=require('node:fs');a.equal(process.env.GH_TOKEN,undefined);a.equal(f.existsSync(${JSON.stringify(secret)}),false);a.equal(f.existsSync('/home/ubuntu/.ssh'),false);a.throws(()=>f.writeFileSync('/workspace/README.md','changed'),{code:'EROFS'});console.log('isolated-check-ok');`;
-    const checked = await sandboxRun({ repo, scratch: join(root, "sandbox"), command: "/usr/bin/node", args: ["-e", code], network: false, timeoutMs: 15000 });
+    const code = `const a=require('node:assert/strict'),f=require('node:fs');a.equal(process.execPath,'/opt/amox-runtime/node');a.equal(process.env.GH_TOKEN,undefined);a.equal(f.existsSync(${JSON.stringify(secret)}),false);a.equal(f.existsSync('/home/ubuntu/.ssh'),false);a.throws(()=>f.writeFileSync('/workspace/README.md','changed'),{code:'EROFS'});console.log('isolated-check-ok');`;
+    const checked = await sandboxRun({ repo, scratch: join(root, "sandbox"), command: "node", args: ["-e", code], network: false, timeoutMs: 15000 });
     assert.equal(checked.ok, true, checked.output); assert.match(checked.output, /isolated-check-ok/);
     assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "sealed source\n"); assert.ok(existsSync(secret));
   } finally { previous === undefined ? delete process.env.GH_TOKEN : process.env.GH_TOKEN = previous; rmSync(root, { recursive: true, force: true }); }
+});
+
+test("sandbox mounts only the running Node executable and uses a fixed private runtime PATH", { skip: process.platform !== "linux" }, () => {
+  const root = mkdtempSync(join(tmpdir(), "amox-node-mount-"));
+  try {
+    const args = sandboxArgs({ repo: root, scratch: join(root, "scratch"), network: false });
+    const mount = args.findIndex((arg, index) => arg === "--ro-bind" && args[index + 2] === "/opt/amox-runtime/node");
+    assert.ok(mount >= 0, "private Node target must be a read-only bind");
+    assert.equal(args[mount + 1], realpathSync(process.execPath));
+    assert.ok(!args.includes("--share-net"));
+    const path = args.indexOf("PATH");
+    assert.equal(args[path - 1], "--setenv");
+    assert.equal(args[path + 1], "/opt/amox-runtime:/usr/bin:/bin");
+    assert.ok(args.includes("--clearenv"));
+    if (process.env.PATH !== "/opt/amox-runtime:/usr/bin:/bin") {
+      assert.ok(!args.includes(process.env.PATH), "host PATH must not enter the sandbox");
+    }
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("sandbox runs with Node installed outside /usr without exposing its toolchain directory", { skip: process.platform !== "linux" || !existsSync("/usr/bin/bwrap") || process.env.AMOX_INSIDE_SANDBOX === "1" }, () => {
+  const root = mkdtempSync(join(tmpdir(), "amox-external-node-"));
+  try {
+    const toolchain = join(root, "toolchain"), repo = join(root, "repo");
+    mkdirSync(toolchain); mkdirSync(repo);
+    const executable = join(toolchain, "node");
+    copyFileSync(realpathSync(process.execPath), executable);
+    writeFileSync(join(toolchain, "private-credential"), "fake-host-only-key");
+    writeFileSync(join(repo, "README.md"), "sealed source\n");
+    const inner = `const a=require('node:assert/strict'),f=require('node:fs');a.equal(process.execPath,'/opt/amox-runtime/node');a.equal(process.env.GH_TOKEN,undefined);a.equal(f.existsSync(${JSON.stringify(toolchain)}),false);a.throws(()=>f.writeFileSync('/workspace/README.md','changed'),{code:'EROFS'});console.log('external-node-isolated');`;
+    const script = `import {sandboxRun} from ${JSON.stringify(new URL("../scripts/lib/local-sandbox.mjs", import.meta.url).href)}; const r=await sandboxRun(${JSON.stringify({ repo, scratch: join(root, "sandbox"), command: "node", args: ["-e", inner], network: false, timeoutMs: 15000 })});if(!r.ok)throw new Error(r.output);console.log(r.output);`;
+    const child = spawnSync(executable, ["--input-type=module", "-e", script], {
+      encoding: "utf8", timeout: 30000, env: { ...process.env, GH_TOKEN: "fake-host-only-key" },
+    });
+    assert.equal(child.status, 0, `${child.error ?? ""}\n${child.stderr}`);
+    assert.match(child.stdout, /external-node-isolated/);
+    assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "sealed source\n");
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

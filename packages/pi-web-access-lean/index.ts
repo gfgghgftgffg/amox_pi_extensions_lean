@@ -218,19 +218,28 @@ async function executeLocalPDF(
   );
 
   try {
-    const result = await extractPDFToMarkdown(buffer, localPdf.absolutePath, { signal });
+    const result = await extractPDFToMarkdown(buffer, localPdf.absolutePath, { signal }) as unknown as {
+      title: string;
+      content: string;
+      outputPath: string;
+    };
+    // 0.46 returns Markdown instead of separate page/character counters.
+    // Only trust the extractor's metadata header, never a Pages line in the body.
+    const header = result.content.split("\n---\n", 1)[0];
+    const pageCount = header.match(/^> Pages: (\d+)/m);
+    const pages = pageCount ? Number(pageCount[1]) : undefined;
     return {
       content: [{
         type: "text" as const,
-        text: `PDF extracted and saved to: ${result.outputPath}\n\nPages: ${result.pages}\nCharacters: ${result.chars}`,
+        text: `PDF extracted and saved to: ${result.outputPath}\n\n${result.content}`,
       }],
       details: {
         urls: [url],
         urlCount: 1,
         successful: 1,
-        totalChars: result.chars,
+        totalChars: result.content.length,
         title: result.title,
-        pages: result.pages,
+        ...(pages !== undefined ? { pages } : {}),
         outputPath: result.outputPath,
         mode: (parsed.mode as string) ?? "readable",
         mimeType: "application/pdf",

@@ -3,6 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { git } from "./local-checks.mjs";
 import { failureExcerpt } from "./local-sandbox.mjs";
 import { HEX40 } from "./files.mjs";
+import { RemoteHttpError } from "./remote-errors.mjs";
 export function loadPublishToken(path) {
   if ((statSync(path).mode & 0o077) !== 0) throw new Error("Publish environment file must have mode 600");
   const token = readFileSync(path, "utf8").split(/\r?\n/).find((line) => line.startsWith("GH_TOKEN="))?.slice(9).trim();
@@ -28,7 +29,11 @@ export function githubClient(repo, token, fetchImpl = fetch) {
         try { response = await fetchImpl(url.href, { signal: AbortSignal.timeout(30_000) }); }
         catch { throw new Error("Signed log download unavailable; private URL hidden"); }
       }
-      if (!response.ok) throw new Error(`GitHub ${method} failed: HTTP ${response.status}; no response body published`);
+      if (!response.ok) {
+        const message = `GitHub ${method} failed: HTTP ${response.status}; no response body published`;
+        if (method === "GET") throw new RemoteHttpError(message, { httpStatus: response.status, phase: "github-read" });
+        throw new Error(message);
+      }
       try {
         if (!text) return await response.json();
         const value = await response.text();

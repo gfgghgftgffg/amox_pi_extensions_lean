@@ -1,0 +1,11 @@
+[Unit]
+Description=Check durable amox maintenance retry deadlines every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00 UTC
+Persistent=true
+AccuracySec=1s
+Unit=amox-pi-actions-retry.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,26 @@
+[Unit]
+Description=Run a due server-error retry for amox lean maintenance
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/home/ubuntu/.local/state/amox-pi-maintenance/retry-state.json
+
+[Service]
+Type=oneshot
+User=ubuntu
+WorkingDirectory=/home/ubuntu/projects/amox_pi_extensions_lean
+Environment=HOME=/home/ubuntu
+Environment=TMPDIR=/home/ubuntu/.local/state/amox-pi-maintenance/tmp
+Environment=AMOX_MAINTENANCE_STATE=/home/ubuntu/.local/state/amox-pi-maintenance
+ExecCondition=/usr/bin/node /home/ubuntu/projects/amox_pi_extensions_lean/scripts/maintenance-retry-due.mjs
+ExecStart=/usr/bin/node /home/ubuntu/projects/amox_pi_extensions_lean/scripts/local-maintenance.mjs --run --retry
+ExecStopPost=-/usr/bin/node /home/ubuntu/projects/amox_pi_extensions_lean/scripts/notify-maintenance.mjs
+TimeoutStartSec=130min
+TimeoutStopSec=95min
+Restart=no
+KillMode=control-group
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/.local/state/amox-pi-maintenance

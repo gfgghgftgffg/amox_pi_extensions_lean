@@ -2,6 +2,7 @@ import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, r
 import { join } from "node:path";
 import { checkedRun } from "./process.mjs";
 import { assertSafeRelativePath, HEX40, jsonText } from "./files.mjs";
+import { gitReadHttpError } from "./remote-errors.mjs";
 
 // Resolve source revisions from trusted manifest repositories only. Nothing
 // from these repositories is installed, imported, or run in the agent job.
@@ -16,7 +17,9 @@ export function collectSources({ repoRoot, outDir, plan, manifest, runGit = (arg
     mkdirSync(work, { recursive: true });
     runGit(["-c", "core.hooksPath=/dev/null", "init", "--quiet"], { cwd: work });
     runGit(["remote", "add", "origin", repository], { cwd: work });
-    runGit(["-c", "core.hooksPath=/dev/null", "fetch", "--quiet", "--depth=1", "origin", revision], { cwd: work, timeout: 90_000 });
+    try {
+      runGit(["-c", "core.hooksPath=/dev/null", "fetch", "--quiet", "--depth=1", "origin", revision], { cwd: work, timeout: 90_000 });
+    } catch (error) { throw gitReadHttpError(error.stderr ?? error.message) ?? error; }
     runGit(["-c", "core.hooksPath=/dev/null", "-c", "core.autocrlf=false", "checkout", "--quiet", "--detach", revision], { cwd: work });
     if (runGit(["rev-parse", "HEAD"], { cwd: work }).trim() !== revision) throw new Error("Source checkout revision mismatch");
     const target = join(outDir, "context", destination);

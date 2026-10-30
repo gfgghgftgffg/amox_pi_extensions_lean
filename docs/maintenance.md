@@ -24,7 +24,7 @@ node scripts/audit-dependencies.mjs --omit=dev
 - 依赖保持精确版本；Pi 开发 SDK、Action SHA 和维护宿主代码单独审查、更新及部署。
 - README 只描述当前项目的介绍、安装、基本用法、封装差异、必要限制与字符测量，中英文同步。运行时只写随上游更新，不重复依赖版本、测试快照或上游手册；参数查 help 和上游文档，精确版本查 package.json、lockfile 和 manifest。技术审查与适配历史保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
 
-[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 会话加载；只有 `list/read/write/edit/check` 工具，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。失败后修复同一候选，不重新生成候选或凭口头声明通过。
+[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 会话加载；只有 `list/read/write/edit/check` 工具，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。适配或验收失败后修复同一候选，不通过另起候选绕过检查或凭口头声明通过。仅可明确识别的服务器暂时性错误且尚未进入发布边界时，允许持久化排队两小时后重跑，最多额外三次；规则与通知见[延迟重试](local-scheduler.md#服务器错误延迟重试)。
 
 Pi 的工具权限不是操作系统级沙箱。候选执行另用 bubblewrap 隔离，检查进程没有主机 home、SSH 或凭据，候选源码只读；安装与契约捕获仅开放所需写入。主机固定代码仍属于信任边界。
 

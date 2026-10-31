@@ -8,7 +8,7 @@
   "upstream": {
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.22.0",
+      "version": "0.22.1",
       "entry": "node_modules/@tintinweb/pi-subagents/dist/index.js",
       "registeredTools": [
         "Agent",
@@ -23,8 +23,8 @@
         "steer_subagent"
       ],
       "totals": {
-        "registeredProxyTokens": 8415,
-        "activeProxyTokens": 8415
+        "registeredProxyTokens": 8426,
+        "activeProxyTokens": 8426
       },
       "tools": [
         {
@@ -82,7 +82,7 @@
               },
               "resume": {
                 "type": "string",
-                "description": "Optional agent ID to resume from. Continues from previous context. Resumes detached like any other spawn; pass run_in_background: false to block and get the result inline. An agent can only be resumed once its current run has finished — use steer_subagent to reach one mid-run."
+                "description": "Optional agent ID to resume from. Continues from previous context. Resumes detached like any other spawn; pass run_in_background: false to block and get the result inline. The resumed run gets a fresh max_turns budget. An agent can only be resumed once its current run has finished — use steer_subagent to reach one mid-run."
               },
               "isolated": {
                 "type": "boolean",
@@ -113,12 +113,12 @@
           },
           "chars": {
             "description": 6234,
-            "schema": 2908,
+            "schema": 2955,
             "snippet": 0,
             "guidelines": 911,
-            "total": 10053
+            "total": 10100
           },
-          "proxyTokens": 2514
+          "proxyTokens": 2525
         },
         {
           "name": "SubagentWorkflow",
@@ -777,7 +777,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"

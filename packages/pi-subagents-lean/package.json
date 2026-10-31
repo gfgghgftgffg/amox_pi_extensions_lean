@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-subagents-lean",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "type": "module",
   "description": "Lean Pi subagents extension: one subagent facade over the full @tintinweb/pi-subagents runtime, with advanced parameters disclosed through help.",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "@tintinweb/pi-subagents": "0.22.0"
+    "@tintinweb/pi-subagents": "0.22.1"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",

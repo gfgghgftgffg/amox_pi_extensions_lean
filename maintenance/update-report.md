@@ -1,14 +1,16 @@
 # Local upstream maintenance
 
-Base: e898a5d66eefe2d67bb0954cfbb5a2a2634c03b5
-Release after verified merge: v0.1.13
+Base: 8b3d005ca2765d7abc49b3b0e97eb4781934750f
+Release after verified merge: v0.1.14
 
-<!-- amox-release-summary:v0.1.13:start -->
-- Upgrade the web runtime to pi-web-access 0.46.0 while preserving the single compact web_access facade, advanced JSON forwarding and existing upstream pins for todo/i18n and subagents.
-- Adapt local PDF handling to the upstream Markdown result: return the saved path and extracted text, derive character counts from content, and preserve page counts only when reported in the extractor's metadata header. Add offline coverage for local/remote PDF text and Cloudflare, SearchApi and Tabstack discovery and execution.
-- Make the Linux maintenance sandbox independent of /usr/bin/node by read-only mounting the running Node executable at a fixed private path. Retain environment clearing, hidden host credentials and read-only candidate source; test execution with a Node binary outside /usr without exposing its parent toolchain directory.
-<!-- amox-release-summary:v0.1.13:end -->
+<!-- amox-release-summary:v0.1.14:start -->
+- Update pi-subagents-lean to the staged @tintinweb/pi-subagents 0.22.1 runtime while preserving the single subagent tool and published dist/index.js entry.
+- Inherit upstream fixes for fresh max_turns budgets and live turn counters on resumed agents, foreground resume cancellation, parent thinking-level inheritance, and duplicate skills/cwd sections in append-mode prompts.
+- Preserve upstream cross-extension additions through the existing facade: RPC steering, per-message usage events for nested/workflow agents, shutdown disposal notification, and consistent steering events from viewer/fleet paths.
+- Keep advanced parameters available through JSON input and current upstream help, including the clarified resume budget description; no model tools or parameter fields are added or removed.
+- Update English and Chinese documentation links and record the exact before/after source review and compatibility findings; refresh contracts and character-proxy measurements and run existing assertions, source/dist parity, fresh production installation and both audits.
+<!-- amox-release-summary:v0.1.14:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-Local validation runs typechecks, regressions, contracts, standalone production installs and both dependency audits. Upstream advisories remain warnings; audit execution failures remain blockers. Exact-head three-platform CI must pass before merge, followed by independent Release verification of the merged SHA and npm OIDC publication.
+The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.

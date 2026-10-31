@@ -64,8 +64,10 @@ their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, a
 collisions with the built-in `general-purpose`, `Explore`, and `Plan` types.
 
 Background tasks notify the parent on completion; do not poll or sleep. See the
-[upstream documentation](https://github.com/tintinweb/pi-subagents) for background execution,
-workflows, worktrees and `subagents.json` settings. Reload the extension after changing agent
+[upstream documentation](https://github.com/tintinweb/pi-subagents) for agent configuration,
+background execution, workflows, worktrees and `subagents.json` settings; extension integrations use
+upstream [events](https://github.com/tintinweb/pi-subagents#events) and
+[RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Reload the extension after changing agent
 definitions, discovery or trust settings to refresh the facade's available type list.
 
 ## Context footprint (character proxy)
@@ -74,7 +76,7 @@ definitions, discovery or trust settings to refresh the facade's available type 
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 270 |
-| @tintinweb/pi-subagents | 8415 |
+| @tintinweb/pi-subagents | 8426 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

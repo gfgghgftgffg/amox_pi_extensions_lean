@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.22.0`（精确固定；`dependencies`；此前为 0.21.0）。
+- `@tintinweb/pi-subagents@0.22.1`（精确固定；`dependencies`；此前为 0.22.0）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -171,6 +171,42 @@
   `ca93a5247e72e7053fcd10bea7125d6c4205f949` 未采用。本次未提供引擎 before/after，不声称重审
   未发布远端。既有内部依赖继续由固定依赖与真实集成／契约验证；不启动维护 subagent 或模型任务。
 - 无本次门面变化，不加重复测试；check 重测字符代理并实际执行已有回归，结果以输出为准。
+
+## 本次审查：0.22.0 → 0.22.1
+
+- 精确 sources.json before/after：`85a704cb8f35c96c0cabfa665b572bab296942e5` →
+  `fc089c4b7ab0f1185453b2e53027997c1f637e38`。远端 HEAD
+  `f42173ff5535397ed4957364ef819d39791bcf4f` 不在本次候选内。lean 作者仍为
+  `b084c51a7ec3fa6737b108ca3583e3d71075874f`，无新作者实现需要复用。
+- 对比新旧 CHANGELOG、package.json、完整 invocation-config.ts、cross-extension-rpc.ts、prompts.ts、
+  agent-runner.ts，以及 index.ts 的初始化、usage／steer 回调、RPC 注册、shutdown、Agent schema／
+  execute／render、workflow 注册及 result／steer 工具；对比 agent-manager.ts 的 resume／后台 resume、
+  outcome 和 steer 路径。此为门面兼容性审查，不声称逐文件审计整个上游。
+- 四个工具不增删，字段／类型／required／约束不变。Agent 的 resume 参数描述新增“每次续跑获得新的
+  max_turns 预算”，由现有 help 自动返回；高级 resume、max_turns、thinking 等仍放在 JSON input。
+  invocation-config 的 frontmatter 优先级、后台默认 true、inherit_context=false、isolation 默认 off，
+  result 的 wait/verbose 默认 false 均不变；Pi >=1.1.0／typebox * peers 和运行依赖范围不变。
+- 行为修复由固定依赖承接：runAgent 的 thinking 回退从未设置改为 ctx.thinkingLevel；显式选项／文件
+  仍在父会话级别之前解析。append 模式通过 inheritableParentPrompt 截去父 prompt 的 skills／cwd／
+  后续扩展区段，保留前面的 preamble、addendum 和项目上下文；没有匹配 cwd 标记的 prompt 原样返回。
+- resumeAgent 与首次 spawn 共用 observeRun，每次 prompt 重新计数，在软上限 steer，grace 后 abort；
+  前后台 resume 都传入记录自身 type 和预算，门面 Agent 路径按现有 agent 类型解析，而非被忽略的
+  subagent_type。前台 resume 补充活动计数／工具跟踪及新 abort controller；结果可为 steered／aborted，
+  外部 stopped 状态保留。现有 execute 原样透传 content、details、usage，render 原样委派。
+- 新增的是事件总线接口，不是模型工具：subagents:rpc:steer 使用 id，拒绝空白 message、未知／被其它
+  agent 或 workflow 拥有的记录及已结束记录；协议仍为 v2。manager.steer 接受后统一触发 steered，
+  viewer／fleet／mention／RPC 继承；工具仍独立 await 并 emit，mention 去掉重复 emit。
+- subagents:usage 从每条 assistant 消息的增量发出，含 nested／workflow children，不受 reportUsage
+  开关影响；未知 model／thinking／owner 字段省略。原顶层完成事件和 tool-result usage 机制继续保留。
+  shutdown 注销新增 RPC，await manager.dispose 后 emit subagents:disposed；监听方最后同步 flush，
+  事件总线不 await 异步监听器。facade 的绑定方法／pi.on／events 透传无需改动。
+- 内部依赖继续成立：npm dist/index.js 入口、typebox v1／instancePath、启动类型描述正则、
+  withUsageReporting 捕获后委派、直接字段优先、五参数 execute、render 委派和 workflow 条件注册。
+  保持单一 subagent／显式 op／字符串 JSON input，未增加常驻 prompt 或复制上游实现。
+- 中英文 README 仅更新现有上游文档链接以涵盖 Agent 配置、事件及 RPC；行为细节集中于本记录和
+  maintenance/agent-review.md。无门面改动，不新增无关上游单元测试，保留全部已有断言。
+  check 将实际运行类型／既有回归、源码与 dist 契约一致性、独立生产安装、字符代理捕获和两类依赖审计；
+  结果以工具输出为准。真实 provider／模型任务、交互 UI 和 live ledger 集成未作端到端验证。
 
 ## 运行时产物与验收
 

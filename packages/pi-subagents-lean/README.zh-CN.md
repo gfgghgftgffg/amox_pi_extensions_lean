@@ -57,8 +57,10 @@ node scripts/install-extension.mjs pi-subagents-lean
 但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
 
-后台任务完成后会通知父会话，无需轮询或等待。后台执行、Workflow、worktree 和
-`subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)。
+后台任务完成后会通知父会话，无需轮询或等待。Agent 配置、后台执行、Workflow、worktree 和
+`subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)；扩展集成使用上游的
+[事件](https://github.com/tintinweb/pi-subagents#events)和
+[RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md)。
 修改 Agent 定义、发现范围或 trust 设置后重新加载扩展，刷新门面的可用类型名单。
 
 ## 上下文占用（字符代理）
@@ -67,7 +69,7 @@ Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 270 |
-| @tintinweb/pi-subagents | 8415 |
+| @tintinweb/pi-subagents | 8426 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

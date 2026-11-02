@@ -328,6 +328,29 @@
   类型／全部回归、三包独立生产安装及两种审计，结果以输出为准。代理不是计费 token。真实付费服务、
   curl-impersonate 与交互行为未实测；三平台 CI 与 Release 由固定后续流程独立验证。
 
+## 本次 lean-only 审查：作者同步 0.46 PDF 返回契约
+
+- sources.json 精确作者 before/after：`6842095b34a3650163bfbbfd9da225ac3ac33e3d` →
+  `189484d37c0c346382597555b757480ec95b9397`。完整对比两版 index.ts、package.json、中英文 README、
+  tests/facade.test.mjs、tests/types 两个声明与 tsconfig.json，并阅读本地完整入口和既有 0.46 回归。
+- 作者入口唯一变化是 local PDF 返回保存提示与 result.content，以 content.length 计数，删除旧 pages/chars
+  读取。作者 PDF 类型相应从 pages/chars 改为 content。此修复本仓在引擎 0.46 更新时已实现，保留从
+  Markdown 元数据头恢复可用 pages 的兼容处理；不删除既有 pages=5 断言，不修改受保护的类型 stub。
+- 作者测试将 help 断言从 Provider 名单改为 provider string／逗号列表和 model；PDF 断言改为正文 Page 1–5
+  与正字符数，容错路径断言也改为 Page 5。本仓 0.45/0.46 focused 回归已有当前 help、正文／保存文件一致、
+  totalChars、已知／未知页数及正文伪造页数覆盖；不复制重复测试，不删旧断言。
+- 作者包装与引擎 pin 0.44.0 → 0.46.0，description 与双语 README 更新基准数值；peer/dev 不变，
+  tsconfig 与非 PDF 声明不变。保留脚本管理的版本、根锁文件和宿主基线，不复用作者锁文件或 Pi 1.4 测量。
+  作者 README 的英文 page/character counts 文字未随代码准确更新；本仓双语现有特性段明确计数在结果元数据中。
+- 无新工具、调用参数或默认值变化。历史 op 推断／对象 input／顶层合并与 broad hint rewrite 均是旧实现，
+  不因本次同步重新引入；仍显式 op／字符串 input，原样透传 rendered content 与 structuredContent，
+  默认名路由、prepareArguments、provider 数组兼容、loader 丢弃与 active-list 拦截继续适用。
+- 本次只有 lean 快照，没有引擎源码或 CHANGELOG；固定引擎仍为 0.46.0 /
+  `4af1a7f7757d450ba0afefe2d98737384dc9a9b4`，不采用或声称审查远端
+  `fc63125608faef80c446687c79edd2626f511019`。本地 index.ts 不变，无新增网络测试。
+- check 实际重捕获契约与 ceil(chars/4) 字符代理、更新测量并执行选定范围类型／既有回归、生产安装与两类审计，
+  结果以其输出为准。字符代理不是计费 token；真实 Provider／PDF 服务及交互 UI 未端到端实测。
+
 ## 升级步骤
 
 1. `npm view pi-web-access version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。

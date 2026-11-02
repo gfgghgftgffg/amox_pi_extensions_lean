@@ -14,7 +14,7 @@ original `LICENSE` is preserved in this package.
   steering, workflows, schedules, and lifecycle handling are upstream's own code.
 * One provider-facing tool: `Agent`, `get_subagent_result`, `steer_subagent`, and `SubagentWorkflow`
   are routed through `subagent` with `op` values `run`, `result`, `steer`, `workflow`, plus `help`.
-* Advanced parameters on demand: `input` carries a JSON object validated against the hidden real
+* Advanced parameters on demand: `input` carries a JSON object string validated against the hidden real
   upstream schema before execution; `help` returns the complete current upstream schema.
 * Available agent names: `subagent_type` shows the enabled types captured at extension startup.
   Reload the extension after changing agent definitions/settings; if an upstream description format is

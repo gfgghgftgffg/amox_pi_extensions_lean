@@ -10,7 +10,7 @@
 ## 核心特性
 
 * 将上游搜索、核验、抓取和已存结果工具路由到 `web_access`，不重复注册。
-* 本地 PDF 直读支持 Unix/Windows 路径和 `file:///`，返回提取的 Markdown、保存路径、字符数及上游提供时的页数。
+* 本地 PDF 直读支持 Unix/Windows 路径和 `file:///`，返回已保存的 Markdown 及路径；结果元数据提供 Markdown 字符数及可用时的页数。
 * 高级参数按需展开：`help` 返回已安装上游的完整描述与 Schema。
 
 ## 安装

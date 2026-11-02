@@ -11,7 +11,7 @@ by [Nico Bailon](https://github.com/nicobailon/pi-web-access). Both are MIT-lice
 ## Core features
 
 * Routes upstream search, checking, fetching and stored-content tools through `web_access`, without duplicate registrations.
-* Direct local PDF access accepts Unix/Windows paths and `file:///`, returning extracted Markdown with its saved path, character count and page count when reported.
+* Direct local PDF access accepts Unix/Windows paths and `file:///`, returning the saved Markdown with its path; result metadata reports the Markdown character count and page count when available.
 * Advanced parameters on demand: `help` returns the installed upstream's full description and schema.
 
 ## Installation

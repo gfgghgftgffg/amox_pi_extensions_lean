@@ -12,7 +12,7 @@
 * 完整上游运行时：Agent 发现、后台派生、结果获取、运行中引导、Workflow、Schedule 与生命周期管理均使用上游实现。
 * 单一工具入口：`Agent`、`get_subagent_result`、`steer_subagent`、`SubagentWorkflow` 由 `subagent` 按
   `run`/`result`/`steer`/`workflow`/`help` 操作路由。
-* 高级参数按需展开：`input` 传入 JSON 对象，执行前会用真实上游 Schema 校验；`help` 返回当前上游完整 Schema。
+* 高级参数按需展开：`input` 传入 JSON 对象字符串，执行前会用真实上游 Schema 校验；`help` 返回当前上游完整 Schema。
 * 可用 Agent 名单：`subagent_type` 展示扩展启动时捕获的已启用类型。修改 Agent 定义或设置后需重新加载；上游描述
   格式无法识别时，用 `help` 搭配 `input: "run"` 查询。
 * 渲染委托上游工具，保留原始调用/结果卡片。

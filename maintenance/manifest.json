@@ -12,7 +12,7 @@
       "id": "pi-web-access-lean",
       "path": "packages/pi-web-access-lean",
       "packageName": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "entry": "index.ts",
       "upstreamPackage": "pi-web-access",
       "upstreamVersion": "0.46.0",
@@ -42,7 +42,7 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
@@ -54,9 +54,10 @@
     }
   ],
   "release": {
-    "version": "0.1.14",
-    "baseCommit": "8b3d005ca2765d7abc49b3b0e97eb4781934750f",
+    "version": "0.1.15",
+    "baseCommit": "ee2ff9e821eab1a37d95adecb56c04f152fb9c78",
     "packageIds": [
+      "pi-web-access-lean",
       "pi-subagents-lean"
     ]
   }

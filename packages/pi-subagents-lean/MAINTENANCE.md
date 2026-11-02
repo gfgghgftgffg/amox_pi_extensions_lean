@@ -208,6 +208,24 @@
   check 将实际运行类型／既有回归、源码与 dist 契约一致性、独立生产安装、字符代理捕获和两类依赖审计；
   结果以工具输出为准。真实 provider／模型任务、交互 UI 和 live ledger 集成未作端到端验证。
 
+## 本次 lean-only 审查：作者同步 0.22.1
+
+- sources.json 精确作者 before/after：`b084c51a7ec3fa6737b108ca3583e3d71075874f` →
+  `addf9e2e5a6c8f08719a4df48b10290b9214d902`。完整比较两版 index.ts、package.json、双语 README、
+  tests/facade.test.mjs、类型声明和 tsconfig.json，并阅读本地完整入口。作者入口、测试、声明及 tsconfig
+  均相同；无工具／参数／默认值或行为变化，无需源代码适配或新增回归。
+- 作者包装 0.22.4 → 0.22.5、引擎 pin 0.22.0 → 0.22.1、description 修正旧字符代理百分比；双语 README
+  更新版本、数字及 Pi 1.3 → 1.4 测量环境。peer/dev 不变。不复制作者包装版本、锁文件、开发依赖或基准。
+  本仓双语 README 仅明确高级 input 为 JSON 对象字符串；当前实测字符代理由 check 捕获。
+- 作者仍导入 src/index.ts；本仓保留 npm 自带 dist/index.js、源码/dist 契约一致性与真实 dist 回归门禁，
+  不回退源码。历史可选 op 推断／对象 input 容错决定保持，不扩大本次接受输入面。typebox v1／instancePath、
+  启动类型描述正则、直接字段优先、五参数 execute、withUsageReporting 捕获与 render 委派继续适用。
+- 本次库存只有 lean 快照，无引擎 before/after 或 CHANGELOG。固定引擎仍为 0.22.1 /
+  `fc089c4b7ab0f1185453b2e53027997c1f637e38`；远端 `a5fc545f8aba7c0266eafb5ff6da63b1a513138c`
+  未采用，不声称审查其实现。todo 不在发布选择内，不修改其发布文件。
+- check 实际执行选定范围类型／既有测试、契约与 source/dist 一致性、独立生产安装及两类依赖审计；
+  审计漏洞按所有者策略仅警告，执行失败仍须记录。ceil(chars/4) 非计费 token；真实模型任务／交互 UI 未验证。
+
 ## 运行时产物与验收
 
 - lean 自身仍为 `index.ts`，仅上游入口切换到现成的 `dist/index.js`；不复制、修改或重新编译上游实现，web/todo 不变。

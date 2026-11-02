@@ -1,15 +1,13 @@
 # Local upstream maintenance
 
-Base: 8b3d005ca2765d7abc49b3b0e97eb4781934750f
-Release after verified merge: v0.1.14
+Base: ee2ff9e821eab1a37d95adecb56c04f152fb9c78
+Release after verified merge: v0.1.15
 
-<!-- amox-release-summary:v0.1.14:start -->
-- Update pi-subagents-lean to the staged @tintinweb/pi-subagents 0.22.1 runtime while preserving the single subagent tool and published dist/index.js entry.
-- Inherit upstream fixes for fresh max_turns budgets and live turn counters on resumed agents, foreground resume cancellation, parent thinking-level inheritance, and duplicate skills/cwd sections in append-mode prompts.
-- Preserve upstream cross-extension additions through the existing facade: RPC steering, per-message usage events for nested/workflow agents, shutdown disposal notification, and consistent steering events from viewer/fleet paths.
-- Keep advanced parameters available through JSON input and current upstream help, including the clarified resume budget description; no model tools or parameter fields are added or removed.
-- Update English and Chinese documentation links and record the exact before/after source review and compatibility findings; refresh contracts and character-proxy measurements and run existing assertions, source/dist parity, fresh production installation and both audits.
-<!-- amox-release-summary:v0.1.14:end -->
+<!-- amox-release-summary:v0.1.15:start -->
+- pi-web-access-lean: reviewed author 6842095 → 189484d. The author's local-PDF Markdown/content-length repair is already present here, including compatible optional page metadata; retain the existing adapter and all PDF assertions. Clarify English/Chinese documentation that returned text contains saved Markdown and its path while counters are result metadata.
+- pi-subagents-lean: reviewed author b084c51 → addf9e2. Entrypoint and tests are unchanged; the author's engine pin now matches this repository. Keep the npm-provided dist runtime and existing source/dist consistency checks, and clarify JSON object string input in both READMEs.
+- Record exact source comparisons and reuse decisions in both package MAINTENANCE files and maintenance/agent-review.md. Preserve explicit operation schemas, unchanged runtime behavior and baseline tests; refresh independently measured character proxies and validate only the fixed release selection. Todo remains outside this release.
+<!-- amox-release-summary:v0.1.15:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

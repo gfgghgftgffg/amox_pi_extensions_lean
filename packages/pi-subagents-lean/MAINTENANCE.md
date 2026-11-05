@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.22.1`（精确固定；`dependencies`；此前为 0.22.0）。
+- `@tintinweb/pi-subagents@0.23.1`（精确固定；`dependencies`；此前为 0.22.1）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -225,6 +225,40 @@
   未采用，不声称审查其实现。todo 不在发布选择内，不修改其发布文件。
 - check 实际执行选定范围类型／既有测试、契约与 source/dist 一致性、独立生产安装及两类依赖审计；
   审计漏洞按所有者策略仅警告，执行失败仍须记录。ceil(chars/4) 非计费 token；真实模型任务／交互 UI 未验证。
+
+## 本次审查：0.22.1 → 0.23.1
+
+- sources.json 精确发布源码：`fc089c4b7ab0f1185453b2e53027997c1f637e38` →
+  `9bb6c822bae9f4fe8d33384b715a5e2e96d5df10`；不采用远端 `50460b5df6934c4237983a504808a04ee0f8a0a0`。
+  lean 作者仍为 addf9e2e5a6c8f08719a4df48b10290b9214d902，无本次新作者实现可复用。
+- 对比两版 CHANGELOG、package.json、default-agents.ts、custom-agents.ts 发现／字段解析，以及
+  index.ts Agent schema／执行入口、workflow 注册、result／steer 执行面；阅读 invocation-config.ts、
+  新 agent-record-entry.ts 与上游 saved-record-retrieval 测试作为响应证据。是门面兼容审查，不是逐文件审计。
+- 四工具与字段／required／类型保持。Agent 仍必填 prompt/description/subagent_type；name/model/thinking/
+  max_turns/run_in_background/resume/isolated/inherit_context 及条件 isolation/schedule 都由 help/input 保留。
+  result 的 agent_id/wait/verbose、steer 的 agent_id/message、workflow 参数保持；wait/verbose 默认 false，
+  顶层默认后台、inherit_context=false、isolation=off 不变；Pi >=1.1.0／typebox * peers、运行依赖范围相同。
+- 默认 Explore 删除 Haiku pin，改继承会话模型，文件 model 仍优先；可能改变成本与延迟。上游还明确 direct mention
+  及 model fallback 现在遵循文件 inherit_context=true，携带完整会话，RPC 仍由 caller 决定。双语 README
+  在现有配置段说明并链接上游行为说明，不复制上游手册或自行恢复旧默认。
+- 新 saved record 统一记录最终结果、sessionFile、handle/alias 和 worktreeLost。result 在 live record 缺失时
+  查当前 branch 的最新合法 subagents:record；精确 ID 优先，handle/alias 忽略大小写，tombstone 可先解析 ID。
+  返回 textResult，标注 saved record；verbose 不重建旧对话，也无 structuredContent。取消相应待发通知。
+- Agent resume 可从已存记录重新打开，保留 ID／handle，按当前类型定义运行；缺失会话文件、不再可用类型或丢失
+  有改动的 worktree 拒绝。干净 worktree 重新打开时在主 checkout 继续，不创建新 worktree；上游亦对 mention／
+  workflow reopen 统一此行为。现有 live resume 保持自身类型与新 turn 预算。此为上游明确行为变化，不本地重写。
+- custom-agents 新 normalizeToolName 兼容大小写、Glob→find、MultiEdit→edit；disallowedTools 兼容 camelCase，
+  bare mcp__server[__tool] 单独解析（server 展开通配）。CHANGELOG 同时记录无可用工具时拒绝启动、目录型扩展
+  package alias 修复、workflow 通知按唯一 agent 计数、viewer 使用会话工具 renderer 并支持 ctrl+o；均由依赖承接，
+  不为这些无门面源码改动的内部行为导入上游测试。上游 Explore guideline 改为仅在该类型可派生时提及它，
+  本地原本没有硬编码该推荐，无需加长常驻 prompt。
+- 内部契约保留：npm 自带 dist/index.js、typebox v1／instancePath、启动类型描述正则、直接字段优先、
+  captured withUsageReporting execute 与五参数／render 委派、workflow 条件注册。既有容错／源码入口不复用。
+- 新 upstream-023-regression.test.mjs 通过真实 dist 门面验证已存 ID／handle／alias 最新结果、精确 ID、未知 ID
+  与未保存会话 resume 拒绝；无真实 Agent/model 任务，不复制上游实现或无关单元测试，基线断言保留。
+- check 实际执行类型／回归、source/dist 契约一致性、独立生产安装、契约及 ceil(chars/4) 字符代理捕获、两种审计；
+  dist 缺失或不一致不能回退源码。漏洞按所有者策略仅警告。真实模型／MCP、交互 viewer 与 worktree reopen
+  未端到端验证，结果以工具输出为准；三平台 CI 与发布由固定后续流程负责。
 
 ## 运行时产物与验收
 

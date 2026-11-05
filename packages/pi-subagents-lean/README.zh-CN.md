@@ -46,7 +46,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 }
 ```
 
-* `result` 搭配 `agent_id` 查看已完成任务的输出。
+* `result` 搭配 `agent_id` 查看已完成任务的输出，重载后可读取会话中保存的记录；可用 ID 或已存 handle 标识。
 * `steer` 搭配 `agent_id` 与 `message` 调整运行中的 Agent。
 * `workflow` 运行脚本化多 Agent 流程，参数以 JSON 放在 `input`。
 * `help` 的 `input` 传操作名，返回对应上游工具的完整描述与 Schema。
@@ -56,6 +56,9 @@ node scripts/install-extension.mjs pi-subagents-lean
 上游运行时会自动扫描全局、工作区及项目目录中的内置与自定义 Agent。本仓库不包含任何私有 Agent、会话或记忆配置，
 但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
+内置 Explore 默认继承会话模型；有成本或延迟要求时，在 Agent 文件中指定模型。
+上下文继承与已存 Agent 的重新打开沿用上游：已移除且曾有改动的 worktree 会阻止重新打开，
+干净的 worktree 则在主 checkout 中继续。依赖这些路径前请查看[上游行为说明](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
 
 后台任务完成后会通知父会话，无需轮询或等待。Agent 配置、后台执行、Workflow、worktree 和
 `subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)；扩展集成使用上游的
@@ -69,7 +72,7 @@ Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 270 |
-| @tintinweb/pi-subagents | 8426 |
+| @tintinweb/pi-subagents | 8417 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

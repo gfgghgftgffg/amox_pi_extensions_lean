@@ -4,12 +4,12 @@ Base: 13ae5c834e54b2eb4446b3f681ee000c1fd67de7
 Release after verified merge: v0.1.16
 
 <!-- amox-release-summary:v0.1.16:start -->
-- Update web access to upstream 0.47.0: expose Sofya and Outcrawl through on-demand provider help and JSON input, retaining one compact web_access tool.
-- Carry upstream optional proxy locking, GitHub README retrieval up to 100K characters and platform temp-directory defaults; add offline facade coverage for provider requests/filtering and proxy override rejection.
-- Update subagents to upstream 0.23.1 via npm-provided dist: retrieve saved finished results by ID/handle/alias after reload and preserve upstream persisted-resume worktree safeguards.
-- Preserve unknown-ID lookup for minimal programmatic result contexts with a narrow empty-history fallback after the actual baseline regression exposed the new sessionManager requirement; real host history remains unchanged.
-- Document Explore's session-model default and conversation/reopen behavior in English and Chinese; validate saved results and resume refusal through real dist without model tasks.
-- Refresh source review, maintenance records, contracts and measured character proxies; keep baseline assertions intact and todo outside the release selection.
+- Update web access to upstream 0.47.0: discover Sofya and Outcrawl in on-demand help and select them through JSON input without expanding the single-tool schema.
+- Carry optional upstream proxy locking and GitHub README/temp-directory fixes; verify provider requests, domain filtering and rejected proxy overrides through offline DNS/fetch facade regressions.
+- Update subagents to upstream 0.23.1 using npm-published dist, including saved-result lookup by ID/handle/alias after reload and upstream persisted-session resume safeguards.
+- Preserve unknown-ID result lookup for minimal contexts without a session manager using a narrowly scoped empty branch; retain real host contexts and existing assertions. Correct the fallback's explicit partial-context type boundary following actual typecheck feedback.
+- Update bilingual guidance for Explore inheriting the session model and upstream conversation/worktree reopen behavior; cover saved retrieval and refusal through real dist without spawning tasks.
+- Refresh detailed source reviews, maintenance records, contracts and measured character proxies; publish only the selected web and subagents packages.
 <!-- amox-release-summary:v0.1.16:end -->
 
 Source review: [agent-review.md](agent-review.md).

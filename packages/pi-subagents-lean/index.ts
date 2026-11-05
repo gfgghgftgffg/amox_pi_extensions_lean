@@ -188,7 +188,7 @@ export function createSubagentsFacade(
         // programmatic contexts have no session history; preserve that lookup
         // as an empty branch without replacing a real host session manager.
         const executionContext = params.op === "result" && ctx && !ctx.sessionManager
-          ? { ...ctx, sessionManager: { getBranch: () => [] } } as typeof ctx
+          ? { ...ctx, sessionManager: { getBranch: () => [] } } as unknown as typeof ctx
           : ctx;
         return target.execute(callId, routedParams, signal, onUpdate, executionContext);
       },

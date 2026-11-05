@@ -50,7 +50,7 @@ Update a local Git installation by pulling the checkout and rerunning its instal
 }
 ```
 
-* `result` with `agent_id` retrieves output from a finished task.
+* `result` with `agent_id` retrieves output from a finished task, including its saved session record after reload; an ID or saved handle can identify it.
 * `steer` with `agent_id` and `message` redirects a running agent.
 * `workflow` runs a scripted multi-agent workflow; pass its parameters as JSON in `input`.
 * `help` with `input` set to one operation returns that upstream tool's full description and schema.
@@ -61,7 +61,11 @@ The upstream runtime discovers built-in and custom agents across global, workspa
 directories. This repository does not package private agents, sessions, or memory, but it intentionally
 preserves that discovery mechanism. After installation: review discovered agent definitions (especially
 their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, and watch for naming
-collisions with the built-in `general-purpose`, `Explore`, and `Plan` types.
+collisions with the built-in `general-purpose`, `Explore`, and `Plan` types. Built-in Explore inherits
+the session's model unless overridden; choose an agent-file model when cost or latency requires it.
+Conversation inheritance and reopening saved agents follow upstream: a removed worktree that held
+changes prevents reopening, while a clean one reopens in the main checkout. See the
+[upstream behavior notes](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md) before relying on these paths.
 
 Background tasks notify the parent on completion; do not poll or sleep. See the
 [upstream documentation](https://github.com/tintinweb/pi-subagents) for agent configuration,
@@ -76,7 +80,7 @@ definitions, discovery or trust settings to refresh the facade's available type 
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 270 |
-| @tintinweb/pi-subagents | 8426 |
+| @tintinweb/pi-subagents | 8417 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

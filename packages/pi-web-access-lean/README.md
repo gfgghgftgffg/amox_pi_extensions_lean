@@ -12,7 +12,7 @@ by [Nico Bailon](https://github.com/nicobailon/pi-web-access). Both are MIT-lice
 
 * Routes upstream search, checking, fetching and stored-content tools through `web_access`, without duplicate registrations.
 * Direct local PDF access accepts Unix/Windows paths and `file:///`, returning the saved Markdown with its path; result metadata reports the Markdown character count and page count when available.
-* Advanced parameters on demand: `help` returns the installed upstream's full description and schema.
+* Advanced parameters on demand: `help` returns the installed upstream's full description, schema and allowed search providers; select providers through JSON `input`.
 
 ## Installation
 
@@ -64,7 +64,8 @@ runtime's full description and schema. Translate upstream tool hints in results 
 Providers, credentials, search routing and fetch options use upstream's `web-search.json`, normally
 under `~/.pi/agent/`. See the [upstream documentation](https://github.com/nicobailon/pi-web-access#configuration)
 for configuration paths, environment variables, supported services and billing rules. External services
-may receive queries and page content and incur charges; review their configuration before use.
+may receive queries and page content and incur charges; review their configuration before use. Proxy
+policy, including optional `lockProxy`, follows upstream; omit per-call `proxy` to use the configured route.
 
 Direct local PDF access extracts Markdown only, not upstream's structured `extract` mode; remote PDFs
 use upstream handling. `web_access` stays registered directly: upstream dynamic tool-loading settings

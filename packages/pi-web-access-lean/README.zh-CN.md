@@ -11,7 +11,7 @@
 
 * 将上游搜索、核验、抓取和已存结果工具路由到 `web_access`，不重复注册。
 * 本地 PDF 直读支持 Unix/Windows 路径和 `file:///`，返回已保存的 Markdown 及路径；结果元数据提供 Markdown 字符数及可用时的页数。
-* 高级参数按需展开：`help` 返回已安装上游的完整描述与 Schema。
+* 高级参数按需展开：`help` 返回已安装上游的完整描述、Schema 和允许的搜索 Provider；通过 JSON `input` 选择 Provider。
 
 ## 安装
 
@@ -60,6 +60,7 @@ node scripts/install-extension.mjs pi-web-access-lean
 Provider、凭据、搜索路由和抓取选项沿用上游的 `web-search.json`，通常位于 `~/.pi/agent/`；
 配置路径、环境变量、支持的服务和计费规则见[上游文档](https://github.com/nicobailon/pi-web-access#configuration)。
 外部服务可能接收查询和页面内容并产生费用，使用前检查对应服务的配置。
+代理策略（包括可选 `lockProxy`）沿用上游；省略调用中的 `proxy` 以使用配置的路由。
 
 本地 PDF 直读仅提取 Markdown，不支持上游结构化 `extract` 模式；远端 PDF 由上游处理。
 `web_access` 始终直接注册，上游的动态工具加载设置不会延迟或移除这个入口。

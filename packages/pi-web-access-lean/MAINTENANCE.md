@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.46.0`（精确固定；`dependencies`；此前为 0.45.0）。
+- `pi-web-access@0.47.0`（精确固定；`dependencies`；此前为 0.46.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -350,6 +350,39 @@
   `fc63125608faef80c446687c79edd2626f511019`。本地 index.ts 不变，无新增网络测试。
 - check 实际重捕获契约与 ceil(chars/4) 字符代理、更新测量并执行选定范围类型／既有回归、生产安装与两类审计，
   结果以其输出为准。字符代理不是计费 token；真实 Provider／PDF 服务及交互 UI 未端到端实测。
+
+## 本次审查：0.46.0 → 0.47.0
+
+- sources.json 精确发布源码：`4af1a7f7757d450ba0afefe2d98737384dc9a9b4` →
+  `322e44fafc1aaa691779cdf2116584e67edd7645`，目标与远端一致。三个 lean 作者 HEAD 未变，
+  无本次新作者源码需要复用；既有复用决定保留。todo 不在发布选择内，不改其发布文件。
+- 对比两版 CHANGELOG、package.json、index.ts 初始化及 search/check/fetch/get 注册／执行面、
+  gemini-search.ts provider 表，utils.ts 代理配置／调用校验，github-extract.ts 默认目录和 README
+  读取／返回路径；完整阅读新增 sofya.ts 和 outcrawl.ts，核对 web-tool-contract.ts 响应层。
+  范围为门面兼容审查，不是全仓安全审计；不采用未发布远端源码。
+- 无工具或调用字段增删、required／类型不变；numResults=5、workflow=none、默认 readable 不变。
+  Provider 新增 sofya/outcrawl，help 动态名单自动披露，JSON input 委派即可，不扩大常驻 op/input。
+  二者仅显式选择或 searchRouting 使用，不在 auto/all 默认集合。运行依赖／peer 范围不变。
+- Sofya POST https://sofya.co/v1/search，key 来自 sofyaApiKey／SOFYA_API_KEY；snippets 深度，最多 20，
+  include/exclude_domains 各最多 10，recency 映射 freshness。Outcrawl POST https://api.outcrawl.ai/v1/search，
+  outcrawlApiKey／OUTCRAWL_API_KEY；域名变 site 表达式，过滤时请求额外 5 条、封顶 20，忽略 recency。
+  两者都做本地域名复筛、HTTP(S) URL 校验，支持既有 BaseUrl 网关与去凭据重定向。
+- 新 lockProxy 是配置而非工具参数，默认关闭。开启后调用省略 proxy 或规范化后与配置一致才允许；
+  空串／其它代理在请求前抛错；未配置 proxy 或 lockProxy 非布尔值同样报错。help 的 proxy 描述改为默认省略。
+  这是调用选择约束，现有 loopback／metadata／NO_PROXY 传输豁免仍在，不宣称所有流量强制代理。
+  本地 PDF 直读是独立分支，不受该远端代理策略控制。
+- GitHub 克隆默认目录从硬编码 /tmp 改为 join(tmpdir(),pi-github-repos)，显式 clonePath 仍优先；
+  克隆仓库 README 截断上限从 8192 改 100000 字符，工具回复仍受 maxInlineContentChars 限制，get 续取。
+  由固定依赖承接，无本地克隆实现复制或无关 GitHub 内部测试。
+- 五参数 execute、默认名路由、prepareArguments、旧 provider 字符串数组兼容、loader 丢弃及
+  setActiveTools 拦截继续适用；本地 PDF Markdown／计数适配保持。返回对象不改写：search structuredContent
+  是 queries/results/snippets，rendered 文本包含提示，fetch 正文位于 urls[].content，不能混为一层。
+- 新 upstream-047-regression.test.mjs 仅覆盖真实门面 help／JSON 两 Provider、过滤后的 structured results、
+  请求参数及代理锁的三操作拒绝路径。DNS/fetch 在 import 前 mock，绝对 HTTPS URL、虚构 key、拒绝意外目标；
+  代理锁错误按源码是抛错，不伪造 isError 结果。既有基线断言保留。
+- 双语 README 更新原有帮助与配置段；check 实际捕获契约及 ceil(chars/4) 字符代理、更新测量并执行
+  类型／回归／契约、独立生产安装及两类审计。代理不是计费 token；真实 Provider／代理、GitHub 克隆和跨平台
+  行为未端到端实测，结果以工具输出和后续三平台 CI 为准。
 
 ## 升级步骤
 

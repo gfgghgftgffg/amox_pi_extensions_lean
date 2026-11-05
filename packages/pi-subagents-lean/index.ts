@@ -184,7 +184,13 @@ export function createSubagentsFacade(
             .join("; ");
           throw new Error(`subagent ${params.op} parameters are invalid: ${summary}`);
         }
-        return target.execute(callId, routedParams, signal, onUpdate, ctx);
+        // 0.23 consults the saved branch even for an unknown result ID. Minimal
+        // programmatic contexts have no session history; preserve that lookup
+        // as an empty branch without replacing a real host session manager.
+        const executionContext = params.op === "result" && ctx && !ctx.sessionManager
+          ? { ...ctx, sessionManager: { getBranch: () => [] } } as unknown as typeof ctx
+          : ctx;
+        return target.execute(callId, routedParams, signal, onUpdate, executionContext);
       },
     };
     pi.registerTool(decorateWithCollapsedDisplay(facadeTool));

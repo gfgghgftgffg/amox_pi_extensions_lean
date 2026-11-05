@@ -4,11 +4,12 @@ Base: 13ae5c834e54b2eb4446b3f681ee000c1fd67de7
 Release after verified merge: v0.1.16
 
 <!-- amox-release-summary:v0.1.16:start -->
-- Update web access to upstream 0.47.0: Sofya and Outcrawl are discoverable through help and usable through JSON input, retaining the compact single-tool schema.
-- Carry upstream opt-in proxy locking, larger GitHub README retrieval and platform temp-directory defaults; document configured-proxy usage and cover rejected overrides with offline facade regressions.
-- Update subagents to upstream 0.23.1 using npm-provided dist: recover finished results by saved ID/handle after reload and reopen persisted agents with upstream worktree safeguards.
-- Document Explore's inherited session model and conversation/reopen behavior changes in English and Chinese; add real-dist saved-result and refusal regressions without launching model tasks.
-- Refresh source review, maintenance records, contracts and independently measured character proxies; preserve baseline assertions and leave todo outside the release selection.
+- Update web access to upstream 0.47.0: expose Sofya and Outcrawl through on-demand provider help and JSON input, retaining one compact web_access tool.
+- Carry upstream optional proxy locking, GitHub README retrieval up to 100K characters and platform temp-directory defaults; add offline facade coverage for provider requests/filtering and proxy override rejection.
+- Update subagents to upstream 0.23.1 via npm-provided dist: retrieve saved finished results by ID/handle/alias after reload and preserve upstream persisted-resume worktree safeguards.
+- Preserve unknown-ID lookup for minimal programmatic result contexts with a narrow empty-history fallback after the actual baseline regression exposed the new sessionManager requirement; real host history remains unchanged.
+- Document Explore's session-model default and conversation/reopen behavior in English and Chinese; validate saved results and resume refusal through real dist without model tasks.
+- Refresh source review, maintenance records, contracts and measured character proxies; keep baseline assertions intact and todo outside the release selection.
 <!-- amox-release-summary:v0.1.16:end -->
 
 Source review: [agent-review.md](agent-review.md).

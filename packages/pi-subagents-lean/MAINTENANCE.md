@@ -256,6 +256,10 @@
   captured withUsageReporting execute 与五参数／render 委派、workflow 条件注册。既有容错／源码入口不复用。
 - 新 upstream-023-regression.test.mjs 通过真实 dist 门面验证已存 ID／handle／alias 最新结果、精确 ID、未知 ID
   与未保存会话 resume 拒绝；无真实 Agent/model 任务，不复制上游实现或无关单元测试，基线断言保留。
+- 首次 check 的真实 dist 回归在既有 unknown-ID 测试失败：仅含 cwd 的最小 context 没有 sessionManager，
+  0.23 的 saved lookup 直接读取 getBranch。最小适配仅对 result 且缺失 sessionManager 的 context 提供空 branch，
+  保持原 not-found 契约；真实 manager/context 原样委派，不吞异常、不修改上游或既有断言。新 saved-result 回归
+  同时覆盖真实 branch 的非空结果，防止 fallback 遮蔽记录。其它 adapter 逻辑不变。
 - check 实际执行类型／回归、source/dist 契约一致性、独立生产安装、契约及 ceil(chars/4) 字符代理捕获、两种审计；
   dist 缺失或不一致不能回退源码。漏洞按所有者策略仅警告。真实模型／MCP、交互 viewer 与 worktree reopen
   未端到端验证，结果以工具输出为准；三平台 CI 与发布由固定后续流程负责。

@@ -20,7 +20,7 @@ export function loadConfig(path) {
     || !/^[-_A-Za-z0-9]{1,64}$/.test(config.topic) || !isAbsolute(config.tokenFile)) throw new Error("Invalid notification configuration");
   return { ...config, server: url.href.replace(/\/?$/, "/") };
 }
-export async function completion(state, serviceResult, { api, now = Date.now, wait = delay, timeoutMs = 90 * 60000 } = {}) {
+async function baseCompletion(state, serviceResult, { api, now = Date.now, wait = delay, timeoutMs = 90 * 60000 } = {}) {
   const retry = state.retry;
   const knownServerFailure = state.status === "failed" && validServerFailure(state.failure);
   if (knownServerFailure && state.publicationStarted === false && state.repairPending === false && !state.pr && !state.mergeSha
@@ -39,6 +39,10 @@ export async function completion(state, serviceResult, { api, now = Date.now, wa
     const reason = serviceResult === "timeout" ? "维护进程超时" : /No unchanged|checks|Protected/i.test(state.message || "") ? "本地验收未完成" : "维护任务失败，请查看服务日志";
     return { title: "失败", reason, failed: true };
   }
+  if (state.status === "fork-decision-required") return { title: "需你决定", reason: state.ownerDecision
+    ? "sync 移植中出现待确认问题；已保留并暂停当前候选，不再自动推送或合并。"
+    : "sync 上游有无法自动判断的改动；未移植、未升版，等待你审查。", needsDecision: true };
+  if (state.status === "fork-skipped") return { title: "上游已审查", reason: "sync 上游变化仅涉及舍弃功能或无需移植的内容；未升版、未发布。" };
   if (state.status === "no-update") return { title: "无更新", reason: "未发现上游更新，未调用模型" };
   if (state.status === "pending-maintenance-pr") return { title: "跳过", reason: "已有待处理维护 PR，本次未调用模型" };
   if (state.status !== "merged-after-ci" || !/^[a-f0-9]{40}$/.test(state.mergeSha || "") || !/^\d+\.\d+\.\d+$/.test(state.version || "")) return { title: "未发布", reason: "未确认发布完成", failed: true };
@@ -60,18 +64,47 @@ export async function completion(state, serviceResult, { api, now = Date.now, wa
   }
   return { title: "发布等待超时", reason: "PR 已合并，但未能在期限内确认发布结果", failed: true };
 }
+export async function completion(state, serviceResult, options) {
+  const result = await baseCompletion(state, serviceResult, options);
+  const reviews = (state.forkReviews ?? []).slice(0, 10);
+  const notes = reviews.map(review => {
+    const order = { ask: 0, port: 1, skip: 2 };
+    const changes = [...(review.changes ?? [])].sort((a, b) => (order[a.decision] ?? 3) - (order[b.decision] ?? 3)).map(item => `${({ port: "候选移植（发布成功才生效）", skip: "跳过", ask: "请你决定" })[item.decision] ?? "待审查"}：${String(item.reason).slice(0, 1000)}（${(item.files ?? []).slice(0, 8).join(", ")}）`).join("\n");
+    return `${review.id} 上游 ${review.from} → ${review.to}${review.cached ? "（沿用已记录审查）" : ""}\n${changes}`;
+  });
+  if (reviews.some(review => review.decision === "ask")) {
+    result.needsDecision = true;
+    if (!result.link && safeLink(state.pr)) result.link = safeLink(state.pr);
+    notes.unshift(state.ownerDecision
+      ? `移植阶段请你决定：${state.ownerDecision.reason}（${state.ownerDecision.files.join(", ")}）。当前候选已暂停，详细报告见 fork-review-amox-pi-sync.json。`
+      : "有待决定项：sync 整包暂不自动移植，不影响其它包。详细报告保存在维护状态目录 fork-review-amox-pi-sync.json；确认取舍后需重新审查。");
+  }
+  if (notes.length) result.reason += `\n\n${notes.join("\n\n").slice(0, 12000)}`;
+  return result;
+}
+
 export async function send(config, state, result, fetchImpl = fetch) {
   const text = privateText(config.tokenFile).trim();
   const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
   const token = tokens.length === 1 ? tokens[0] : text;
   if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
   const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
-    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean)$/.test(item?.name ?? "")
-    && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 3).map(item => `${item.name}@${item.version}`);
-  const message = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
+    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|amox-pi-sync)$/.test(item?.name ?? "")
+    && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 4).map(item => `${item.name}@${item.version}`);
+  const fullMessage = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
+  let message = fullMessage;
+  if (Buffer.byteLength(message, "utf8") > 3800) {
+    const suffix = "\n（通知已截短，详见维护状态目录内的完整审查报告。）";
+    message = "";
+    for (const character of fullMessage) {
+      if (Buffer.byteLength(message + character + suffix, "utf8") > 3800) break;
+      message += character;
+    }
+    message += suffix;
+  }
   const response = await fetchImpl(config.server, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed ? 4 : 3, tags: [result.failed ? "warning" : result.pending ? "hourglass_flowing_sand" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
+    body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed || result.needsDecision ? 4 : 3, tags: [result.failed ? "warning" : result.needsDecision ? "question" : result.pending ? "hourglass_flowing_sand" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
   if (!response.ok) throw new Error("ntfy did not accept the notification");
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

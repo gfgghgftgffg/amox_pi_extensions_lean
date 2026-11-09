@@ -40,7 +40,7 @@ node scripts/install-extension.mjs amox-pi-sync
 
 ## 维护与部署
 
-`amox-pi-sync` 是 `manual-fork`，自动上游维护不会覆盖、适配或给它升版。该包当前版本为 `0.1.0`；每个包独立维护版本，根 private 包版本（`0.1.16`）仅标识发布批次。安装 Starline 后可点击状态胶囊打开状态与操作菜单；没有 Starline 也可使用 `/sync-status`。功能与限制详见[包 README](packages/amox-pi-sync/README.zh-CN.md)。
+`amox-pi-sync` 是 `selective-fork`：每日比较上游正式发布源码，按文档取舍移植保留范围内有价值的改动，跳过舍弃功能；不能判断时通过 ntfy 请你决定。只有实际移植并验收通过才单独升版，不恢复全量上游 suite。每个包独立维护版本，根 private 包版本仅标识发布批次。安装 Starline 后可点击状态胶囊打开状态与操作菜单；没有 Starline 也可使用 `/sync-status`。功能与限制详见[包 README](packages/amox-pi-sync/README.zh-CN.md)。
 
 安装和使用扩展不需要配置 Actions。每天 02:23 UTC（北京时间 10:23），systemd 新开独立 Pi SDK 会话，不使用 subagent。没有上游更新或已有未合并维护 PR 时不调用模型。适配和实际检查在临时副本中完成，不改个人安装或替换维护宿主。
 

@@ -2,7 +2,7 @@
 
 [English](npm-publishing.md)
 
-三个现有 lean 包已在 npm 公开发布；新增的 `amox-pi-sync` 尚未发布，首次发布前请从仓库安装。仓库共包含四个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将本批选中、已验证的 GitHub Release 归档发布到公共 npm；用户只需执行 README 中的安装命令。
+三个现有 lean 包已在 npm 公开发布；若新增的 `amox-pi-sync` 尚未发布，首次 npm 发布确认前请从仓库安装。仓库共包含四个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将本批选中、已验证的 GitHub Release 归档发布到公共 npm；用户只需执行 README 中的安装命令。
 
 ## 按包独立发布
 

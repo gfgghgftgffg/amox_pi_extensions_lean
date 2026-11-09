@@ -63,9 +63,9 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
     assert.equal(pkg.license, "MIT");
     assert.equal(pkg.repository.directory, entry.path);
     assert.match(pkg.repository.url, /gfgghgftgffg\/amox_pi_extensions_lean\.git/);
-    if (entry.maintenanceMode === "manual-fork") {
+    if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) {
       assert.equal(entry.id, "amox-pi-sync");
-      assert.equal(entry.version, "0.1.0");
+      assert.match(entry.version, /^0\.1\.\d+$/);
       assert.equal(entry.releaseVersioning, "independent");
       assert.equal(entry.toolContract, false);
       assert.deepEqual(entry.registeredTools, []);
@@ -73,6 +73,8 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
       assert.equal(entry.upstreamRepository, "https://github.com/MuratAitov/pi-sync.git");
       assert.deepEqual(pkg.dependencies, {});
       assert.ok(pkg.files.includes("core.ts"));
+      assert.equal(entry.maintenanceMode, "selective-fork");
+      assert.deepEqual(entry.sourceFiles, ["index.ts", "core.ts"]);
       assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
     } else {
       assert.ok(entry.leanRepository.endsWith(`${entry.id}.git`), entry.leanRepository);

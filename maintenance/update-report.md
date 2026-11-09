@@ -1,17 +1,16 @@
 # Local upstream maintenance
 
-Base: 13ae5c834e54b2eb4446b3f681ee000c1fd67de7
-Release after verified merge: v0.1.16
+Base: 3261d956499073196a22a725d0638e7c0b1f571f
+Release after verified merge: v0.1.17
 
-<!-- amox-release-summary:v0.1.16:start -->
-- Update web access to upstream 0.47.0: discover Sofya and Outcrawl in on-demand help and select them through JSON input without expanding the single-tool schema.
-- Carry optional upstream proxy locking and GitHub README/temp-directory fixes; verify provider requests, domain filtering and rejected proxy overrides through offline DNS/fetch facade regressions.
-- Update subagents to upstream 0.23.1 using npm-published dist, including saved-result lookup by ID/handle/alias after reload and upstream persisted-session resume safeguards.
-- Preserve unknown-ID result lookup for minimal contexts without a session manager using a narrowly scoped empty branch; retain real host contexts and existing assertions. Correct the fallback's explicit partial-context type boundary following actual typecheck feedback.
-- Update bilingual guidance for Explore inheriting the session model and upstream conversation/worktree reopen behavior; cover saved retrieval and refusal through real dist without spawning tasks.
-- Refresh detailed source reviews, maintenance records, contracts and measured character proxies; publish only the selected web and subagents packages.
-<!-- amox-release-summary:v0.1.16:end -->
+<!-- amox-release-summary:v0.1.17:start -->
+- 首次发布独立扩展 `@gfgghgftgffg/amox-pi-sync@0.1.1`：私有 SSH Git 原始 agent 数据同步、备份恢复、诊断和手动备份清理；保留 Starline 状态胶囊和统一操作界面，不安装原版 suite。
+- 每日监控 sync 的上游正式发布，校验前后归档 integrity，并按既定功能取舍逐项审查。保留范围内值得跟进的改动才定向移植；舍弃功能跳过，不恢复完整 suite、不添加上游运行时依赖。
+- 无法确定的功能、行为或兼容性改动通过 ntfy 通知所有者，附版本、理由和文件。审查阶段的待决定项不阻塞其它包；移植中发现疑问则保留暂停当前候选，阻止后续自动推送／合并。
+- 相同目标和规则复用已记录的 skip/ask 审查，避免重复调用模型。自动适配不能改写功能取舍章节，且必须有实际源码改动和定向回归才能发布移植版本。
+- 本批只发布 sync；web、todo 和 subagents 维持原版本。共享维护流程改动扩大验收范围，不扩大 npm 发布选择。
+<!-- amox-release-summary:v0.1.17:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.
+Local validation includes typechecks, regression tests, contract verification, independent production installs and dependency audits. Exact-head three-platform PR CI and independent merged-SHA Release acceptance remain required; this report does not substitute for their actual results. GitHub Release creation alone does not prove first npm publication or Trusted Publisher setup has succeeded.

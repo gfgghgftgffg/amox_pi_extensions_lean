@@ -35,7 +35,7 @@ try {
     for (const peer of ["@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]) {
       check(!existsSync(join(prefix, "node_modules", ...peer.split("/"))), `host peer ${peer} is NOT installed`);
     }
-    if (entry.maintenanceMode !== "manual-fork") {
+    if (entry.toolContract !== false) {
       const upstream = JSON.parse(readFileSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"), "package.json"), "utf8"));
       check(upstream.version === entry.upstreamVersion, `${entry.upstreamPackage} is pinned to ${entry.upstreamVersion}`);
       if (entry.upstreamEntry !== undefined) {

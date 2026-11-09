@@ -17,6 +17,7 @@ function metadata({ lean = {}, versions = {} } = {}) {
   const npm = {}, git = {};
   for (const entry of manifest.packages) {
     if (entry.maintenanceMode === "manual-fork") continue;
+    if (entry.maintenanceMode === "selective-fork") { npm[entry.upstreamPackage] = { latestStable: versions[entry.upstreamPackage] ?? entry.upstreamVersion }; continue; }
     const pkg = JSON.parse(readFileSync(join(repoRoot, entry.path, "package.json"), "utf8"));
     for (const [name, version] of Object.entries(pkg.dependencies)) npm[name] = { latestStable: versions[name] ?? version, gitHead: entry.upstreamGitHead };
     git[entry.leanRepository] = { head: lean[entry.id] ?? entry.leanCommit };

@@ -5,7 +5,7 @@
 - Upstream: [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), npm `pi-sync-suite@0.1.1`.
 - Source ref: `npm:pi-sync-suite@0.1.1` (published source baseline, not the repository's moving HEAD).
 - Upstream MIT notice is preserved verbatim in `LICENSE`: Copyright (c) 2026 Murat.
-- Local package: `@gfgghgftgffg/amox-pi-sync@0.1.0`, standalone TypeScript entrypoint `index.ts` and `core.ts`; no runtime dependency on the original suite.
+- Local package: `@gfgghgftgffg/amox-pi-sync@0.1.1`, standalone TypeScript entrypoint `index.ts` and `core.ts`; no runtime dependency on the original suite.
 
 ## Scope
 
@@ -33,11 +33,19 @@ Safety requirements: private SSH remote, no working-directory mutation, no JSONL
 | 诊断 | 保留 | 用户需要查看待传输差异、Git 状态和错误，不能将失败或“未检查”显示为已同步。 |
 | 常驻三行 widget | 替换 | 将状态、操作与设置统一到 Starline 气泡，避免常驻重复信息；未安装 Starline 时保留原生命令界面。 |
 
-精简目标是职责清晰和减少维护范围，未进行启动性能对比。后续移植上游改动时保持上述边界；新增功能应有明确需求，不随上游更新自动恢复已移除模块。
+精简目标是职责清晰和减少维护范围，未进行启动性能对比。每日监控上游正式发布，保持上述边界定向移植；新增功能应有明确需求，不随上游更新自动恢复已移除模块。
 
 ## Repository integration
 
-`maintenance/manifest.json` marks this package `maintenanceMode: manual-fork`. Automated npm/Git upstream discovery, source collection, adapter writes, version staging and context-footprint measurements skip it. **Never replace it with the full upstream suite or reintroduce removed features during automatic maintenance.** Upstream changes require manual source review and scoped porting.
+`maintenance/manifest.json` marks this package `maintenanceMode: selective-fork`. Daily maintenance monitors the latest stable npm publication, not unpublished moving repository HEAD. It compares the exact published baseline and target archives, verifies their SHA-512 integrity, and reads source as untrusted text without installing or executing the original suite. A separate read-only SDK review must cover every changed published file and apply the feature decisions above:
+
+- **Port** worthwhile fixes and improvements within retained behavior, especially data/path safety, backups, diagnostics, background responsiveness and compatibility with the existing Starline UI. Preserve local guarantees; add focused regressions.
+- **Skip** changes only to removed features or irrelevant material. Already-implemented behavior may be skipped only with a concrete source-based explanation. Record the decision; do not bump the package or move the integrated upstream baseline.
+- **Ask** the owner about new features, conflicting goals, unclear value, behavior/safety tradeoffs, compatibility uncertainty or incomplete source/review evidence. Any unresolved item pauses the whole sync port, not other packages. ntfy includes the upstream version delta, reasons and files. Do not call an uncertain change irrelevant to bypass review.
+
+Only a complete review with ports and no unresolved items enables adaptation of `index.ts`/`core.ts` and its scoped tests/docs. The owner’s feature-decisions section is immutable during automatic adaptation. An actual implementation change and focused regression are required; version-only or docs-only ports cannot be published. If implementation reveals new uncertainty, `ask_owner` records the reason, sends ntfy and pauses the existing candidate without further push or merge; it must not bypass a failed check by rebuilding. The fixed host independently stages its package version and publication baseline; local checks, exact-head three-platform CI and Release acceptance still apply. No upstream runtime dependency is added. **Never replace this fork with the full suite or reintroduce removed features.** Tool-context measurements still skip this command-only package.
+
+Skip/ask reports are saved privately under the host maintenance state directory as `fork-review-amox-pi-sync.json`, including the baseline/target, integrity and per-change evidence. The same version and unchanged local implementation/policy reuse the report without another model call; pending owner decisions remain visible in daily ntfy summaries. Source acquisition failures are rechecked. A new target or changed local policy/implementation triggers review again, always against the last integrated baseline so skipped changes cannot hide later relevant fixes. Port decisions are not cached as successful integration. To resolve a pending decision, record the owner's rule in this file and merge it, then rerun maintenance; do not edit a report to fake an approved release.
 
 All workspace packages retain their own versions; the root version identifies a release batch and its explicit package selection. This package also records `releaseVersioning: independent`. Release assets use each manifest/package version in the tarball name; the GitHub release tag remains tied to the root version. Installation and production checks still include this package. `toolContract: false` excludes this command-only fork from upstream-versus-lean tool-size comparisons; `registeredTools: []` is checked during isolated production loading.
 

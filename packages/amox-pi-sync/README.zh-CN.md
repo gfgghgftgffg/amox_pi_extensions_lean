@@ -47,4 +47,4 @@ manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再�
 - 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超出最新 20 份的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
 - 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
 
-不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。这是本地维护的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。
+不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。环境部署和机器专属配置交给 `amox-agent-bootstrap` 等部署流程，阅读版导出使用 Pi 原生 `/export`；同步器保留原始数据选择、备份恢复和手动备份清理。各项原因与后续维护边界见[功能取舍](MAINTENANCE.md#功能取舍与维护边界)。这是本地维护的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。

@@ -15,6 +15,26 @@ Settings are stored in `amox-pi-sync.json`; legacy `pi-sync-suite.json` is read 
 
 Safety requirements: private SSH remote, no working-directory mutation, no JSONL merging, preserve local-only files, back up replacements and never overwrite active sessions. Safe-path validation must exclude configuration and implementation data even when users select arbitrary relative data paths. Do not claim encryption, conflict-free multi-device merging or automatic secret removal.
 
+## 功能取舍与维护边界
+
+本 fork 负责原始 agent 数据的跨设备传输和本地恢复。部署、配置模板与机器路径适配由 `amox-agent-bootstrap` 等部署流程负责；阅读版会话导出使用 Pi 原生 `/export`。使用本扩展不要求安装 bootstrap。
+
+| 上游功能 | 处理 | 原因 |
+| --- | --- | --- |
+| 配置同步、settings 合并 | 删除 | 避免本机同步快照与部署模板成为两个配置来源，也不将机器专属设置直接应用到另一台电脑。通用路径选择仍可传输用户明确选中的安全数据文件，但不提供配置合并或路径适配。 |
+| Markdown/JSON 聊天归档 | 删除 | 本扩展的目标是保留可继续工作的原始会话；上游导出会省略、截断内容，不能代替原始数据。阅读和分享交给 Pi 原生导出，不在同步器内维护另一套渲染器。 |
+| Environment Tools | 删除 | 工具安装和依赖适配归部署流程管理，数据拉取不应同时承担环境安装职责。 |
+| Local Packages | 删除 | 它控制 settings 中本地扩展路径的同步；配置同步移除后不再需要，而且传输路径字符串不会安装路径所指向的代码。 |
+| sessions、missions | 保留 | sessions 保存对话与工具记录；missions 保存工作流任务及关联索引。两者共同保留工作记录，但不保证恢复运行中的任务或临时目录中的外部产物。 |
+| 通用路径选择 | 保留 | 允许用户按需要包含、排除安全的 agent 数据路径，不将范围写死为两个目录；敏感文件与实现目录仍受限制。 |
+| 手动、自动同步 | 保留 | 支持用户主动换机时推拉，也保留可选后台同步；默认手动，不因精简功能改变用户的同步时机。 |
+| 备份恢复 | 保留 | 同路径文件可能被远端内容替换，覆盖前的本地副本是恢复入口。 |
+| Cleanup | 保留并修正 | 即使没有聊天归档，备份仍会积累，需要界面内的手动管理。按完整恢复点预览和确认删除，修正上游保留数量逻辑；不清理 sessions、missions，也不自动删除。 |
+| 诊断 | 保留 | 用户需要查看待传输差异、Git 状态和错误，不能将失败或“未检查”显示为已同步。 |
+| 常驻三行 widget | 替换 | 将状态、操作与设置统一到 Starline 气泡，避免常驻重复信息；未安装 Starline 时保留原生命令界面。 |
+
+精简目标是职责清晰和减少维护范围，未进行启动性能对比。后续移植上游改动时保持上述边界；新增功能应有明确需求，不随上游更新自动恢复已移除模块。
+
 ## Repository integration
 
 `maintenance/manifest.json` marks this package `maintenanceMode: manual-fork`. Automated npm/Git upstream discovery, source collection, adapter writes, version staging and context-footprint measurements skip it. **Never replace it with the full upstream suite or reintroduce removed features during automatic maintenance.** Upstream changes require manual source review and scoped porting.

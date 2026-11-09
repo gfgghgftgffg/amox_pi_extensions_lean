@@ -16,6 +16,7 @@ const palette = (light = false) => {
   const codes = light ? { text: 30, muted: 90, dim: 37, accent: 34, success: 32, warning: 33, error: 31 }
     : { text: 97, muted: 37, dim: 90, accent: 96, success: 92, warning: 93, error: 91 };
   return { fg: (tone, text) => { assert.ok(tone in codes, `Unknown semantic tone: ${tone}`); return `\x1b[${codes[tone]}m${text}\x1b[39m`; },
+    getFgAnsi: tone => `\x1b[${codes[tone]}m`,
     bold: text => `\x1b[1m${text}\x1b[22m` };
 };
 
@@ -46,7 +47,7 @@ async function fixture(t, configured = true, starline = true) {
       const body = content().body;
       if (content().title !== "Amox Pi Sync") {
         const targets = body.filter(line => typeof line !== "string");
-        dialogs.push({ title: content().title, options: targets.map(line => plain(line.text)), body, starline: true });
+        dialogs.push({ title: content().title, options: targets.map(line => plain(line.text)), body, starline: true, anchor: { ...pill } });
         const selected = choices.shift();
         queueMicrotask(() => {
           handle.close();
@@ -99,7 +100,7 @@ test("manual startup is local-only and never creates an upstream widget", async 
   assert.equal(f.gitCalls.length, 0);
 });
 
-test("Starline and command status views use the same centered placement", async t => {
+test("Starline and command status views retain the clicked cell placement", async t => {
   const f = await fixture(t);
   const anchor = { centerColumn: 12, terminalWidth: 100 };
   f.click(anchor);
@@ -108,11 +109,54 @@ test("Starline and command status views use the same centered placement", async 
   assert.ok(content.body.some(line => typeof line === "string" && /^Paths\s+sessions, missions$/.test(plain(line))));
   assert.ok(content.body.some(line => typeof line === "string" && /^Remote updates\s+Not checked$/.test(plain(line))));
   assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
-  assert.equal(f.anchor(), undefined);
+  assert.equal(f.anchor().centerColumn, anchor.centerColumn);
+  assert.equal(f.anchor().terminalWidth, anchor.terminalWidth);
   await f.commands.get("sync-status").handler("", f.ctx);
-  assert.equal(f.anchor(), undefined);
+  assert.equal(f.anchor().centerColumn, anchor.centerColumn);
+  assert.equal(f.anchor().terminalWidth, anchor.terminalWidth);
   assert.equal(f.content().title, content.title);
   assert.deepEqual(f.content().body.map(line => typeof line === "string" ? line : line.text), content.body.map(line => typeof line === "string" ? line : line.text));
+  assert.equal(f.gitCalls.length, 0);
+});
+
+test("Starline colours and cell placement follow the pill across status, menus and confirmations", async t => {
+  const f = await fixture(t);
+  const pill = { startColumn: 2, endColumn: 14, centerColumn: 8, terminalWidth: 100,
+    background: "\x1b[48;2;42;100;180m", foreground: "\x1b[97m" };
+  f.click(pill);
+  assert.equal(f.anchor().background, pill.background);
+  assert.equal(f.anchor().foreground, pill.foreground);
+  assert.equal(f.anchor().startColumn, pill.startColumn);
+  assert.equal(f.anchor().endColumn, pill.endColumn);
+  await f.commands.get("sync-status").handler("", f.ctx);
+  assert.equal(f.anchor().background, pill.background);
+  f.choices.push("Mode  Manual", "Back", "Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  f.choices.push("Cancel");
+  await f.commands.get("sync-setup").handler("git@github.com:example/new.git", f.ctx);
+  assert.ok(f.dialogs.every(dialog => dialog.anchor.background === pill.background));
+  assert.ok(f.dialogs.every(dialog => dialog.anchor.foreground === pill.foreground));
+  assert.ok(f.dialogs.every(dialog => dialog.anchor.startColumn === pill.startColumn && dialog.anchor.endColumn === pill.endColumn));
+});
+
+test("bubble colour choice persists without Git and resolves the current theme on redraw", async t => {
+  const f = await fixture(t);
+  await f.commands.get("sync-status").handler("", f.ctx);
+  assert.equal(f.anchor().background, "\x1b[106m", "commands default to theme accent before a pill click");
+  f.choices.push("Bubble colour  Follow pill", "Theme success", "Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  assert.equal(f.dialogs[1].body.find(line => typeof line !== "string" && line.current).text, f.ctx.ui.theme.bold("Follow pill"));
+  const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
+  assert.equal(saved.bubbleColor, "success");
+  f.click({ background: "\x1b[44m", foreground: "\x1b[97m" });
+  assert.equal(f.anchor().background, "\x1b[102m");
+  assert.equal(f.anchor().foreground, "", "Starline derives contrasting selection text");
+  f.ctx.ui.theme = palette(true);
+  assert.equal(f.anchor().background, "\x1b[42m");
+  f.ctx.ui.theme.getFgAnsi = () => "\x1b[38;2;12;34;56m";
+  assert.equal(f.anchor().background, "\x1b[48;2;12;34;56m");
+  f.ctx.ui.theme.getFgAnsi = () => "\x1b[38;5;42m";
+  assert.equal(f.anchor().background, "\x1b[48;5;42m");
   assert.equal(f.gitCalls.length, 0);
 });
 
@@ -156,7 +200,7 @@ test("settings only offers retained functionality", async t => {
   const f = await fixture(t);
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs[0].starline, true);
-  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode  Manual", "Paths  2", "Backups", "Cleanup", "Diagnostics", "Back"]);
+  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode  Manual", "Paths  2", "Bubble colour  Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
 });
 
 test("pill Settings and its submenus share the Starline renderer and selection survives close-before-callback", async t => {
@@ -168,7 +212,8 @@ test("pill Settings and its submenus share the Starline renderer and selection s
   assert.ok(f.dialogs.every(dialog => dialog.starline));
   assert.deepEqual(f.dialogs.map(dialog => dialog.title), ["Sync settings", "Sync mode", "Sync settings"]);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
-  assert.equal(f.anchor(), undefined);
+  assert.equal(f.anchor().centerColumn, 12);
+  assert.equal(f.anchor().terminalWidth, 100);
 });
 
 test("unconfigured startup and no-Starline command fallback are useful", async t => {

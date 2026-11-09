@@ -22,9 +22,11 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
-import { realpathSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 
+export type BubbleColor = "pill" | "accent" | "success" | "warning" | "error";
 export type Config = {
+  bubbleColor?: BubbleColor;
   version: 1; repoUrl: string; repoDir: string; mode: "manual" | "auto" | "off";
   paths: string[]; pullIntervalMinutes: number; watchIntervalMs: number; pushDebounceMs: number;
   lastPushAt?: string; lastPullAt?: string; lastResult?: string;
@@ -91,6 +93,7 @@ function validate(config: Config, paths: Paths): void {
     if ([config.repoDir, paths.backupDir, paths.configFile, `${paths.configFile}.lock`, path.join(paths.agentDir, "pi-sync-suite.json")].some(other => overlaps(p, other))) throw new Error("Managed paths overlap sync config, repository or backup directory");
   }
   if (overlaps(config.repoDir, paths.backupDir) || inside(config.repoDir, paths.agentDir) || inside(config.repoDir, paths.configFile) || inside(paths.backupDir, paths.agentDir)) throw new Error("Unsafe repository/backup directory nesting");
+  if (config.bubbleColor !== undefined && !["pill", "accent", "success", "warning", "error"].includes(config.bubbleColor)) throw new Error("Unsupported bubble colour");
   const retention = config.retention ?? { keepBackups: 20, maxAgeDays: 180 };
   if (!Number.isInteger(retention.keepBackups) || retention.keepBackups < 0 || !Number.isFinite(retention.maxAgeDays) || retention.maxAgeDays <= 0) throw new Error("Invalid backup retention: keepBackups must be a nonnegative integer and maxAgeDays positive");
   for (const key of ["pullIntervalMinutes", "watchIntervalMs", "pushDebounceMs"] as const) if (!Number.isFinite(config[key]) || config[key] <= 0) throw new Error(`${key} must be positive`);
@@ -134,7 +137,16 @@ export async function saveConfig(config: Config, paths = defaultPaths()): Promis
 // Raw sessions are opaque bytes and intentionally bypass content scanning. Use a
 // trusted PRIVATE repository: sessions may contain credentials or private text.
 const secret = /-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|\bghp_[A-Za-z0-9_]{30,}\b|\bsk-[A-Za-z0-9_-]{20,}\b|\b(?:api[_-]?key|token|password|secret)\b\s*[:=]\s*["']?[^"'\s]{12,}/i;
-const gitOptions = ["-c", "core.hooksPath=", "-c", "core.autocrlf=false", "-c", "credential.interactive=false", "-c", "core.sshCommand=ssh -oBatchMode=yes -oConnectTimeout=10"];
+// Git for Windows SSH can misdecode non-ASCII home paths; prefer native OpenSSH.
+const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
+const sshCommand = process.platform === "win32" && existsSync(nativeSsh)
+  ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";
+const gitOptions = [
+  "-c", "core.hooksPath=",
+  "-c", "core.autocrlf=false",
+  "-c", "credential.interactive=false",
+  "-c", `core.sshCommand=${sshCommand} -oBatchMode=yes -oConnectTimeout=10`,
+];
 type Files = Map<string, Buffer>;
 export class SyncService {
   public status: Status = {};

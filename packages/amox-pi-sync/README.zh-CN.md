@@ -33,7 +33,7 @@ pi update --extensions
 
 设置菜单保留 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。默认路径为 `sessions` 和 `missions`。`manual` 和 `off` 模式仍可手动上传、拉取。
 
-manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。安装 Starline 时，优先点击状态胶囊打开详情，执行 Check status、Push、Pull 或 Settings。状态 key 保留为 `pi-sync`，兼容原 Starline placement；pill bridge 优先于旧 `extensionStatuses.commands`，无需修改 Starline 配置。没有三行 widget。`/sync-status`、点击胶囊、设置和子菜单统一使用底栏上方居中的 Starline 气泡，确认操作也使用相同样式；文本输入仍使用 Pi 输入框。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。State 直接显示 Manual、Auto 或 Off；执行中显示 Push／Pull，另列当前模式，不追加 idle。未安装 Starline 时回退原生界面，状态输出保留纯文本。
+manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。安装 Starline 时，优先点击状态胶囊打开详情，执行 Check status、Push、Pull 或 Settings。状态 key 保留为 `pi-sync`，兼容原 Starline placement；pill bridge 优先于旧 `extensionStatuses.commands`，无需修改 Starline 配置。没有三行 widget。点击胶囊时，气泡像 Model 一样锚定对应的 Starline cell；设置、子菜单及确认框沿用该锚点。`/sync-status` 使用最近点击的锚点，首次点击前回退居中。文本输入仍使用 Pi 输入框。设置中的 **Bubble colour** 默认 **Follow pill**（跟随胶囊），也可选择当前主题的 accent、success、warning 或 error 作为边框和选中项颜色；首次点击前使用主题 accent。可选配置 `bubbleColor` 保存为 `pill`、`accent`、`success`、`warning` 或 `error`，修改配色不触发传输。未安装 Starline 时隐藏此选项，由 Pi 渲染原生弹框。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。State 直接显示 Manual、Auto 或 Off；执行中显示 Push／Pull，另列当前模式，不追加 idle。未安装 Starline 时回退原生界面，状态输出保留纯文本。
 
 ## 数据与安全
 
@@ -43,7 +43,7 @@ manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再�
 - 路径相对于 Pi agent 数据目录，不是当前项目。可包含/排除任意安全的数据相对路径；扩展不改写工作目录。
 - 传输原始文件，不生成 Markdown/JSON 归档，不合并 JSONL。并发编辑不是语义合并；请协调多设备操作并查看诊断。
 - 保留本地独有文件，不传播删除；同路径的不同内容以拉取数据为准，覆盖前备份；不得覆盖活跃会话。恢复备份只处理当前纳管范围。
-- Git 操作关闭自动换行转换，避免 Windows 的 `core.autocrlf` 改写原始会话。SSH 使用系统 `ssh` 的非交互模式及连接超时，不复用自定义 `core.sshCommand`。
+- Git 操作关闭自动换行转换，避免 Windows 的 `core.autocrlf` 改写原始会话。Windows 优先使用原生 OpenSSH（`System32/OpenSSH/ssh.exe`），支持中文用户目录；不存在时及其他平台使用 `ssh`。保留非交互模式、连接超时及主机密钥验证，不复用自定义 `core.sshCommand`。
 - 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超出最新 20 份的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
 - 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
 

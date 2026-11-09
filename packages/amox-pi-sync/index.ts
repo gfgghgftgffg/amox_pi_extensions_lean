@@ -11,10 +11,12 @@ type Choice = string | { value: string; label: string };
 type SelectDetails = { description?: string; rows?: () => DetailRow[]; current?: string };
 type BubbleContent = { title: string; body: BubbleLine[]; hint: string };
 type BubbleHandle = { refresh(): void; close(): void; onClose?(callback: () => void): void };
+type PillColors = { background: string; foreground: string };
+type BubbleAnchor = PillColors & { key?: string; startColumn?: number; endColumn?: number; centerColumn: number; terminalWidth: number };
 type PillAPI = {
   version: number;
-  register(key: string, action: (input: { ctx: ExtensionContext; pill?: unknown }) => void): () => void;
-  showBubble(ctx: ExtensionContext, source: () => BubbleContent, pill?: unknown): BubbleHandle | undefined;
+  register(key: string, action: (input: { ctx: ExtensionContext; pill?: BubbleAnchor }) => void): () => void;
+  showBubble(ctx: ExtensionContext, source: () => BubbleContent, pill?: BubbleAnchor): BubbleHandle | undefined;
 };
 const STATUS_KEY = "pi-sync";
 const pillAPI = () => (globalThis as Record<symbol, unknown>)[Symbol.for("pi-starline.pill-api.v1")] as PillAPI | undefined;
@@ -35,6 +37,29 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   let error: string | undefined;
   let notice: string | undefined;
   let bubble: BubbleHandle | undefined;
+  let pillAnchor: BubbleAnchor | undefined;
+  const colorChoices = [
+    { value: "pill", label: "Follow pill" }, { value: "accent", label: "Theme accent" },
+    { value: "success", label: "Theme success" }, { value: "warning", label: "Theme warning" },
+    { value: "error", label: "Theme error" },
+  ];
+  // Keep Starline's cell geometry; only override its colours when requested.
+  function bubbleAnchor(context: ExtensionContext): BubbleAnchor {
+    const background = () => {
+      const color = config?.bubbleColor ?? "pill";
+      if (color === "pill" && pillAnchor?.background) return pillAnchor.background;
+      return context.ui.theme.getFgAnsi(color === "pill" ? "accent" : color)
+        .replace(/\x1b\[(3[0-7]|9[0-7]|38)(?=[;m])/g, (_, code: string) => `\x1b[${Number(code) + 10}`);
+    };
+    return {
+      key: STATUS_KEY,
+      centerColumn: (process.stdout.columns || 80) / 2,
+      terminalWidth: process.stdout.columns || 80,
+      ...pillAnchor,
+      get background() { return background(); },
+      get foreground() { return (config?.bubbleColor ?? "pill") === "pill" ? pillAnchor?.foreground ?? "" : ""; },
+    };
+  }
   let unregister: (() => void) | undefined;
   let pullTimer: ReturnType<typeof setInterval> | undefined;
   let watchTimer: ReturnType<typeof setInterval> | undefined;
@@ -208,8 +233,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   function showStatus(context: ExtensionContext): void {
     const api = bubbleAPI(context);
     if (api?.version === 1 && context.hasUI) {
-      // All command, pill and menu views share Starline's unanchored placement.
-      bubble = api.showBubble(context, () => content(context));
+      bubble = api.showBubble(context, () => content(context), bubbleAnchor(context));
     } else {
       context.ui.notify(detailLines().join("\n"), error ? "warning" : "info");
     }
@@ -235,7 +259,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
             onSelect: () => { selected = true; resolve(choice.value); } })),
         ],
         hint: menuHint,
-      }));
+      }), bubbleAnchor(context));
       bubble = handle;
       if (handle?.onClose) {
         // Starline closes the bubble before calling a target's onSelect.
@@ -275,12 +299,20 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
         { value: "status", label: "Status" },
         { value: "mode", label: `Mode  ${config ? modeLabel(config.mode) : "Not configured"}` },
         { value: "paths", label: `Paths  ${config?.paths.length ?? 0}` },
+        ...(bubbleAPI(context)?.version === 1 ? [{ value: "color", label: `Bubble colour  ${colorChoices.find(choice => choice.value === (config?.bubbleColor ?? "pill"))!.label}` }] : []),
         "Backups", "Cleanup", "Diagnostics", "Back",
       ], { rows: overviewRows });
       if (!choice || choice === "Back") return;
       if (choice === "status") { showStatus(context); return; }
       if (!config || !service) { context.ui.notify("Run /sync-setup first.", "warning"); continue; }
-      if (choice === "mode") {
+      if (choice === "color") {
+        const selected = await select(context, "Sync bubble colour", [...colorChoices, "Back"], { current: config.bubbleColor ?? "pill" });
+        if (!selected || selected === "Back") continue;
+        const next = { ...config, bubbleColor: selected as NonNullable<Config["bubbleColor"]> };
+        await saveConfig(next, paths);
+        config.bubbleColor = next.bubbleColor;
+        publish();
+      } else if (choice === "mode") {
         const selected = await select(context, "Sync mode", ["Manual", "Auto", "Off", "Back"], {
           current: modeLabel(config.mode), description: "Auto runs in the background. Manual and Off still allow Push and Pull.",
         });
@@ -381,7 +413,11 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     publish();
     unregister?.();
     const api = bubbleAPI(context);
-    unregister = api?.version === 1 ? api.register(STATUS_KEY, ({ ctx: current }) => showStatus(current)) : undefined;
+    pillAnchor = undefined;
+    unregister = api?.version === 1 ? api.register(STATUS_KEY, ({ ctx: current, pill }) => {
+      if (pill) pillAnchor = pill;
+      showStatus(current);
+    }) : undefined;
     await startTimers();
   });
 
@@ -428,6 +464,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
           if (!await confirm(context, "Replace sync repository configuration?", "Existing managed paths and mode will be retained; no data is transferred by setup.")) return;
           next.paths = [...config.paths];
           next.mode = config.mode;
+          next.bubbleColor = config.bubbleColor;
         }
         if (busy) throw new Error(`Sync is busy: ${busy}; retry setup after it finishes.`);
         stopTimers();

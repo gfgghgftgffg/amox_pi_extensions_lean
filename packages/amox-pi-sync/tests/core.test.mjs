@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { existsSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { tmpdir } from "node:os";
@@ -55,6 +56,7 @@ test("configuration defaults, SSH validation, strict paths and ancestor overlaps
   const f = await fixture(t);
   assert.deepEqual(f.config.paths, ["sessions", "missions"]);
   assert.equal(f.config.mode, "manual");
+  await assert.rejects(saveConfig({ ...f.config, bubbleColor: "invalid" }, f.paths), /Unsupported bubble colour/);
   assert.equal(await loadConfig(f.paths), null);
   await saveConfig(f.config, f.paths);
   assert.deepEqual(await loadConfig(f.paths), f.config);
@@ -293,7 +295,10 @@ test("check publishes checkedAt only after successful remote checks", async t =>
   }
   for (const { raw } of f.calls) {
     assert.ok(raw.includes("credential.interactive=false"));
-    assert.ok(raw.includes("core.sshCommand=ssh -oBatchMode=yes -oConnectTimeout=10"));
+    const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
+    const expectedSsh = process.platform === "win32" && existsSync(nativeSsh)
+      ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";
+    assert.ok(raw.includes(`core.sshCommand=${expectedSsh} -oBatchMode=yes -oConnectTimeout=10`));
   }
 });
 

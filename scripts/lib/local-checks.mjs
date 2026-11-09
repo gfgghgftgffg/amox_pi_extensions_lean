@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { adapterWritable, assertRegularPath, jsonText, lfText, readJson } from "./files.mjs";
+import { adapterWritable, assertRegularPath, fileInventory, jsonText, lfText, readJson } from "./files.mjs";
 import { releaseSummaryBlock } from "./release-validation.mjs";
 import { failureExcerpt, sandboxRun } from "./local-sandbox.mjs";
 import { maintenancePackageIds } from "./package-selection.mjs";
@@ -79,8 +79,9 @@ export function validateForkPort(repo, manifest, plan, baseline) {
     const entry = manifest.packages.find(item => item.id === fork.id);
     const sourcePaths = [...new Set([entry.entry, ...(entry.sourceFiles ?? [])])].map(file => `${entry.path}/${file}`);
     if (!sourcePaths.some(path => baseline.get(path)?.text !== readFileSync(assertRegularPath(repo, path), "utf8"))) throw new Error("Approved fork port has no implementation change; skip it instead of publishing a version-only update");
-    const regressions = git(repo, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]).split("\0")
-      .filter(path => path.startsWith(`${entry.path}/tests/`) && path.endsWith(".test.mjs"));
+    const testsRoot = join(repo, entry.path, "tests");
+    const regressions = existsSync(testsRoot) ? fileInventory(testsRoot).filter(path => path.endsWith(".test.mjs"))
+      .map(path => `${entry.path}/tests/${path}`) : [];
     if (!regressions.some(path => !baseline.has(path) || baseline.get(path).text !== readFileSync(assertRegularPath(repo, path), "utf8"))) throw new Error("Fork port requires a focused regression test before publication");
   }
 }

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { gzipSync } from "node:zlib";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -245,7 +244,7 @@ test("automatic adaptation cannot rewrite the owner's feature decisions", () => 
   assert.throws(() => assertForkPolicy(notes, "Removed policy"), /Missing fork feature/);
 });
 
-test("fork release gate rejects version-only ports and requires an actual source change plus regression", t => {
+test("fork release gate requires source and regression changes without a Git subprocess or platform PATH", t => {
   const f = fixture(t), baseline = new Map();
   mkdirSync(join(f.repo, fork.path, "tests"));
   writeFileSync(join(f.repo, fork.path, "index.ts"), "// existing entrypoint\n");
@@ -253,8 +252,7 @@ test("fork release gate rejects version-only ports and requires an actual source
   for (const path of ["index.ts", "core.ts", "tests/existing.test.mjs"]) {
     const name = `${fork.path}/${path}`; baseline.set(name, { text: readFileSync(join(f.repo, name), "utf8") });
   }
-  execFileSync("git", ["init", "--quiet", f.repo]);
-  execFileSync("git", ["-C", f.repo, "add", "--all"]);
+  assert.equal(existsSync(join(f.repo, ".git")), false, "regression discovery must not require a Git checkout or Linux PATH");
   f.plan.forkPlans[0].decision = "port";
   assert.throws(() => validateForkPort(f.repo, f.manifest, f.plan, baseline), /no implementation change/);
   writeFileSync(join(f.repo, fork.path, "core.ts"), "// selected retained-behavior correction\n");

@@ -26,14 +26,14 @@ pi update --extensions
 | Command | Purpose |
 | --- | --- |
 | `/sync-setup git@host:owner/private-repo.git [interval]` | Configure an SSH repository and optional pull interval in minutes (no transfer) |
-| `/sync-push` | Upload selected raw agent data |
+| `/sync-push` | Push selected raw agent data |
 | `/sync-pull` | Pull selected raw agent data |
 | `/sync-settings` | Open settings and maintenance actions |
 | `/sync-status` | View status and actions; also works without Starline |
 
 The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). `sessions` and `missions` are the default paths. Manual push and pull commands remain available in both `manual` and `off` modes.
 
-Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled. With Starline installed, use its clickable status capsule to open details and actions: check status, upload, pull and settings. The status key remains `pi-sync` for existing Starline placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`, with no Starline configuration changes required. There is no three-line widget. `/sync-status`, pill clicks, settings, submenus and confirmations share centered Starline bubbles above the footer; text entry still uses Pi input dialogs. Without Starline, the native UI remains available.
+Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled. With Starline installed, use its clickable status capsule to open details and actions: check status, push, pull and settings. The status key remains `pi-sync` for existing Starline placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`, with no Starline configuration changes required. There is no three-line widget. `/sync-status`, pill clicks, settings, submenus and confirmations share centered Starline bubbles above the footer; text entry still uses Pi input dialogs. Labels and values use Pi theme colours, while bold action rows keep Starline’s selection contrast. State shows Manual, Auto or Off directly; active operations use Push/Pull, with the configured mode shown separately. Without Starline, the native UI remains available and status output stays plain text.
 
 ## Data and safety
 

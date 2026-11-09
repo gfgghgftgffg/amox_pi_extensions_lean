@@ -1,14 +1,23 @@
+import { stripVTControlCharacters } from "node:util";
 import assert from "node:assert/strict";
 import test from "node:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createJiti } from "jiti";
+import { visibleWidth } from "@earendil-works/pi-tui";
 
 const jiti = createJiti(import.meta.url);
 const { default: extension } = await jiti.import("../index.ts");
 const { createConfig, defaultPaths, saveConfig, SyncService } = await jiti.import("../core.ts");
 const symbol = Symbol.for("pi-starline.pill-api.v1");
+const plain = value => stripVTControlCharacters(value);
+const palette = (light = false) => {
+  const codes = light ? { text: 30, muted: 90, dim: 37, accent: 34, success: 32, warning: 33, error: 31 }
+    : { text: 97, muted: 37, dim: 90, accent: 96, success: 92, warning: 93, error: 91 };
+  return { fg: (tone, text) => { assert.ok(tone in codes, `Unknown semantic tone: ${tone}`); return `\x1b[${codes[tone]}m${text}\x1b[39m`; },
+    bold: text => `\x1b[1m${text}\x1b[22m` };
+};
 
 async function fixture(t, configured = true, starline = true) {
   const root = await mkdtemp(join(tmpdir(), "amox-sync-ui-"));
@@ -35,13 +44,13 @@ async function fixture(t, configured = true, starline = true) {
         onClose(callback) { if (closed) callback(); else callbacks.push(callback); },
       };
       const body = content().body;
-      if (content().hint.startsWith("↑/↓")) {
+      if (content().title !== "Amox Pi Sync") {
         const targets = body.filter(line => typeof line !== "string");
-        dialogs.push({ title: content().title, options: targets.map(line => line.text), starline: true });
+        dialogs.push({ title: content().title, options: targets.map(line => plain(line.text)), body, starline: true });
         const selected = choices.shift();
         queueMicrotask(() => {
           handle.close();
-          targets.find(line => line.text === selected)?.onSelect();
+          targets.find(line => plain(line.text) === selected)?.onSelect();
         });
       }
       return handle;
@@ -52,6 +61,7 @@ async function fixture(t, configured = true, starline = true) {
     hasUI: true,
     sessionManager: { getSessionFile: () => join(root, "sessions", "current.jsonl") },
     ui: {
+      theme: palette(),
       setStatus: (...args) => statuses.push(args),
       setWidget: (...args) => widgets.push(args),
       notify: (...args) => notifications.push(args),
@@ -84,7 +94,7 @@ async function fixture(t, configured = true, starline = true) {
 test("manual startup is local-only and never creates an upstream widget", async t => {
   const f = await fixture(t);
   assert.deepEqual([...f.commands.keys()].sort(), ["sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: manual"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   assert.ok(f.widgets.every(([, value]) => value === undefined));
   assert.equal(f.gitCalls.length, 0);
 });
@@ -95,9 +105,9 @@ test("Starline and command status views use the same centered placement", async 
   f.click(anchor);
   const content = f.content();
   assert.equal(content.title, "Amox Pi Sync");
-  assert.ok(content.body.some(line => typeof line === "string" && line.startsWith("Objects:") && line.includes("sessions") && line.includes("missions")));
-  assert.ok(content.body.some(line => typeof line === "string" && line.includes("Remote updates: not checked")));
-  assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => line.text), ["Check status", "Upload", "Pull", "Settings"]);
+  assert.ok(content.body.some(line => typeof line === "string" && /^Paths\s+sessions, missions$/.test(plain(line))));
+  assert.ok(content.body.some(line => typeof line === "string" && /^Remote updates\s+Not checked$/.test(plain(line))));
+  assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
   assert.equal(f.anchor(), undefined);
   await f.commands.get("sync-status").handler("", f.ctx);
   assert.equal(f.anchor(), undefined);
@@ -118,15 +128,15 @@ test("busy pill and popup reflect a running action and suppress duplicate button
   };
   t.after(() => { SyncService.prototype.check = previous; });
   f.click();
-  f.content().body.find(line => typeof line !== "string" && line.text === "Check status").onSelect();
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: checking"]);
+  f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Check"]);
   assert.equal(f.content().body.filter(line => typeof line !== "string").length, 0);
   await f.commands.get("sync-push").handler("", f.ctx);
   assert.equal(checks, 1);
-  assert.match(f.notifications.at(-1)[0], /already checking/);
+  assert.match(f.notifications.at(-1)[0], /busy: Check/);
   release();
   await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: manual"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   assert.ok(f.counts().refreshes >= 2);
 });
 
@@ -136,9 +146,9 @@ test("failures remain visible in the capsule and details", async t => {
   SyncService.prototype.check = async () => { throw new Error("SSH permission denied"); };
   t.after(() => { SyncService.prototype.check = previous; });
   f.click();
-  f.content().body.find(line => typeof line !== "string" && line.text === "Check status").onSelect();
+  f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
   await new Promise(resolve => setImmediate(resolve));
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: error"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Error"]);
   assert.ok(f.content().body.some(line => typeof line === "string" && line.includes("SSH permission denied")));
 });
 
@@ -146,24 +156,24 @@ test("settings only offers retained functionality", async t => {
   const f = await fixture(t);
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs[0].starline, true);
-  assert.deepEqual(f.dialogs[0].options, ["View Status", "Sync Mode [manual]", "Sync Paths [2]", "Backups", "Cleanup", "Diagnostics", "Back"]);
+  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode  Manual", "Paths  2", "Backups", "Cleanup", "Diagnostics", "Back"]);
 });
 
 test("pill Settings and its submenus share the Starline renderer and selection survives close-before-callback", async t => {
   const f = await fixture(t);
-  f.choices.push("Sync Mode [manual]", "Off", "Back");
+  f.choices.push("Mode  Manual", "Off", "Back");
   f.click({ centerColumn: 12, terminalWidth: 100 });
-  await f.content().body.find(line => typeof line !== "string" && line.text === "Settings").onSelect();
+  await f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Settings").onSelect();
   assert.equal(f.dialogs.length, 3);
   assert.ok(f.dialogs.every(dialog => dialog.starline));
-  assert.deepEqual(f.dialogs.map(dialog => dialog.title), ["Amox Pi Sync", "Sync mode", "Amox Pi Sync"]);
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: off"]);
+  assert.deepEqual(f.dialogs.map(dialog => dialog.title), ["Sync settings", "Sync mode", "Sync settings"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
   assert.equal(f.anchor(), undefined);
 });
 
 test("unconfigured startup and no-Starline command fallback are useful", async t => {
   const f = await fixture(t, false, false);
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: setup"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Not configured"]);
   await f.commands.get("sync-status").handler("", f.ctx);
   assert.match(f.notifications.at(-1)[0], /Not configured/);
   assert.equal(f.gitCalls.length, 0);
@@ -173,10 +183,10 @@ test("setup does not transfer data and malformed settings report an error", asyn
   const f = await fixture(t, false);
   await f.commands.get("sync-setup").handler("git@github.com:example/new.git", f.ctx);
   assert.equal(f.gitCalls.length, 0);
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: manual"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   await writeFile(join(f.root, "amox-pi-sync.json"), "not-json", "utf8");
   await f.events.get("session_start")({}, f.ctx);
-  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: error"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Error"]);
   assert.ok(f.notifications.some(([, level]) => level === "error"));
 });
 
@@ -204,11 +214,163 @@ test("cleanup previews whole backups and requires confirmation before deleting",
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.deepEqual(removed, []);
   f.ctx.ui.confirm = async () => false;
-  f.choices.push("Cleanup", "Run", "Back");
+  f.choices.push("Cleanup", "Delete eligible backups", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.deepEqual(removed, []);
   f.ctx.ui.confirm = async () => true;
-  f.choices.push("Cleanup", "Run", "Back");
+  f.choices.push("Cleanup", "Delete eligible backups", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.deepEqual(removed, ["backup-1"]);
+});
+
+test("status separates muted labels, highlighted state and neutral values from selectable actions", async t => {
+  const f = await fixture(t);
+  f.click();
+  const content = f.content();
+  const rows = content.body.filter(line => typeof line === "string");
+  const state = rows.find(line => /^State\s+/.test(plain(line)));
+  assert.match(state, /\x1b\[37mState\s+\x1b\[39m\x1b\[96m\x1b\[1mManual/);
+  assert.ok(rows.some(line => /^Paths\s+sessions, missions$/.test(plain(line)) && line.includes("\x1b[97m")));
+  assert.ok(rows.some(line => /^Remote\s+git@github.com:example\/private.git$/.test(plain(line))));
+  assert.ok(rows.some(line => /^Remote updates\s+Not checked$/.test(plain(line)) && line.includes("\x1b[90m")));
+  assert.ok(rows.includes(""));
+  const actions = content.body.filter(line => typeof line !== "string");
+  assert.deepEqual(actions.map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
+  for (const line of actions) {
+    assert.ok(line.text.startsWith("\x1b[1m"));
+    assert.doesNotMatch(line.text, /\x1b\[(?:3\d|4\d|9\d|10\d|38;|48;)/, "action foreground/background must remain Starline-owned for selection contrast");
+  }
+  assert.match(content.hint, /↑↓.*Enter.*Esc/);
+  assert.ok(visibleWidth(content.hint) <= 20, "Starline does not wrap hints; fit the 24-column minimum bubble");
+  assert.doesNotMatch(content.body.map(line => plain(typeof line === "string" ? line : line.text)).join("\n"), /idle|upload|download|Objects/i);
+});
+
+test("colours are evaluated from the current theme without changing labels or actions", async t => {
+  const f = await fixture(t);
+  f.click();
+  const dark = f.content();
+  f.ctx.ui.theme = palette(true);
+  const light = f.content();
+  const lines = content => content.body.map(line => typeof line === "string" ? line : line.text);
+  assert.deepEqual(lines(dark).map(plain), lines(light).map(plain));
+  assert.notDeepEqual(lines(dark), lines(light));
+  assert.ok(lines(light).some(line => /^State\s+Manual$/.test(plain(line)) && line.includes("\x1b[34m")));
+});
+
+test("settings have a coloured overview, stable semantic choices and a marked current mode", async t => {
+  const f = await fixture(t);
+  f.choices.push("Mode  Manual", "Off", "Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  const menu = f.dialogs[0], picker = f.dialogs[1];
+  assert.equal(menu.title, "Sync settings");
+  assert.ok(menu.body.some(line => typeof line === "string" && /^State\s+Manual$/.test(plain(line)) && line.includes("\x1b[96m")));
+  assert.ok(menu.body.some(line => typeof line === "string" && /^Remote\s+git@/.test(plain(line))));
+  assert.deepEqual(picker.body.filter(line => typeof line !== "string" && line.current).map(line => plain(line.text)), ["Manual"]);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
+  const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
+  assert.equal(saved.mode, "off");
+  assert.doesNotMatch(JSON.stringify(saved), /\\u001b|\x1b/);
+});
+
+test("Push and Pull retain the pre-push fingerprint and show direct operation names while busy", async t => {
+  const f = await fixture(t);
+  const original = { push: SyncService.prototype.push, pull: SyncService.prototype.pull, fingerprint: SyncService.prototype.fingerprint };
+  let release, fingerprints = 0;
+  SyncService.prototype.fingerprint = async () => { fingerprints++; return "pre-push-snapshot"; };
+  SyncService.prototype.push = async () => { await new Promise(resolve => { release = resolve; }); };
+  SyncService.prototype.pull = async () => "Pulled safely";
+  t.after(() => Object.assign(SyncService.prototype, original));
+  f.click();
+  const pushing = f.commands.get("sync-push").handler("", f.ctx);
+  try {
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Push"]);
+    assert.ok(f.content().body.some(line => typeof line === "string" && /^State\s+Push$/.test(plain(line))));
+    assert.ok(f.content().body.some(line => typeof line === "string" && /^Mode\s+Manual$/.test(plain(line))));
+    assert.equal(f.content().body.filter(line => typeof line !== "string").length, 0);
+    await f.commands.get("sync-pull").handler("", f.ctx);
+    assert.match(f.notifications.at(-1)[0], /busy: Push/);
+  } finally { release?.(); await pushing; }
+  assert.equal(fingerprints, 1);
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Push completed$/.test(plain(line))));
+  await f.commands.get("sync-pull").handler("", f.ctx);
+  assert.equal(fingerprints, 1, "Pull must not use the pre-push fingerprint path");
+  assert.ok(f.statuses.some(([, text]) => text === "Sync: Pull"));
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
+});
+
+test("check outcomes use success and warning tones without presenting unchecked data as synchronized", async t => {
+  const f = await fixture(t), original = SyncService.prototype.check;
+  let pending = true;
+  SyncService.prototype.check = async function () {
+    this.status.checkedAt = "2026-11-10T00:00:00.000Z";
+    this.status.localChanges = pending ? "changed: 2" : "";
+    this.status.remoteChanges = pending ? 3 : 0;
+    return "Status checked";
+  };
+  t.after(() => { SyncService.prototype.check = original; });
+  f.click();
+  const check = () => f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+Not checked$/.test(plain(line))));
+  check(); await new Promise(resolve => setImmediate(resolve));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+changed: 2$/.test(plain(line)) && line.includes("\x1b[93m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates\s+3$/.test(plain(line)) && line.includes("\x1b[93m")));
+  pending = false;
+  check(); await new Promise(resolve => setImmediate(resolve));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+None at last check$/.test(plain(line)) && line.includes("\x1b[92m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates\s+0$/.test(plain(line)) && line.includes("\x1b[92m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && plain(line) === "Values reflect the last check."));
+});
+
+test("error text cannot inject terminal controls or override its semantic error colour", async t => {
+  const f = await fixture(t), original = SyncService.prototype.check;
+  SyncService.prototype.check = async () => { throw new Error("\x1b[2J\x1b[32mSSH denied\x1b[0m"); };
+  t.after(() => { SyncService.prototype.check = original; });
+  f.click();
+  f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
+  await new Promise(resolve => setImmediate(resolve));
+  const row = f.content().body.find(line => typeof line === "string" && /^Error\s+/.test(plain(line)));
+  assert.match(row, /\x1b\[91mSSH denied/);
+  assert.doesNotMatch(row, /\x1b\[2J|\x1b\[32m/);
+  assert.doesNotMatch(f.notifications.at(-1)[0], /\x1b/);
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Check failed$/.test(plain(line))));
+});
+
+test("native fallback keeps plain labels, descriptions and semantic selection without a colour API", async t => {
+  const f = await fixture(t, true, false);
+  f.ctx.ui.theme = undefined;
+  await f.commands.get("sync-status").handler("", f.ctx);
+  const status = f.notifications.at(-1)[0];
+  assert.match(status, /State: Manual/); assert.match(status, /Paths: sessions, missions/); assert.match(status, /Remote:/);
+  assert.doesNotMatch(status, /\x1b|idle|upload|download/i);
+  f.choices.push("Mode  Manual", "Off", "Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
+  assert.ok(f.dialogs.some(dialog => dialog.title.includes("Manual and Off still allow Push and Pull")));
+  assert.ok(f.dialogs.every(dialog => dialog.options.every(option => !option.includes("\x1b"))));
+});
+
+test("diagnostic result payloads do not expand the status bubble into a JSON dump", async t => {
+  const f = await fixture(t), original = SyncService.prototype.doctor;
+  SyncService.prototype.doctor = async () => ({ remote: "ok", paths: ["sessions", "missions"] });
+  t.after(() => { SyncService.prototype.doctor = original; });
+  f.choices.push("Diagnostics", "Doctor", "Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  f.click();
+  assert.ok(f.notifications.some(([text]) => text.includes('"remote": "ok"')));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Doctor completed$/.test(plain(line))));
+  assert.ok(f.content().body.every(line => typeof line !== "string" || !line.includes('"remote"')));
+});
+
+test("RPC uses plain native UI even if a Starline bridge is present", async t => {
+  const f = await fixture(t);
+  f.ctx.mode = "rpc";
+  f.ctx.ui.theme = undefined;
+  await f.commands.get("sync-status").handler("", f.ctx);
+  assert.match(f.notifications.at(-1)[0], /State: Manual/);
+  assert.doesNotMatch(f.notifications.at(-1)[0], /\x1b/);
+  f.choices.push("Back");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  assert.equal(f.dialogs.length, 1);
+  assert.equal(f.dialogs[0].starline, undefined);
 });

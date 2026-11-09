@@ -26,14 +26,14 @@ pi update --extensions
 | 命令 | 用途 |
 | --- | --- |
 | `/sync-setup git@host:owner/private-repo.git [interval]` | 配置 SSH 仓库及可选拉取间隔（分钟），不传输数据 |
-| `/sync-push` | 上传选中的原始 agent 数据 |
-| `/sync-pull` | 拉取选中的原始 agent 数据 |
+| `/sync-push` | Push 选中的原始 agent 数据 |
+| `/sync-pull` | Pull 选中的原始 agent 数据 |
 | `/sync-settings` | 打开设置与维护操作 |
 | `/sync-status` | 查看状态和操作；未安装 Starline 时也可使用 |
 
 设置菜单保留 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。默认路径为 `sessions` 和 `missions`。`manual` 和 `off` 模式仍可手动上传、拉取。
 
-manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。安装 Starline 时，优先点击状态胶囊打开详情，执行状态检查、上传、拉取或设置。状态 key 保留为 `pi-sync`，兼容原 Starline placement；pill bridge 优先于旧 `extensionStatuses.commands`，无需修改 Starline 配置。没有三行 widget。`/sync-status`、点击胶囊、设置和子菜单统一使用底栏上方居中的 Starline 气泡，确认操作也使用相同样式；文本输入仍使用 Pi 输入框。未安装 Starline 时回退原生界面。
+manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。安装 Starline 时，优先点击状态胶囊打开详情，执行 Check status、Push、Pull 或 Settings。状态 key 保留为 `pi-sync`，兼容原 Starline placement；pill bridge 优先于旧 `extensionStatuses.commands`，无需修改 Starline 配置。没有三行 widget。`/sync-status`、点击胶囊、设置和子菜单统一使用底栏上方居中的 Starline 气泡，确认操作也使用相同样式；文本输入仍使用 Pi 输入框。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。State 直接显示 Manual、Auto 或 Off；执行中显示 Push／Pull，另列当前模式，不追加 idle。未安装 Starline 时回退原生界面，状态输出保留纯文本。
 
 ## 数据与安全
 

@@ -56,7 +56,7 @@
       "id": "amox-pi-sync",
       "path": "packages/amox-pi-sync",
       "packageName": "@gfgghgftgffg/amox-pi-sync",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "index.ts",
       "upstreamPackage": "pi-sync-suite",
       "upstreamVersion": "0.1.1",
@@ -70,8 +70,8 @@
     }
   ],
   "release": {
-    "version": "0.1.17",
-    "baseCommit": "3261d956499073196a22a725d0638e7c0b1f571f",
+    "version": "0.1.18",
+    "baseCommit": "794d47b1d651b3470f6320cde2821fd6de4827f1",
     "packageIds": [
       "amox-pi-sync"
     ]

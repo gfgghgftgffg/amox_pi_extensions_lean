@@ -14,6 +14,9 @@ import { stageVersions } from "../scripts/local-maintenance.mjs";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const state = loadRepoState(root);
+// Preserve the explicit opt-out contract for truly manual forks. The live sync
+// package now opts into selective review; its flow is tested separately.
+state.manifest.packages.find(entry => entry.id === "amox-pi-sync").maintenanceMode = "manual-fork";
 const fork = state.manifest.packages.find(entry => entry.id === "amox-pi-sync");
 function metadata() {
   const npm = {}, git = {};

@@ -6,6 +6,7 @@ import { releaseSummaryBlock } from "./release-validation.mjs";
 import { failureExcerpt, sandboxRun } from "./local-sandbox.mjs";
 import { maintenancePackageIds } from "./package-selection.mjs";
 import { checkCommands, loadCheckScope } from "./check-scope.mjs";
+import { assertForkPolicy } from "./fork-review.mjs";
 import { gitReadHttpError } from "./remote-errors.mjs";
 
 export const LOCAL_CHECKS = checkCommands({ full: true });
@@ -27,15 +28,16 @@ export function checkpoint(repo) {
   }
   return git(repo, ["rev-parse", "HEAD"]);
 }
-export function protectedBaseline(repo, manifest) {
+export function protectedBaseline(repo, manifest, plan) {
   return new Map(git(repo, ["ls-files", "-z"]).split("\0").filter(Boolean)
-    .map((path) => [path, { text: readFileSync(assertRegularPath(repo, path), "utf8"), writable: adapterWritable(path, manifest) }]));
+    .map((path) => [path, { text: readFileSync(assertRegularPath(repo, path), "utf8"), writable: adapterWritable(path, manifest, plan) }]));
 }
-export function validateLocalChanges(repo, manifest, baseline, generated) {
+export function validateLocalChanges(repo, manifest, baseline, generated, plan) {
   const current = new Set(git(repo, ["ls-files", "-z"]).split("\0").filter(Boolean));
   for (const [path, original] of baseline) {
     if (!existsSync(join(repo, path))) throw new Error(`Deleted baseline file: ${path}`);
     const actual = readFileSync(assertRegularPath(repo, path), "utf8");
+    if (manifest.packages.some(entry => entry.maintenanceMode === "selective-fork" && path === `${entry.path}/MAINTENANCE.md`)) assertForkPolicy(original.text, actual);
     if (generated.has(path)) {
       if (actual !== generated.get(path)) throw new Error(`Protected generated file changed: ${path}`);
     } else if (!original.writable && actual !== original.text) throw new Error(`Protected file changed: ${path}`);
@@ -43,7 +45,7 @@ export function validateLocalChanges(repo, manifest, baseline, generated) {
   }
   const untracked = git(repo, ["ls-files", "--others", "--exclude-standard", "-z"]).split("\0").filter(Boolean);
   for (const path of [...current, ...untracked]) {
-    if (!baseline.has(path) && !generated.has(path) && !adapterWritable(path, manifest)) throw new Error(`Unexpected new file: ${path}`);
+    if (!baseline.has(path) && !generated.has(path) && !adapterWritable(path, manifest, plan)) throw new Error(`Unexpected new file: ${path}`);
     assertRegularPath(repo, path);
   }
 }
@@ -51,7 +53,7 @@ export function measureDocs(repo, manifest, packageIds = manifest.packages.map((
   const snapshot = readJson(join(repo, "maintenance/tool-contracts.json"));
   let upstreamTotal = 0, leanTotal = 0;
   for (const entry of manifest.packages) {
-    if (entry.maintenanceMode === "manual-fork") continue;
+    if (entry.maintenanceMode === "manual-fork" || entry.toolContract === false) continue;
     const lean = snapshot.lean[entry.packageName], upstream = snapshot.upstream[entry.upstreamPackage];
     upstreamTotal += upstream.totals.registeredProxyTokens; leanTotal += lean.totals.registeredProxyTokens;
     if (!packageIds.includes(entry.id)) continue;
@@ -72,6 +74,17 @@ export function measureDocs(repo, manifest, packageIds = manifest.packages.map((
   }
 }
 
+export function validateForkPort(repo, manifest, plan, baseline) {
+  for (const fork of (plan?.forkPlans ?? []).filter(item => item.decision === "port")) {
+    const entry = manifest.packages.find(item => item.id === fork.id);
+    const sourcePaths = [...new Set([entry.entry, ...(entry.sourceFiles ?? [])])].map(file => `${entry.path}/${file}`);
+    if (!sourcePaths.some(path => baseline.get(path)?.text !== readFileSync(assertRegularPath(repo, path), "utf8"))) throw new Error("Approved fork port has no implementation change; skip it instead of publishing a version-only update");
+    const regressions = git(repo, ["ls-files", "--cached", "--others", "--exclude-standard", "-z"]).split("\0")
+      .filter(path => path.startsWith(`${entry.path}/tests/`) && path.endsWith(".test.mjs"));
+    if (!regressions.some(path => !baseline.has(path) || baseline.get(path).text !== readFileSync(assertRegularPath(repo, path), "utf8"))) throw new Error("Fork port requires a focused regression test before publication");
+  }
+}
+
 // The same candidate is checkpointed and executed every time. Failed checks
 // return real logs to Pi; only this host-side gate can mark a commit publishable.
 export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, baseline, generated, log = console.log,
@@ -81,7 +94,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
     invalidate() { verifiedSha = undefined; },
     verified() {
       if (!verifiedSha || git(repo, ["rev-parse", "HEAD"]) !== verifiedSha || git(repo, ["status", "--porcelain"])) throw new Error("No unchanged, locally verified candidate; no publication");
-      validateLocalChanges(repo, manifest, baseline, generated);
+      validateLocalChanges(repo, manifest, baseline, generated, plan);
       return verifiedSha;
     },
     async check(summary, signal) {
@@ -89,7 +102,8 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       const version = readJson(join(repo, "package.json")).version;
       const block = releaseSummaryBlock({ version, summary });
       if (!existsSync(join(repo, "maintenance/agent-review.md"))) throw new Error("Write the source review first");
-      validateLocalChanges(repo, manifest, baseline, generated);
+      validateForkPort(repo, manifest, plan, baseline);
+      validateLocalChanges(repo, manifest, baseline, generated, plan);
       const logs = join(scratch, `checks-${++attempt}`); mkdirSync(logs, { recursive: true });
       const snapshot = join(scratch, "tool-contracts.json");
       writeFileSync(snapshot, readFileSync(join(repo, "maintenance/tool-contracts.json")));
@@ -109,7 +123,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       measureDocs(repo, manifest, packageIds);
       const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
-      validateLocalChanges(repo, manifest, baseline, generated);
+      validateLocalChanges(repo, manifest, baseline, generated, plan);
       const sha = checkpoint(repo);
       const scope = loadCheckScope(repo, baseCommit);
       log(`Verification scope: ${JSON.stringify(scope)}`);
@@ -120,7 +134,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
         if (!checked.ok) return { ok: false, output: `FAILED ${command} ${args.join(" ")} (exit ${checked.status}, timeout ${checked.timedOut}):\n${failureExcerpt(checked.output)}` };
       }
       if (git(repo, ["rev-parse", "HEAD"]) !== sha || git(repo, ["status", "--porcelain"])) throw new Error("Checks changed the candidate");
-      validateLocalChanges(repo, manifest, baseline, generated);
+      validateLocalChanges(repo, manifest, baseline, generated, plan);
       verifiedSha = sha;
       log(`All local checks passed for ${sha}`);
       return { ok: true, sha, output: `All local checks passed for ${sha}. Stop editing. Remote three-platform CI and fixed-host merge acceptance are still required.` };

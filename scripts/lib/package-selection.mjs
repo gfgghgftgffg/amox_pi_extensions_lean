@@ -32,6 +32,7 @@ export function maintenancePackageIds(plan) {
   return [...new Set([
     ...plan.packagePlans.filter((item) => item.versionChange === "bump").map((item) => item.id),
     ...plan.leanPlans.filter((item) => item.changed).map((item) => item.id),
+    ...(plan.forkPlans ?? []).filter((item) => item.changed && item.decision === "port").map((item) => item.id),
   ])];
 }
 

@@ -4,11 +4,23 @@ import { compareExactStableVersions, isExactStableVersion } from "./semver.mjs";
 const HEX40 = /^[0-9a-f]{40}(?![\s\S])/;
 export const serializeJson = (value) => `${JSON.stringify(value, null, 2)}\n`;
 export function buildUpdatePlan({ manifest, workspaces, metadata }) {
-  const errors = [], warnings = [], packagePlans = [], leanPlans = [];
+  const errors = [], warnings = [], packagePlans = [], leanPlans = [], forkPlans = [];
   const workspaceById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
   const fail = (code, id, message) => errors.push({ code, package: id, message });
   for (const entry of manifest.packages) {
     if (entry.maintenanceMode === "manual-fork") continue;
+    if (entry.maintenanceMode === "selective-fork") {
+      const latestVersion = metadata.npm?.[entry.upstreamPackage]?.latestStable;
+      if (!workspaceById.has(entry.id) || !isExactStableVersion(entry.upstreamVersion) || !isExactStableVersion(latestVersion)
+        || entry.upstreamRef !== `npm:${entry.upstreamPackage}@${entry.upstreamVersion}`) {
+        fail("invalid-metadata", entry.id, "Selective fork requires exact published baseline and latest stable version"); continue;
+      }
+      const comparison = compareExactStableVersions(latestVersion, entry.upstreamVersion);
+      if (comparison < 0) { fail("downgrade", entry.id, "Selective fork upstream downgrade requires manual review"); continue; }
+      forkPlans.push({ id: entry.id, path: entry.path, upstreamPackage: entry.upstreamPackage,
+        currentVersion: entry.upstreamVersion, latestVersion, changed: comparison > 0, decision: "unreviewed" });
+      continue;
+    }
     const workspace = workspaceById.get(entry.id);
     const dependencies = workspace?.pkg.dependencies ?? {};
     const primary = entry.upstreamPackage;
@@ -70,8 +82,9 @@ export function buildUpdatePlan({ manifest, workspaces, metadata }) {
   }
   const updateRequired = packagePlans.some((item) => item.versionChange === "bump");
   const leanReviewRequired = leanPlans.some((item) => item.changed);
-  return { status: errors.length ? "error" : updateRequired ? "update" : leanReviewRequired ? "lean-only" : "no-update",
-    errors, warnings, packagePlans, leanPlans, updateRequired, leanReviewRequired,
+  const forkReviewRequired = forkPlans.some((item) => item.changed);
+  return { status: errors.length ? "error" : updateRequired ? "update" : forkReviewRequired ? "fork-review" : leanReviewRequired ? "lean-only" : "no-update",
+    errors, warnings, packagePlans, leanPlans, forkPlans, forkReviewRequired, updateRequired, leanReviewRequired,
     changedPackageIds: packagePlans.filter((item) => item.versionChange === "bump").map((item) => item.id), metadata };
 }
 export function applyPlanToWorkspacePackage(pkg, plan) {
@@ -89,12 +102,19 @@ export function applyPlanToManifest(manifest, plan) {
     if (!entry) throw new Error(`Cannot update manifest: no entry for ${change.id}`);
     entry.upstreamVersion = change.latestVersion; entry.upstreamGitHead = change.upstreamGitHead;
   }
+  for (const change of (plan.forkPlans ?? []).filter((item) => item.changed && item.decision === "port")) {
+    const entry = next.packages.find((item) => item.id === change.id);
+    if (entry?.maintenanceMode !== "selective-fork") throw new Error("Fork port requires selective maintenance mode");
+    entry.upstreamVersion = change.latestVersion;
+    entry.upstreamRef = `npm:${entry.upstreamPackage}@${change.latestVersion}`;
+  }
   return next;
 }
 export function buildUpdateReport({ plan }) {
   const lines = ["# Upstream maintenance check (read-only)", "", `status: ${plan.status}`];
   for (const pkg of plan.packagePlans) lines.push(`- ${pkg.id}: ${pkg.upstreamPackage} ${pkg.currentVersion} -> ${pkg.latestVersion} [${pkg.versionChange === "bump" ? "UPDATE" : "no change"}]`);
   for (const lean of plan.leanPlans.filter((item) => item.changed)) lines.push(`- ${lean.id}: ${lean.currentCommit} -> ${lean.remoteHead} [manual reuse review; leanCommit 基线未改动]`);
+  for (const fork of plan.forkPlans ?? []) lines.push(`- ${fork.id}: ${fork.upstreamPackage} ${fork.currentVersion} -> ${fork.latestVersion} [${fork.changed ? "SELECTIVE REVIEW" : "no change"}]`);
   for (const warning of plan.warnings) lines.push(`- warning: ${warning}`);
   lines.push("", "维护提示词：maintenance/daily-update.md（原作者指南原文及本项目执行边界）", "", "只读检测不生成候选 artifact。完整维护：node scripts/local-maintenance.mjs --run");
   return `${lines.join("\n")}\n`;

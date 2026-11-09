@@ -27,7 +27,7 @@ export function trackedDependencies(workspaces) {
 export function requiredGitUrls(manifest) {
   const urls = new Set();
   for (const entry of manifest.packages) {
-    if (entry.maintenanceMode === "manual-fork") continue;
+    if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) continue;
     urls.add(entry.leanRepository);
     urls.add(entry.upstreamRepository);
   }
@@ -70,7 +70,7 @@ export function loadInjectedMetadata(filePath) {
   return assertMetadataShape(parsed, filePath);
 }
 
-async function fetchNpmLatest({ name, fetchImpl, registry }) {
+async function fetchNpmLatest({ name, fetchImpl, registry, requireGitHead = true }) {
   const url = `${registry.replace(/\/$/, "")}/${name.startsWith("@") ? name.replace("/", "%2f") : name}`;
   let response;
   try {
@@ -101,8 +101,8 @@ async function fetchNpmLatest({ name, fetchImpl, registry }) {
     throw new Error(`npm registry latest ${latest} 缺少 version-specific metadata (${name})`);
   }
   const gitHead = body.versions[latest].gitHead;
-  if (!HEX40.test(gitHead ?? "")) throw new Error(`npm publication gitHead 缺失/非法 (${name}@${latest})；需人工审查`);
-  return { latestStable: latest, gitHead };
+  if (requireGitHead && !HEX40.test(gitHead ?? "")) throw new Error(`npm publication gitHead 缺失/非法 (${name}@${latest})；需人工审查`);
+  return { latestStable: latest, ...(HEX40.test(gitHead ?? "") ? { gitHead } : {}) };
 }
 
 /** Default git HEAD resolver: `git ls-remote <url> HEAD`. */
@@ -140,8 +140,11 @@ export async function fetchUpstreamMetadata({
   }
   const npm = {};
   for (const name of trackedDependencies(workspaces.filter((workspace) =>
-    manifest.packages.find((entry) => entry.id === workspace.id)?.maintenanceMode !== "manual-fork"))) {
+    !["manual-fork", "selective-fork"].includes(manifest.packages.find((entry) => entry.id === workspace.id)?.maintenanceMode)))) {
     npm[name] = await fetchNpmLatest({ name, fetchImpl, registry });
+  }
+  for (const entry of manifest.packages.filter((entry) => entry.maintenanceMode === "selective-fork")) {
+    npm[entry.upstreamPackage] = await fetchNpmLatest({ name: entry.upstreamPackage, fetchImpl, registry, requireGitHead: false });
   }
   const git = {};
   for (const url of requiredGitUrls(manifest)) {

@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-通过私有 SSH Git 仓库同步 Pi agent 数据的独立扩展。包名：`@gfgghgftgffg/amox-pi-sync@0.1.0`。基于 [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync) 的 `pi-sync-suite@0.1.1`（MIT；Copyright © 2026 Murat）。来源 ref 为 `npm:pi-sync-suite@0.1.1`，详见[MAINTENANCE.md](MAINTENANCE.md)。
+通过私有 SSH Git 仓库同步 Pi agent 数据的独立扩展。包名：`@gfgghgftgffg/amox-pi-sync`。基于 [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync) 的 `pi-sync-suite@0.1.1`（MIT；Copyright © 2026 Murat）。来源 ref 为 `npm:pi-sync-suite@0.1.1`，详见[MAINTENANCE.md](MAINTENANCE.md)。
 
 ## 安装
 
@@ -14,7 +14,7 @@
 node scripts/install-extension.mjs amox-pi-sync
 ```
 
-只安装本扩展。不要同时加载原版 `pi-sync-suite`；通过 `pi list` 检查已有来源，自行移除旧来源。这个新包尚未发布到 npm，当前使用上述本地安装方式。首次发布后可使用：
+只安装本扩展。不要同时加载原版 `pi-sync-suite`；通过 `pi list` 检查已有来源，自行移除旧来源。若首次 npm 发布尚未完成，使用上述本地安装方式。npm 包可用后可使用：
 
 ```sh
 pi install npm:@gfgghgftgffg/amox-pi-sync
@@ -47,4 +47,4 @@ manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再�
 - 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超出最新 20 份的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
 - 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
 
-不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。环境部署和机器专属配置交给 `amox-agent-bootstrap` 等部署流程，阅读版导出使用 Pi 原生 `/export`；同步器保留原始数据选择、备份恢复和手动备份清理。各项原因与后续维护边界见[功能取舍](MAINTENANCE.md#功能取舍与维护边界)。这是本地维护的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。
+不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。环境部署和机器专属配置交给 `amox-agent-bootstrap` 等部署流程，阅读版导出使用 Pi 原生 `/export`；同步器保留原始数据选择、备份恢复和手动备份清理。各项原因与后续维护边界见[功能取舍](MAINTENANCE.md#功能取舍与维护边界)。这是选择性跟进上游的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。每日审查上游正式发布，仅移植保留范围内有价值的改动；舍弃功能跳过，不能判断时由 ntfy 请维护者决定，不自动恢复原版模块。

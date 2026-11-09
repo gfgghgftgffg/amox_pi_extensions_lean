@@ -2,7 +2,7 @@
 
 [简体中文](npm-publishing.zh-CN.md)
 
-The three existing lean packages are public on npm. The new `amox-pi-sync` package is not published yet; install it from a checkout until its first publication. The repository contains four independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC; users only need the README installation commands.
+The three existing lean packages are public on npm. If the `amox-pi-sync` package is not published yet, install it from a checkout until the first npm publication is confirmed. The repository contains four independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC; users only need the README installation commands.
 
 ## Independent package releases
 

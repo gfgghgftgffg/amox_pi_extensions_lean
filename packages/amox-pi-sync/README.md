@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Standalone Pi agent-data sync over a private SSH Git repository. Package: `@gfgghgftgffg/amox-pi-sync@0.1.0`. Based on [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), `pi-sync-suite@0.1.1` (MIT; Copyright © 2026 Murat). The exact source reference is `npm:pi-sync-suite@0.1.1`; see [MAINTENANCE.md](MAINTENANCE.md).
+Standalone Pi agent-data sync over a private SSH Git repository. Package: `@gfgghgftgffg/amox-pi-sync`. Based on [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), `pi-sync-suite@0.1.1` (MIT; Copyright © 2026 Murat). The exact source reference is `npm:pi-sync-suite@0.1.1`; see [MAINTENANCE.md](MAINTENANCE.md).
 
 ## Install
 
@@ -14,7 +14,7 @@ From this repository checkout:
 node scripts/install-extension.mjs amox-pi-sync
 ```
 
-Only this extension is installed. Do not load it alongside the original `pi-sync-suite`; inspect existing sources with `pi list` and remove the old source yourself. This new package has not been published to npm yet. After its first publication, npm installation and updates will use:
+Only this extension is installed. Do not load it alongside the original `pi-sync-suite`; inspect existing sources with `pi list` and remove the old source yourself. If the first npm publication is pending, use the checkout installer above. Once available, npm installation and updates use:
 
 ```sh
 pi install npm:@gfgghgftgffg/amox-pi-sync
@@ -47,4 +47,4 @@ Manual/off startup performs no network access. Auto startup computes a local fin
 - Backups use `amox-pi-sync-backups` under the agent-data directory. Cleanup only deletes local backups after manual preview/confirmation, using complete backup directories rather than individual files. The default limits are 20 complete backups and a maximum age of 180 days; backups older than this or beyond the newest 20 become cleanup candidates. There is no automatic deletion; sessions and missions are never cleanup targets.
 - Settings use `amox-pi-sync.json`. If absent, legacy `pi-sync-suite.json` can be read for migration. The old file is not changed before new settings are saved; saving writes the new file. Migration uses a separate `amox-pi-sync-repo` directory rather than reusing the old snapshot.
 
-Configuration sync/settings merging, Markdown/JSON archives, Environment Tools and Local Packages from the original suite are not included. Deployment tools such as `amox-agent-bootstrap` own environment setup and machine-specific configuration; Pi's native `/export` handles readable exports. Raw data selection, backups and manual backup cleanup remain part of sync. See [feature decisions](MAINTENANCE.md#功能取舍与维护边界) for the reasons and maintenance boundaries. This is a maintained local fork, not a runtime wrapper or a full replacement of the upstream suite.
+Configuration sync/settings merging, Markdown/JSON archives, Environment Tools and Local Packages from the original suite are not included. Deployment tools such as `amox-agent-bootstrap` own environment setup and machine-specific configuration; Pi's native `/export` handles readable exports. Raw data selection, backups and manual backup cleanup remain part of sync. See [feature decisions](MAINTENANCE.md#功能取舍与维护边界) for the reasons and maintenance boundaries. This is a selectively maintained fork, not a runtime wrapper or a full replacement of the upstream suite. Daily reviews track published upstream changes, port worthwhile retained behavior, skip removed features and ask the owner through ntfy when uncertain; removed modules are not restored automatically.

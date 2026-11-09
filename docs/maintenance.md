@@ -1,6 +1,6 @@
 # 维护者文档
 
-本项目包含三个独立 lean 门面及 `amox-pi-sync` 独立 fork。后者基于 MIT `pi-sync-suite@0.1.1`（`npm:pi-sync-suite@0.1.1`，Copyright (c) 2026 Murat），在 manifest 中标记 `maintenanceMode: manual-fork`、`releaseVersioning: independent` 和 `toolContract: false`：自动上游检测、源码收集、适配写入、版本暂存及字符统计均跳过它。上游变更仅可人工审查后定向移植，不能用全量 suite 覆盖。该包仍纳入受影响范围内的 CI 和独立安装验证；功能及 Starline 状态菜单见[包 README](../packages/amox-pi-sync/README.zh-CN.md)。
+本项目包含三个独立 lean 门面及 `amox-pi-sync` 独立 fork。后者基于 MIT `pi-sync-suite@0.1.1`（`npm:pi-sync-suite@0.1.1`，Copyright (c) 2026 Murat），在 manifest 中标记 `maintenanceMode: selective-fork`、`releaseVersioning: independent` 和 `toolContract: false`：每日监控 npm 正式发布，按功能边界审查后定向移植，不跟随整包覆盖、不添加上游运行时依赖，也不参与字符统计。舍弃功能跳过；有争议的新增、行为或兼容性问题通过 ntfy 请所有者决定，sync 暂不适配但不阻塞其它包。该包仍纳入受影响范围内的 CI 和独立安装验证；功能及 Starline 状态菜单见[包 README](../packages/amox-pi-sync/README.zh-CN.md)。
 
 ## 开发检查
 
@@ -26,14 +26,14 @@ node scripts/audit-dependencies.mjs --omit=dev
 - 依赖保持精确版本；Pi 开发 SDK、Action SHA 和维护宿主代码单独审查、更新及部署。
 - README 只描述当前项目的介绍、安装、基本用法、封装差异、必要限制与字符测量，中英文同步。运行时只写随上游更新，不重复依赖版本、测试快照或上游手册；参数查 help 和上游文档，精确版本查 package.json、lockfile 和 manifest。技术审查与适配历史保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
 
-[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 会话加载；只有 `list/read/write/edit/check` 工具，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。适配或验收失败后修复同一候选，不通过另起候选绕过检查或凭口头声明通过。仅可明确识别的服务器暂时性错误且尚未进入发布边界时，允许持久化排队两小时后重跑，最多额外三次；规则与通知见[延迟重试](local-scheduler.md#服务器错误延迟重试)。
+[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 适配会话加载；只有 `list/read/write/edit/check` 工具；批准移植 sync 时另有 `ask_owner`，用于将适配中新发现的疑问持久记录、发 ntfy 并暂停同一候选，阻止后续推送／合并。sync 在暂存版本前另用只有 `list/read/submit_review` 的只读 SDK 会话审查，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。适配或验收失败后修复同一候选，不通过另起候选绕过检查或凭口头声明通过。仅可明确识别的服务器暂时性错误且尚未进入发布边界时，允许持久化排队两小时后重跑，最多额外三次；规则与通知见[延迟重试](local-scheduler.md#服务器错误延迟重试)。
 
 Pi 的工具权限不是操作系统级沙箱。候选执行另用 bubblewrap 隔离，检查进程没有主机 home、SSH 或凭据，候选源码只读；安装与契约捕获仅开放所需写入。主机固定代码仍属于信任边界。
 
 ## 独立版本与验收范围
 
-- 每个 npm 包独立递增版本，只与自身 package.json、lockfile 工作区记录和 manifest 条目对应；根 private 包版本及 GitHub tag 仅标识发布批次，不要求与 npm 版本相等。当前根版本为 `0.1.16`，`amox-pi-sync` 为 `0.1.0`，其他包保留各自版本；不得为接入同步包统一回滚或升版。
-- 每日脚本仅暂存上游引擎或 lean 作者来源变化的包。manifest 的 `release` 记录批次 `version`、精确 `baseCommit` 和非空、无重复的 `packageIds`，模型不可改写。手动准备发布也须同步这些字段；门禁要求所选包恰好是相对该 base 升版的包，并拒绝未选包发布文件变化。
+- 每个 npm 包独立递增版本，只与自身 package.json、lockfile 工作区记录和 manifest 条目对应；根 private 包版本及 GitHub tag 仅标识发布批次，不要求与 npm 版本相等。精确版本查 package.json 和 manifest；不得为发布同步包统一回滚或给其它包陪跑升版。
+- 每日脚本仅暂存上游引擎、lean 作者来源变化或已批准定向移植的 selective fork 包。manifest 的 `release` 记录批次 `version`、精确 `baseCommit` 和非空、无重复的 `packageIds`，模型不可改写。手动准备发布也须同步这些字段；门禁要求所选包恰好是相对该 base 升版的包，并拒绝未选包发布文件变化。
 - 本地 gate、PR CI 和 Release 共用变更范围判定：单包变化只跑该包类型/功能测试、契约与独立生产安装；共享源码、维护脚本、开发依赖或无法确定比较基准时全量检查，共享运行时依赖按锁文件扩展到实际使用它的包。依赖审计始终执行。扩大验收不等于扩大 npm 发布。
 - 契约捕获仅更新本批受影响记录，保留其它包快照；测量文档只改所选发布包。开发者仍可用上面的命令全量验收，或为单包命令附加 `--packages <id>`。受控 CI 通过 `scripts/check-changes.mjs` 与精确 SHA 自动计算范围，不接受模型提供的范围声明。
 

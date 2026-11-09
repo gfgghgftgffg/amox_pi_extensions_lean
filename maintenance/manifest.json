@@ -56,24 +56,24 @@
       "id": "amox-pi-sync",
       "path": "packages/amox-pi-sync",
       "packageName": "@gfgghgftgffg/amox-pi-sync",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "index.ts",
       "upstreamPackage": "pi-sync-suite",
       "upstreamVersion": "0.1.1",
       "upstreamRepository": "https://github.com/MuratAitov/pi-sync.git",
       "upstreamRef": "npm:pi-sync-suite@0.1.1",
-      "maintenanceMode": "manual-fork",
+      "maintenanceMode": "selective-fork",
+      "sourceFiles": ["index.ts", "core.ts"],
       "releaseVersioning": "independent",
       "toolContract": false,
       "registeredTools": []
     }
   ],
   "release": {
-    "version": "0.1.16",
-    "baseCommit": "13ae5c834e54b2eb4446b3f681ee000c1fd67de7",
+    "version": "0.1.17",
+    "baseCommit": "3261d956499073196a22a725d0638e7c0b1f571f",
     "packageIds": [
-      "pi-web-access-lean",
-      "pi-subagents-lean"
+      "amox-pi-sync"
     ]
   }
 }

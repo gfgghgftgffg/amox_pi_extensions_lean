@@ -31,3 +31,13 @@ test("selected contract capture reports only web and preserves every unselected 
     assert.notEqual(typo.status, 0); assert.match(typo.stderr, /Unsupported/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+
+test("command-only sync selection leaves the contract baseline unchanged", () => {
+  const dir = mkdtempSync(join(tmpdir(), "amox-sync-contracts-"));
+  try {
+    const output = join(dir, "contracts.json");
+    const result = run(process.execPath, ["scripts/capture-contracts.mjs", "--packages", "amox-pi-sync", "--output", output], { cwd: root, timeout: 55_000 });
+    assert.equal(result.status, 0, result.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(output, "utf8")), JSON.parse(readFileSync(join(root, "maintenance/tool-contracts.json"), "utf8")));
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});

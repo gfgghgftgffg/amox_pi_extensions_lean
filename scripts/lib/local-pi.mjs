@@ -64,6 +64,7 @@ export function createLocalTools({ repo, context, manifest, baseline, gate, plan
       parameters: Type.Object({ summary: Type.String({ minLength: 20, maxLength: 20000 }) }),
       execute: async (_id, { summary }, signal) => {
         if (plan) for (const entry of manifest.packages) {
+          if (entry.maintenanceMode === "manual-fork") continue;
           const engine = plan.packagePlans.find((item) => item.id === entry.id);
           const lean = plan.leanPlans.find((item) => item.id === entry.id);
           if (engine.versionChange !== "bump" && !lean.changed) continue;

@@ -51,6 +51,7 @@ export function measureDocs(repo, manifest, packageIds = manifest.packages.map((
   const snapshot = readJson(join(repo, "maintenance/tool-contracts.json"));
   let upstreamTotal = 0, leanTotal = 0;
   for (const entry of manifest.packages) {
+    if (entry.maintenanceMode === "manual-fork") continue;
     const lean = snapshot.lean[entry.packageName], upstream = snapshot.upstream[entry.upstreamPackage];
     upstreamTotal += upstream.totals.registeredProxyTokens; leanTotal += lean.totals.registeredProxyTokens;
     if (!packageIds.includes(entry.id)) continue;

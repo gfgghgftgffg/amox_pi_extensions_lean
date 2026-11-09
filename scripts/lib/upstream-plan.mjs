@@ -8,6 +8,7 @@ export function buildUpdatePlan({ manifest, workspaces, metadata }) {
   const workspaceById = new Map(workspaces.map((workspace) => [workspace.id, workspace]));
   const fail = (code, id, message) => errors.push({ code, package: id, message });
   for (const entry of manifest.packages) {
+    if (entry.maintenanceMode === "manual-fork") continue;
     const workspace = workspaceById.get(entry.id);
     const dependencies = workspace?.pkg.dependencies ?? {};
     const primary = entry.upstreamPackage;

@@ -2,22 +2,24 @@
 
 [English](README.md)
 
-三个独立的 lean 包装扩展：缩短工具描述和 schema，保留上游执行能力，运行时随上游更新。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，工具上下文合计减少约 **93.5%**，不是实际计费 token。
+三个独立的 lean 包装扩展，以及独立的 `amox-pi-sync` 数据同步扩展。三个 lean 包缩短工具描述和 schema，保留上游执行能力，运行时随上游更新。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，三个 lean 包的工具上下文合计减少约 **93.5%**，不是实际计费 token；同步包不计入统计。
 
 | 扩展 | 工具 | 用途 |
 | --- | --- | --- |
 | [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | 搜索、核实、网页和 PDF |
 | [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | 任务、依赖和进度 |
 | [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | 子 Agent 和工作流 |
+| [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、备份与诊断；默认 sessions + missions |
 
 ## 安装
 
-支持 Linux、macOS 和 Windows，需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm。三个 npm 包均公开，按需安装，不固定版本：
+支持 Linux、macOS 和 Windows，需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm；`amox-pi-sync` 还需要 Git 和可用的 SSH 认证。按需安装，不固定版本：
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean
 pi install npm:@gfgghgftgffg/rpiv-todo-lean
 pi install npm:@gfgghgftgffg/pi-subagents-lean
+pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
@@ -31,11 +33,14 @@ cd amox_pi_extensions_lean
 node scripts/install-extension.mjs pi-web-access-lean
 node scripts/install-extension.mjs rpiv-todo-lean
 node scripts/install-extension.mjs pi-subagents-lean
+node scripts/install-extension.mjs amox-pi-sync
 ```
 
 本地安装通过 `git pull --ff-only` 和对应安装脚本更新。新电脑可按 [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md) 部署。
 
 ## 维护与部署
+
+`amox-pi-sync` 是 `manual-fork`，自动上游维护不会覆盖、适配或给它升版。该包当前版本为 `0.1.0`；每个包独立维护版本，根 private 包版本（`0.1.16`）仅标识发布批次。安装 Starline 后可点击状态胶囊打开状态与操作菜单；没有 Starline 也可使用 `/sync-status`。功能与限制详见[包 README](packages/amox-pi-sync/README.zh-CN.md)。
 
 安装和使用扩展不需要配置 Actions。每天 02:23 UTC（北京时间 10:23），systemd 新开独立 Pi SDK 会话，不使用 subagent。没有上游更新或已有未合并维护 PR 时不调用模型。适配和实际检查在临时副本中完成，不改个人安装或替换维护宿主。
 
@@ -50,5 +55,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 ## 来源
 
 基于 kunkun9527 的 [web](https://github.com/kunkun9527/pi-web-access-lean)、[todo](https://github.com/kunkun9527/rpiv-todo-lean)、[subagent](https://github.com/kunkun9527/pi-subagents-lean) 包装和 [lean 指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md)。上游实现以依赖引入，不复制源码。
+
+`amox-pi-sync` 是基于 [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync) 的独立 fork，来源为 MIT `pi-sync-suite@0.1.1`（ref：`npm:pi-sync-suite@0.1.1`），保留 Copyright (c) 2026 Murat。它不安装原 suite，请勿同时加载两者。同步内容可能含秘密，请使用私有 SSH 仓库，并阅读包文档中的安全限制。
 
 许可证：[MIT](LICENSE)。

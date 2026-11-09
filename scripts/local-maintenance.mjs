@@ -29,7 +29,8 @@ export async function stageVersions({ work, state, scratch, baseCommit = git(wor
   const { manifest, workspaces, plan } = state;
   const root = JSON.parse(readFileSync(join(work, "package.json"), "utf8"));
   const version = nextPatch(root.version), generated = new Map();
-  const packageIds = selectEntries(manifest.packages, maintenancePackageIds(plan)).map((entry) => entry.id);
+  const packageIds = selectEntries(manifest.packages.filter((entry) => entry.maintenanceMode !== "manual-fork"),
+    maintenancePackageIds(plan)).map((entry) => entry.id);
   const save = (path, value) => { const text = jsonText(value); writeFileSync(join(work, path), text); generated.set(path, text); };
   root.version = version; save("package.json", root);
   const nextManifest = applyPlanToManifest(manifest, plan);

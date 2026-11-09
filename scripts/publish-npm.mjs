@@ -17,9 +17,11 @@ import { compareExactStableVersions } from "./lib/semver.mjs";
 export const NPM_REGISTRY = "https://registry.npmjs.org";
 const PUBLISHED_FILES = ["LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md", "index.ts", "package.json"];
 
-// These npm packs have six short regular paths. Reject links, extra files and
+// These npm packs have a small, explicit set of short regular paths. Reject links, extra files and
 // nonstandard headers instead of extracting an untrusted archive on the host.
 export function validateNpmArchive({ repoRoot, asset, entry, version, repository }) {
+  const publishedFiles = entry.id === "amox-pi-sync" && entry.maintenanceMode === "manual-fork"
+    ? [...PUBLISHED_FILES, "core.ts"] : PUBLISHED_FILES;
   const tar = gunzipSync(readFileSync(asset.path), { maxOutputLength: 20_000_000 });
   const files = new Map();
   const text = (header, start, size) => header.subarray(start, start + size).toString("utf8").split("\0", 1)[0];
@@ -34,18 +36,18 @@ export function validateNpmArchive({ repoRoot, asset, entry, version, repository
     const computed = header.reduce((sum, byte, i) => sum + (i >= 148 && i < 156 ? 32 : byte), 0);
     if (checksum !== computed || prefix || ![0, 48].includes(header[156]) || offset + 512 + size > tar.length) throw new Error("Unsupported or corrupt npm archive header");
     const path = name.startsWith("package/") ? name.slice(8) : "";
-    if (!PUBLISHED_FILES.includes(path) || files.has(path)) throw new Error("Unexpected npm archive path/type");
+    if (!publishedFiles.includes(path) || files.has(path)) throw new Error("Unexpected npm archive path/type");
     files.set(path, tar.subarray(offset + 512, offset + 512 + size));
     offset += 512 + Math.ceil(size / 512) * 512;
   }
-  if (files.size !== PUBLISHED_FILES.length || tar.subarray(offset).some((byte) => byte !== 0)) throw new Error("Incomplete npm package archive or unexpected trailing data");
+  if (files.size !== publishedFiles.length || tar.subarray(offset).some((byte) => byte !== 0)) throw new Error("Incomplete npm package archive or unexpected trailing data");
   const pkg = JSON.parse(files.get("package.json").toString("utf8"));
   const expected = readJson(resolve(repoRoot, entry.path, "package.json"));
   if (!isDeepStrictEqual(pkg, expected) || pkg.name !== entry.packageName || pkg.version !== version
     || pkg.private || pkg.publishConfig?.access !== "public" || pkg.publishConfig?.registry
     || pkg.repository?.url !== `git+https://github.com/${repository}.git`
     || pkg.repository?.directory !== entry.path) throw new Error("Npm package identity/source/config mismatch");
-  for (const file of PUBLISHED_FILES.filter((file) => file !== "package.json")) {
+  for (const file of publishedFiles.filter((file) => file !== "package.json")) {
     if (!files.get(file).equals(readFileSync(resolve(repoRoot, entry.path, file)))) throw new Error(`Npm archive differs from verified checkout: ${entry.id}/${file}`);
   }
   return pkg;

@@ -2,7 +2,7 @@
 
 [简体中文](npm-publishing.zh-CN.md)
 
-All three extension packages are public on npm. [Release](../.github/workflows/release.yml) publishes verified GitHub Release archives through OIDC; users only need the README installation commands.
+The three existing lean packages are public on npm. The new `amox-pi-sync` package is not published yet; install it from a checkout until its first publication. The repository contains four independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC; users only need the README installation commands.
 
 ## Independent package releases
 
@@ -12,7 +12,7 @@ Local checks, exact-head three-platform CI and independent Release verification 
 
 ## Publishing configuration
 
-Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, and `@gfgghgftgffg/pi-subagents-lean`.
+Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, `@gfgghgftgffg/pi-subagents-lean`, and `@gfgghgftgffg/amox-pi-sync`.
 
 | Field | Value |
 | --- | --- |
@@ -22,7 +22,7 @@ Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-l
 | Environment | `release` |
 | Allowed actions | Direct `npm publish`, not stage-only |
 
-These connections are already in use. Keep GitHub's `release` environment restricted to `main`, without human approval for unattended releases. Managing npm trust requires maintainer access and interactive 2FA; routine OIDC publication does not. A [new connection](https://docs.npmjs.com/trusted-publishers/) must complete its first successful publish within **2 days**. Do not repeat setup when moving the VPS.
+The three lean-package connections are already in use; configure and verify the separate `amox-pi-sync` connection before its first OIDC publication. Keep GitHub's `release` environment restricted to `main`, without human approval for unattended releases. Managing npm trust requires maintainer access and interactive 2FA; routine OIDC publication does not. A [new connection](https://docs.npmjs.com/trusted-publishers/) must complete its first successful publish within **2 days**. Do not repeat setup when moving the VPS.
 
 Only the npm job has `id-token: write`; it has read-only repository access and installs no extension dependencies. [The publisher](../scripts/publish-npm.mjs) validates the source SHA, tag, archive contents and registry integrity. Root `package.json` remains private. Pi, systemd and Actions Secrets need no npm token.
 

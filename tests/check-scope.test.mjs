@@ -104,3 +104,47 @@ test("release planning binds automatic and manual batches to the same independen
     assert.notEqual(invoke("push").status, 0); assert.notEqual(invoke("workflow_dispatch").status, 0);
   } finally { f.cleanup(); }
 });
+
+test("new independently versioned packages must be selected when the release base predates them", () => {
+  const f = releaseFixture();
+  try {
+    f.commit();
+    const sync = f.manifest.packages.find((entry) => entry.id === "amox-pi-sync");
+    f.git(["rm", "-r", sync.path]);
+    const previousManifest = f.read("maintenance/manifest.json");
+    previousManifest.packages = previousManifest.packages.filter((entry) => entry.id !== sync.id);
+    f.write("maintenance/manifest.json", previousManifest);
+    const previousLock = f.read("package-lock.json"); delete previousLock.packages[sync.path]; f.write("package-lock.json", previousLock);
+    f.git(["add", "."]); f.git(["commit", "--quiet", "-m", "base without sync"]);
+    const base = f.git(["rev-parse", "HEAD"]);
+    f.git(["checkout", "HEAD~1", "--", "."]);
+    // A normal push with an unchanged root version is not a release batch.
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+    const root = f.read("package.json"); root.version = "9.0.0"; f.write("package.json", root);
+    const lock = f.read("package-lock.json"); lock.version = root.version; lock.packages[""].version = root.version;
+    lock.packages[sync.path].version = "0.1.0"; f.write("package-lock.json", lock);
+    const pkg = f.read(`${sync.path}/package.json`); pkg.version = "0.1.0"; f.write(`${sync.path}/package.json`, pkg);
+    const manifest = f.read("maintenance/manifest.json"); manifest.packages.find((entry) => entry.id === sync.id).version = pkg.version;
+    manifest.release = { version: root.version, baseCommit: base, packageIds: [sync.id] }; f.write("maintenance/manifest.json", manifest);
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+    assert.equal(loadCheckScope(f.root, base).full, true);
+    manifest.release.packageIds = [web]; f.write("maintenance/manifest.json", manifest);
+    assert.throws(() => validateReleaseChanges(f.root, base), /exactly match/);
+  } finally { f.cleanup(); }
+});
+
+test("unselected core.ts cannot be changed, removed or newly added", () => {
+  const f = releaseFixture();
+  try {
+    const base = f.commit(); bumpWeb(f, base);
+    const path = "packages/amox-pi-sync/core.ts", original = readFileSync(join(f.root, path), "utf8");
+    f.write(path, original + "\n// unselected change\n");
+    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/core\.ts/);
+    f.git(["rm", "-f", path]);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/core\.ts/);
+    f.write(path, original);
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+    f.write(`packages/${todo}/core.ts`, "// newly added published source\n");
+    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: rpiv-todo-lean\/core\.ts/);
+  } finally { f.cleanup(); }
+});

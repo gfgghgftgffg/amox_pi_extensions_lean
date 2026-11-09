@@ -92,6 +92,7 @@ function buildTargets() {
       const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8"));
       const mapping = manifestById.get(id);
       if (!mapping) throw new Error(`maintenance/manifest.json has no entry for ${id}`);
+      if (mapping.toolContract === false) continue; // command-only fork, no upstream tool comparison
       const leanEntry = resolve(packageDir, pkg.pi?.extensions?.[0] ?? "index.ts");
       const upstream = resolveInstalledPackage(mapping.upstreamPackage, mapping.upstreamEntry);
       targets.push({
@@ -238,7 +239,7 @@ if (packageIds !== undefined && mode !== "report") {
   // Keep every unselected contract byte-for-byte equivalent as JSON data.
   // A partial capture cannot initialize a new complete baseline.
   const previous = JSON.parse(readFileSync(snapshotPath, "utf8"));
-  snapshot = { ...previous, environment: snapshot.environment,
+  snapshot = { ...previous, environment: captures.length ? snapshot.environment : previous.environment,
     upstream: { ...previous.upstream, ...snapshot.upstream },
     lean: { ...previous.lean, ...snapshot.lean } };
 }

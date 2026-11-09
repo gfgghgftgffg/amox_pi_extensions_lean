@@ -1,5 +1,5 @@
-// Host-discovery checks: load the three monorepo entrypoints in ONE real
-// isolated Pi 1.1.0 session and prove that (a) only the three facades are
+// Host-discovery checks: load all monorepo entrypoints in ONE real
+// isolated Pi 1.1.0 session and prove that (a) only the three tool facades are
 // registered, (b) upstream engines are not discovered as extra extensions, and
 // (c) the upstream ext: selector identity (used by the Task Router) still
 // resolves to the expected names.
@@ -32,7 +32,7 @@ const upstreamToolNames = [
   "SubagentWorkflow",
 ];
 
-test("one host session loads exactly the three facades and no upstream engines", async () => {
+test("one host session loads all extensions, exactly three tool facades and no upstream engines", async () => {
   const env = createIsolatedEnvironment({ prefix: "amox-host-discovery-" });
   const previousEnv = {
     PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
@@ -52,7 +52,7 @@ test("one host session loads exactly the three facades and no upstream engines",
 
     assert.deepEqual(result.loadErrors, []);
     assert.deepEqual(result.runtimeErrors, []);
-    assert.deepEqual([...result.loadedPaths].sort(), [...entryPaths].sort(), "only the three monorepo entrypoints load");
+    assert.deepEqual([...result.loadedPaths].sort(), [...entryPaths].sort(), "only the declared monorepo entrypoints load");
     assert.deepEqual(result.tools.map((tool) => tool.name), expectedTools);
     assert.ok(result.tools.every((tool) => tool.active), "all three facades are active at bind");
     assert.ok(result.tools.every((tool) => tool.source !== "builtin"), "facades must not be built-in tools");
@@ -83,6 +83,6 @@ test("Task Router ext: selector identity is unchanged by the monorepo bundle", a
       names.includes(expected),
       `${entryPath} must keep canonical name ${expected}; got ${JSON.stringify(names)}`,
     );
-    assert.ok(names.every((name) => /^pi-|^rpiv-/.test(name)));
+    assert.ok(names.every((name) => /^(?:pi-|rpiv-|amox-pi-)/.test(name)));
   }
 });

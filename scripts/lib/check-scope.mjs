@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
 import { HEX40, readJson } from "./files.mjs";
@@ -83,15 +83,24 @@ export function validateReleaseChanges(repoRoot, baseRef) {
   const selected = releaseEntries(repoRoot);
   if (manifest.release?.baseCommit !== baseRef) throw new Error("Release selection base does not match the verified comparison");
   const bumped = [];
+  const previousFiles = new Set(git(repoRoot, ["ls-tree", "-r", "--name-only", baseRef]).trim().split(/\r?\n/));
   for (const entry of manifest.packages) {
+    if (!previousFiles.has(`${entry.path}/package.json`)) {
+      // An initial stable version is a release candidate even without a prior
+      // package version; the exact selection check below must include it.
+      bumped.push(entry.id);
+      continue;
+    }
     const previous = JSON.parse(git(repoRoot, ["show", `${baseRef}:${entry.path}/package.json`]));
     const change = compareExactStableVersions(entry.version, previous.version);
     if (change < 0) throw new Error(`Refusing npm version downgrade: ${entry.id}`);
     if (change > 0) bumped.push(entry.id);
     if (!selected.some((item) => item.id === entry.id)) {
       const files = ["package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"];
+      if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.push("core.ts");
       for (const file of files) {
-        if (git(repoRoot, ["show", `${baseRef}:${entry.path}/${file}`]) !== readFileSync(join(repoRoot, entry.path, file), "utf8")) {
+        if (!previousFiles.has(`${entry.path}/${file}`) || !existsSync(join(repoRoot, entry.path, file))
+          || git(repoRoot, ["show", `${baseRef}:${entry.path}/${file}`]) !== readFileSync(join(repoRoot, entry.path, file), "utf8")) {
           throw new Error(`Unselected published package changed: ${entry.id}/${file}`);
         }
       }

@@ -33,24 +33,24 @@ test("model credentials are required and compatible endpoint config never execut
   assert.throws(() => modelConfig({ ...config, api: "arbitrary-program" }), /API/);
 });
 
-test("release assets accept exactly the three identity-bound archives and reject tampering", () => {
-  const fixture = releaseFixture(), root = fixture.root;
+for (const packageIds of [undefined, ["amox-pi-sync"]]) test(`release assets bind ${packageIds ? "the independently versioned sync selection" : "all four archives"} and reject tampering`, () => {
+  const fixture = releaseFixture(packageIds ? { packageIds, versions: { "amox-pi-sync": "0.1.0" } } : {}), root = fixture.root;
   const dir = mkdtempSync(join(tmpdir(), "amox-release-assets-test-"));
   try {
     const version = readJson(join(root, "package.json")).version;
-    const entries = readJson(join(root, "maintenance/manifest.json")).packages;
+    const entries = readJson(join(root, "maintenance/manifest.json")).packages.filter((entry) => !packageIds || packageIds.includes(entry.id));
     const files = entries.map((entry) => {
-      const filename = `${entry.packageName.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`;
+      const filename = `${entry.packageName.replace(/^@/, "").replaceAll("/", "-")}-${entry.version}.tgz`;
       const bytes = Buffer.from(entry.packageName);
       writeFileSync(join(dir, filename), bytes);
       return { package: entry.packageName, filename, sha256: createHash("sha256").update(bytes).digest("hex"), integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}` };
     });
     const save = () => writeFileSync(join(dir, "assets.json"), jsonText({ version, files }));
     save();
-    assert.equal(validateReleaseAssets({ repoRoot: root, dir }).length, 3);
+    assert.equal(validateReleaseAssets({ repoRoot: root, dir }).length, packageIds ? 1 : 4);
     files[0].filename = "../secret.tgz"; save();
     assert.throws(() => validateReleaseAssets({ repoRoot: root, dir }), /identity/);
-    files[0].filename = `${entries[0].packageName.replace(/^@/, "").replaceAll("/", "-")}-${version}.tgz`; save();
+    files[0].filename = `${entries[0].packageName.replace(/^@/, "").replaceAll("/", "-")}-${entries[0].version}.tgz`; save();
     writeFileSync(join(dir, files[0].filename), "tampered");
     assert.throws(() => validateReleaseAssets({ repoRoot: root, dir }), /hash/);
   } finally { fixture.cleanup(); rmSync(dir, { recursive: true, force: true }); }

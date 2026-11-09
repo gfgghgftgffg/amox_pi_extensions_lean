@@ -55,6 +55,7 @@ export function collectSources({ repoRoot, outDir, plan, manifest, runGit = (arg
   }
   try {
     for (const entry of manifest.packages) {
+      if (entry.maintenanceMode === "manual-fork") continue;
       const pkgPlan = plan.packagePlans.find((item) => item.id === entry.id);
       const leanPlan = plan.leanPlans.find((item) => item.id === entry.id);
       if (pkgPlan.versionChange === "bump") {

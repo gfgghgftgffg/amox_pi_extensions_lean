@@ -51,6 +51,21 @@
       "upstreamGitHead": "9bb6c822bae9f4fe8d33384b715a5e2e96d5df10",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
       "leanCommit": "addf9e2e5a6c8f08719a4df48b10290b9214d902"
+    },
+    {
+      "id": "amox-pi-sync",
+      "path": "packages/amox-pi-sync",
+      "packageName": "@gfgghgftgffg/amox-pi-sync",
+      "version": "0.1.0",
+      "entry": "index.ts",
+      "upstreamPackage": "pi-sync-suite",
+      "upstreamVersion": "0.1.1",
+      "upstreamRepository": "https://github.com/MuratAitov/pi-sync.git",
+      "upstreamRef": "npm:pi-sync-suite@0.1.1",
+      "maintenanceMode": "manual-fork",
+      "releaseVersioning": "independent",
+      "toolContract": false,
+      "registeredTools": []
     }
   ],
   "release": {

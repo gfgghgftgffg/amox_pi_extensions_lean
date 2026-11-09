@@ -1,5 +1,7 @@
 # 维护者文档
 
+本项目包含三个独立 lean 门面及 `amox-pi-sync` 独立 fork。后者基于 MIT `pi-sync-suite@0.1.1`（`npm:pi-sync-suite@0.1.1`，Copyright (c) 2026 Murat），在 manifest 中标记 `maintenanceMode: manual-fork`、`releaseVersioning: independent` 和 `toolContract: false`：自动上游检测、源码收集、适配写入、版本暂存及字符统计均跳过它。上游变更仅可人工审查后定向移植，不能用全量 suite 覆盖。该包仍纳入受影响范围内的 CI 和独立安装验证；功能及 Starline 状态菜单见[包 README](../packages/amox-pi-sync/README.zh-CN.md)。
+
 ## 开发检查
 
 需要 Node >=22.19、npm 和 Git，在仓库根目录运行：
@@ -30,7 +32,7 @@ Pi 的工具权限不是操作系统级沙箱。候选执行另用 bubblewrap �
 
 ## 独立版本与验收范围
 
-- 每个 npm 包独立递增版本，只与自身 package.json、lockfile 工作区记录和 manifest 条目对应；根 private 包版本及 GitHub tag 仅标识发布批次，不要求与 npm 版本相等。
+- 每个 npm 包独立递增版本，只与自身 package.json、lockfile 工作区记录和 manifest 条目对应；根 private 包版本及 GitHub tag 仅标识发布批次，不要求与 npm 版本相等。当前根版本为 `0.1.16`，`amox-pi-sync` 为 `0.1.0`，其他包保留各自版本；不得为接入同步包统一回滚或升版。
 - 每日脚本仅暂存上游引擎或 lean 作者来源变化的包。manifest 的 `release` 记录批次 `version`、精确 `baseCommit` 和非空、无重复的 `packageIds`，模型不可改写。手动准备发布也须同步这些字段；门禁要求所选包恰好是相对该 base 升版的包，并拒绝未选包发布文件变化。
 - 本地 gate、PR CI 和 Release 共用变更范围判定：单包变化只跑该包类型/功能测试、契约与独立生产安装；共享源码、维护脚本、开发依赖或无法确定比较基准时全量检查，共享运行时依赖按锁文件扩展到实际使用它的包。依赖审计始终执行。扩大验收不等于扩大 npm 发布。
 - 契约捕获仅更新本批受影响记录，保留其它包快照；测量文档只改所选发布包。开发者仍可用上面的命令全量验收，或为单包命令附加 `--packages <id>`。受控 CI 通过 `scripts/check-changes.mjs` 与精确 SHA 自动计算范围，不接受模型提供的范围声明。

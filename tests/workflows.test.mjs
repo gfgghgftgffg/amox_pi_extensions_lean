@@ -117,8 +117,10 @@ test("public docs describe local Pi, reviewed npm publication and independent in
 test("publication docs reflect completed bootstrap without changing recovery or installation boundaries", () => {
   const english = read("README.md"), chinese = read("README.zh-CN.md");
   const npmEnglish = read("docs/npm-publishing.md"), npmChinese = read("docs/npm-publishing.zh-CN.md");
-  assert.match(npmEnglish, /All three extension packages are public on npm/);
-  assert.match(npmChinese, /三个扩展包已在 npm 公开发布/);
+  assert.match(npmEnglish, /The three existing lean packages are public on npm/);
+  assert.match(npmEnglish, /amox-pi-sync` package is not published yet/);
+  assert.match(npmChinese, /三个现有 lean 包已在 npm 公开发布/);
+  assert.match(npmChinese, /amox-pi-sync` 尚未发布/);
   for (const doc of [english, chinese, npmEnglish, npmChinese]) {
     assert.match(doc, /OIDC/);
     assert.doesNotMatch(doc, /before npm delivery is available|sources once available|npm 才可用于安装|三个包可用后|initial release or a retry|首次或重试发布/);

@@ -27,6 +27,7 @@ export function trackedDependencies(workspaces) {
 export function requiredGitUrls(manifest) {
   const urls = new Set();
   for (const entry of manifest.packages) {
+    if (entry.maintenanceMode === "manual-fork") continue;
     urls.add(entry.leanRepository);
     urls.add(entry.upstreamRepository);
   }
@@ -138,7 +139,8 @@ export async function fetchUpstreamMetadata({
     throw new Error("当前 Node 运行时没有可用的 fetch；请使用 --metadata <file> 注入元数据");
   }
   const npm = {};
-  for (const name of trackedDependencies(workspaces)) {
+  for (const name of trackedDependencies(workspaces.filter((workspace) =>
+    manifest.packages.find((entry) => entry.id === workspace.id)?.maintenanceMode !== "manual-fork"))) {
     npm[name] = await fetchNpmLatest({ name, fetchImpl, registry });
   }
   const git = {};

@@ -54,7 +54,7 @@ test("no lifecycle hooks anywhere in the workspace tree", () => {
 test("workspace package metadata matches maintenance/manifest.json", () => {
   assert.equal(manifest.schemaVersion, 1);
   assert.doesNotThrow(() => workspaceVersions(repoRoot));
-  assert.equal(workspacePackages.length, 3);
+  assert.equal(workspacePackages.length, 4);
   for (const { entry, dir, pkg } of workspacePackages) {
     assert.equal(entry.id, entry.path.split("/").pop());
     assert.equal(pkg.name, entry.packageName);
@@ -63,9 +63,22 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
     assert.equal(pkg.license, "MIT");
     assert.equal(pkg.repository.directory, entry.path);
     assert.match(pkg.repository.url, /gfgghgftgffg\/amox_pi_extensions_lean\.git/);
-    assert.ok(entry.leanRepository.endsWith(`${entry.id}.git`), entry.leanRepository);
-    assert.match(entry.leanCommit, /^[0-9a-f]{40}$/);
-    assert.equal(pkg.dependencies[entry.upstreamPackage], entry.upstreamVersion);
+    if (entry.maintenanceMode === "manual-fork") {
+      assert.equal(entry.id, "amox-pi-sync");
+      assert.equal(entry.version, "0.1.0");
+      assert.equal(entry.releaseVersioning, "independent");
+      assert.equal(entry.toolContract, false);
+      assert.deepEqual(entry.registeredTools, []);
+      assert.equal(entry.upstreamRef, "npm:pi-sync-suite@0.1.1");
+      assert.equal(entry.upstreamRepository, "https://github.com/MuratAitov/pi-sync.git");
+      assert.deepEqual(pkg.dependencies, {});
+      assert.ok(pkg.files.includes("core.ts"));
+      assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
+    } else {
+      assert.ok(entry.leanRepository.endsWith(`${entry.id}.git`), entry.leanRepository);
+      assert.match(entry.leanCommit, /^[0-9a-f]{40}$/);
+      assert.equal(pkg.dependencies[entry.upstreamPackage], entry.upstreamVersion);
+    }
     assert.deepEqual(pkg.pi.extensions, ["./index.ts"]);
     assert.ok(pkg.files.includes("index.ts"));
     assert.ok(pkg.files.includes("LICENSE"));
@@ -102,6 +115,7 @@ test("each workspace packs its own entrypoint, LICENSE and maintenance records o
     for (const path of ["index.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) {
       assert.ok(files.includes(path), `packed tarball is missing ${path}`);
     }
+    if (pkg.name === "@gfgghgftgffg/amox-pi-sync") assert.ok(files.includes("core.ts"), "sync tarball must include its standalone core");
     assert.ok(!files.some((path) => path.startsWith("packages/") || path.startsWith("node_modules/")));
   }
 });

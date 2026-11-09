@@ -3,7 +3,7 @@
   "version": "0.1.16",
   "private": true,
   "type": "module",
-  "description": "Three independently installable lean Pi extensions with reviewed automated upstream maintenance.",
+  "description": "Independently installable Pi extensions with reviewed upstream maintenance and a manually maintained sync fork.",
   "license": "MIT",
   "engines": {
     "node": ">=22.19.0"
@@ -40,6 +40,7 @@
   },
   "files": [
     "packages/*/index.ts",
+    "packages/*/core.ts",
     "packages/*/package.json",
     "packages/*/tsconfig.json",
     "packages/*/LICENSE",

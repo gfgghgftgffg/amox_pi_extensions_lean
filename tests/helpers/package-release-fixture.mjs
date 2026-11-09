@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,10 @@ export function releaseFixture({ batchVersion, versions = {}, packageIds } = {})
   const lock = { name: pkg.name, version: pkg.version, lockfileVersion: 3, packages: { "": { name: pkg.name, version: pkg.version } } };
   for (const entry of manifest.packages) {
     const directory = join(source, entry.path);
-    for (const file of ["index.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) write(`${entry.path}/${file}`, readFileSync(join(directory, file), "utf8"));
+    for (const file of ["index.ts", "core.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) {
+      if (file === "core.ts" && !existsSync(join(directory, file))) continue;
+      write(`${entry.path}/${file}`, readFileSync(join(directory, file), "utf8"));
+    }
     const workspace = read(`${entry.path}/package.json`);
     workspace.version = versions[entry.id] ?? "1.0.0"; entry.version = workspace.version;
     write(`${entry.path}/package.json`, workspace);
@@ -26,7 +29,9 @@ export function releaseFixture({ batchVersion, versions = {}, packageIds } = {})
   if (packageIds !== undefined) manifest.release = { version: pkg.version, baseCommit: "a".repeat(40), packageIds };
   write("package.json", pkg); write("maintenance/manifest.json", manifest); write("package-lock.json", lock);
   const snapshot = JSON.parse(readFileSync(join(source, "maintenance/tool-contracts.json"), "utf8"));
-  for (const entry of manifest.packages) snapshot.lean[entry.packageName].version = entry.version;
+  for (const entry of manifest.packages) {
+    if (entry.toolContract !== false) snapshot.lean[entry.packageName].version = entry.version;
+  }
   write("maintenance/tool-contracts.json", snapshot);
   for (const file of ["README.md", "README.zh-CN.md", ".npmrc"]) write(file, readFileSync(join(source, file), "utf8"));
   const git = (args) => execFileSync("git", ["-C", root, "-c", "core.hooksPath=/dev/null", "-c", "core.autocrlf=false", "-c", "commit.gpgSign=false", "-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid", ...args], { encoding: "utf8" }).trim();

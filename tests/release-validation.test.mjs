@@ -93,6 +93,8 @@ test("release tag and context validation rules", () => {
   assert.ok(notes.indexOf(summary) < notes.indexOf("## 安装"));
   assert.ok(notes.includes(`git clone --branch ${tag} https://github.com/test/repo.git`));
   assert.ok(notes.includes("node scripts/install-extension.mjs pi-web-access-lean"));
+  assert.ok(notes.includes("node scripts/install-extension.mjs amox-pi-sync"));
+  assert.ok(notes.includes("pi install npm:@gfgghgftgffg/amox-pi-sync"));
   assert.doesNotMatch(notes, /pi install git:|When npm publication|本项目不发布 npm 包/);
   assert.ok(notes.includes("pi install npm:@gfgghgftgffg/pi-web-access-lean"));
   assert.ok(notes.includes("pi update --extensions"));

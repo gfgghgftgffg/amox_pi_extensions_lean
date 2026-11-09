@@ -49,12 +49,12 @@ test("npm publication validates actual packs, preflights all identities and reco
     };
     const run = (dryRun = false) => publishNpmArchives({ repoRoot: root, dir, repository, dryRun, fetchImpl, publish, log: () => {} });
     const reset = () => { mode = "normal"; failAt = null; delayVisibility = false; states.clear(); calls.length = 0; publishes.length = 0; };
-    await t.test("all three real archives match six source files and package identities", () => {
+    await t.test("all real archives match their explicit source file sets and package identities", () => {
       files.forEach((file, i) => assert.equal(validateNpmArchive({ repoRoot: root, entry: entries[i], asset: { ...file, path: join(dir, file.filename) }, version, repository }).name, entries[i].packageName));
       assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path: join(dir, files[0].filename) }, version, repository: "another/repo" }), /identity/);
     });
     await t.test("dry run does not invoke publication", async () => {
-      reset(); const result = await run(true); assert.equal(result.dryRun, true); assert.deepEqual(publishes, []); assert.equal(calls.length, 6);
+      reset(); const result = await run(true); assert.equal(result.dryRun, true); assert.deepEqual(publishes, []); assert.equal(calls.length, files.length * 2);
     });
     await t.test("existing identical versions skip; missing versions use verified paths", async () => {
       reset(); states.set(files[0].package, metadata(files[0])); await run();
@@ -64,7 +64,7 @@ test("npm publication validates actual packs, preflights all identities and reco
     await t.test("delayed visibility of an early upload does not block the remaining uploads", async () => {
       reset(); delayVisibility = true; await run();
       assert.deepEqual(publishes, files.map((file) => file.package));
-      assert.equal(states.size, 3);
+      assert.equal(states.size, files.length);
     });
     await t.test("existing verified bytes do not conceal a stale latest tag or downgrade a newer one", async () => {
       reset(); for (const file of files) states.set(file.package, metadata(file));
@@ -72,7 +72,7 @@ test("npm publication validates actual packs, preflights all identities and reco
       mode = "downgrade"; await run(); assert.deepEqual(publishes, []);
     });
     await t.test("a conflict in the last package aborts before any first-package write", async () => {
-      reset(); states.set(files[2].package, { ...metadata(files[2]), dist: { integrity: "sha512-different" } });
+      reset(); states.set(files.at(-1).package, { ...metadata(files.at(-1)), dist: { integrity: "sha512-different" } });
       await assert.rejects(run(), /Immutable npm version conflicts/); assert.deepEqual(publishes, []);
     });
     await t.test("first publish, registry failures and latest downgrades stop before writes", async () => {
@@ -144,4 +144,33 @@ test("post-publish propagation waits use only bounded GETs without accepting con
   assert.equal(sleeps, 0);
   await assert.rejects(waitForPublishedArchive({ asset, version, ...clock, fetchImpl: async (url) => Response.json(url.endsWith(`/${version}`) ? valid : { name: asset.package, "dist-tags": { latest: "99.0.0" } }) }), /latest advanced unexpectedly/);
   assert.equal(sleeps, 0, "a newer latest must not trigger tag writes or further polling");
+});
+
+test("selected manual sync fork verifies core.ts at its own version and still requires initial npm publication", async () => {
+  const fixture = releaseFixture({ batchVersion: "9.0.0", versions: { "amox-pi-sync": "0.1.0" }, packageIds: ["amox-pi-sync"] });
+  const dir = mkdtempSync(join(tmpdir(), "amox-sync-npm-test-"));
+  try {
+    const entry = packageEntries(fixture.root, ["amox-pi-sync"])[0];
+    const packed = packExtension(fixture.root, entry, dir), bytes = readFileSync(packed.archive);
+    const asset = { package: entry.packageName, filename: packed.filename, path: packed.archive,
+      sha256: createHash("sha256").update(bytes).digest("hex"), integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}` };
+    const validate = (selected = entry) => validateNpmArchive({ repoRoot: fixture.root, entry: selected, asset, version: "0.1.0", repository });
+    assert.equal(validate().version, "0.1.0");
+    assert.throws(() => validate({ ...entry, maintenanceMode: undefined }), /Unexpected npm archive path/);
+    assert.throws(() => validate({ ...entry, id: "another-manual-fork" }), /Unexpected npm archive path/);
+    const tar = gunzipSync(bytes), core = readFileSync(join(fixture.root, entry.path, "core.ts"));
+    const offset = tar.indexOf(core); assert.ok(offset >= 0); tar[offset] ^= 1;
+    writeFileSync(packed.archive, gzipSync(tar));
+    assert.throws(() => validate(), /differs.*core\.ts/);
+    writeFileSync(packed.archive, bytes);
+    writeFileSync(join(dir, "assets.json"), JSON.stringify({ version: "9.0.0", files: [asset] }));
+    let reads = 0, writes = 0;
+    await assert.rejects(publishNpmArchives({ repoRoot: fixture.root, dir, repository, dryRun: false,
+      fetchImpl: async () => { reads++; return new Response(null, { status: 404 }); },
+      publish: async () => { writes++; }, log: () => {} }), /Initial npm publication is still required/);
+    assert.equal(reads, 2); assert.equal(writes, 0);
+    const pkg = fixture.read(`${entry.path}/package.json`); pkg.files = pkg.files.filter((file) => file !== "core.ts");
+    fixture.write(`${entry.path}/package.json`, pkg); packExtension(fixture.root, entry, dir);
+    assert.throws(() => validate(), /Incomplete npm package archive/);
+  } finally { fixture.cleanup(); rmSync(dir, { recursive: true, force: true }); }
 });

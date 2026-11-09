@@ -35,11 +35,16 @@ try {
     for (const peer of ["@earendil-works/pi-ai", "@earendil-works/pi-coding-agent", "@earendil-works/pi-tui", "typebox"]) {
       check(!existsSync(join(prefix, "node_modules", ...peer.split("/"))), `host peer ${peer} is NOT installed`);
     }
-    const upstream = JSON.parse(readFileSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"), "package.json"), "utf8"));
-    check(upstream.version === entry.upstreamVersion, `${entry.upstreamPackage} is pinned to ${entry.upstreamVersion}`);
-    if (entry.upstreamEntry !== undefined) {
-      resolveUpstreamRuntimeEntry(join(prefix, "node_modules", ...entry.upstreamPackage.split("/")), entry.upstreamEntry);
-      check(true, `${entry.upstreamPackage}/${entry.upstreamEntry} exists in the fresh production install`);
+    if (entry.maintenanceMode !== "manual-fork") {
+      const upstream = JSON.parse(readFileSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"), "package.json"), "utf8"));
+      check(upstream.version === entry.upstreamVersion, `${entry.upstreamPackage} is pinned to ${entry.upstreamVersion}`);
+      if (entry.upstreamEntry !== undefined) {
+        resolveUpstreamRuntimeEntry(join(prefix, "node_modules", ...entry.upstreamPackage.split("/")), entry.upstreamEntry);
+        check(true, `${entry.upstreamPackage}/${entry.upstreamEntry} exists in the fresh production install`);
+      }
+    } else {
+      check(!existsSync(join(prefix, "node_modules", ...entry.upstreamPackage.split("/"))), `${entry.id} does not install the original suite`);
+      check(existsSync(join(packageDir, "core.ts")), `${entry.id} includes its standalone core`);
     }
     const workDir = join(tempRoot, "workers");
     mkdirSync(workDir, { recursive: true });
@@ -50,7 +55,9 @@ try {
     checkedRun(process.execPath, [join(repoRoot, "scripts/lib/capture-worker.mjs"), input], { cwd: repoRoot });
     const result = JSON.parse(readFileSync(resultPath, "utf8"));
     check(result.loadErrors.length === 0 && result.runtimeErrors.length === 0, `${entry.id} loads without errors`);
-    check(result.tools.length === 1, `${entry.id} registers exactly one tool`);
+    if (entry.registeredTools) {
+      check(JSON.stringify(result.tools.map((tool) => tool.name).sort()) === JSON.stringify([...entry.registeredTools].sort()), `${entry.id} registers its declared tools`);
+    } else check(result.tools.length === 1, `${entry.id} registers exactly one tool`);
     check(result.loadedPaths.length === 1 && resolve(result.loadedPaths[0]) === resolve(extensionPath), `${entry.id} loads only its own entrypoint`);
   }
   if (failures.length) throw new Error(failures.join("\n"));

@@ -208,13 +208,13 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
 
   function renderRows(context: ExtensionContext, rows: DetailRow[]): string[] {
     const theme = context.ui.theme;
-    return rows.map(row => theme.fg("muted", `${row.label.padEnd(14)} `)
+    return rows.map(row => theme.fg("muted", `${`${row.label}:`.padEnd(15)} `)
       + theme.fg(row.tone ?? "text", row.label === "State" ? theme.bold(terminalText(row.value)) : terminalText(row.value)));
   }
 
   // Targets inherit Starline's foreground so a selected row remains legible on
   // its pill-coloured background. Bold adds hierarchy without overriding it.
-  const actionText = (context: ExtensionContext, text: string) => context.ui.theme.bold(terminalText(text));
+  const actionText = (context: ExtensionContext, text: string) => context.ui.theme.bold(`• ${terminalText(text)}`);
 
   function content(context: ExtensionContext): BubbleContent {
     const body: BubbleLine[] = renderRows(context, detailRows());
@@ -297,9 +297,9 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     for (;;) {
       const choice = await select(context, "Sync settings", [
         { value: "status", label: "Status" },
-        { value: "mode", label: `Mode  ${config ? modeLabel(config.mode) : "Not configured"}` },
-        { value: "paths", label: `Paths  ${config?.paths.length ?? 0}` },
-        ...(bubbleAPI(context)?.version === 1 ? [{ value: "color", label: `Bubble colour  ${colorChoices.find(choice => choice.value === (config?.bubbleColor ?? "pill"))!.label}` }] : []),
+        { value: "mode", label: `Mode: ${config ? modeLabel(config.mode) : "Not configured"}` },
+        { value: "paths", label: `Paths: ${config?.paths.length ?? 0} configured` },
+        ...(bubbleAPI(context)?.version === 1 ? [{ value: "color", label: `Bubble colour: ${colorChoices.find(choice => choice.value === (config?.bubbleColor ?? "pill"))!.label}` }] : []),
         "Backups", "Cleanup", "Diagnostics", "Back",
       ], { rows: overviewRows });
       if (!choice || choice === "Back") return;

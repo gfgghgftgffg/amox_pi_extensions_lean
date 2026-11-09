@@ -11,7 +11,7 @@ const jiti = createJiti(import.meta.url);
 const { default: extension } = await jiti.import("../index.ts");
 const { createConfig, defaultPaths, saveConfig, SyncService } = await jiti.import("../core.ts");
 const symbol = Symbol.for("pi-starline.pill-api.v1");
-const plain = value => stripVTControlCharacters(value);
+const plain = value => stripVTControlCharacters(value).replace(/^• /, "");
 const palette = (light = false) => {
   const codes = light ? { text: 30, muted: 90, dim: 37, accent: 34, success: 32, warning: 33, error: 31 }
     : { text: 97, muted: 37, dim: 90, accent: 96, success: 92, warning: 93, error: 91 };
@@ -106,8 +106,8 @@ test("Starline and command status views retain the clicked cell placement", asyn
   f.click(anchor);
   const content = f.content();
   assert.equal(content.title, "Amox Pi Sync");
-  assert.ok(content.body.some(line => typeof line === "string" && /^Paths\s+sessions, missions$/.test(plain(line))));
-  assert.ok(content.body.some(line => typeof line === "string" && /^Remote updates\s+Not checked$/.test(plain(line))));
+  assert.ok(content.body.some(line => typeof line === "string" && /^Paths:\s+sessions, missions$/.test(plain(line))));
+  assert.ok(content.body.some(line => typeof line === "string" && /^Remote updates:\s+Not checked$/.test(plain(line))));
   assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
   assert.equal(f.anchor().centerColumn, anchor.centerColumn);
   assert.equal(f.anchor().terminalWidth, anchor.terminalWidth);
@@ -130,7 +130,7 @@ test("Starline colours and cell placement follow the pill across status, menus a
   assert.equal(f.anchor().endColumn, pill.endColumn);
   await f.commands.get("sync-status").handler("", f.ctx);
   assert.equal(f.anchor().background, pill.background);
-  f.choices.push("Mode  Manual", "Back", "Back");
+  f.choices.push("Mode: Manual", "Back", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
   f.choices.push("Cancel");
   await f.commands.get("sync-setup").handler("git@github.com:example/new.git", f.ctx);
@@ -143,9 +143,9 @@ test("bubble colour choice persists without Git and resolves the current theme o
   const f = await fixture(t);
   await f.commands.get("sync-status").handler("", f.ctx);
   assert.equal(f.anchor().background, "\x1b[106m", "commands default to theme accent before a pill click");
-  f.choices.push("Bubble colour  Follow pill", "Theme success", "Back");
+  f.choices.push("Bubble colour: Follow pill", "Theme success", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
-  assert.equal(f.dialogs[1].body.find(line => typeof line !== "string" && line.current).text, f.ctx.ui.theme.bold("Follow pill"));
+  assert.equal(f.dialogs[1].body.find(line => typeof line !== "string" && line.current).text, f.ctx.ui.theme.bold("• Follow pill"));
   const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
   assert.equal(saved.bubbleColor, "success");
   f.click({ background: "\x1b[44m", foreground: "\x1b[97m" });
@@ -200,12 +200,12 @@ test("settings only offers retained functionality", async t => {
   const f = await fixture(t);
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs[0].starline, true);
-  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode  Manual", "Paths  2", "Bubble colour  Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
+  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode: Manual", "Paths: 2 configured", "Bubble colour: Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
 });
 
 test("pill Settings and its submenus share the Starline renderer and selection survives close-before-callback", async t => {
   const f = await fixture(t);
-  f.choices.push("Mode  Manual", "Off", "Back");
+  f.choices.push("Mode: Manual", "Off", "Back");
   f.click({ centerColumn: 12, terminalWidth: 100 });
   await f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Settings").onSelect();
   assert.equal(f.dialogs.length, 3);
@@ -273,16 +273,16 @@ test("status separates muted labels, highlighted state and neutral values from s
   f.click();
   const content = f.content();
   const rows = content.body.filter(line => typeof line === "string");
-  const state = rows.find(line => /^State\s+/.test(plain(line)));
-  assert.match(state, /\x1b\[37mState\s+\x1b\[39m\x1b\[96m\x1b\[1mManual/);
-  assert.ok(rows.some(line => /^Paths\s+sessions, missions$/.test(plain(line)) && line.includes("\x1b[97m")));
-  assert.ok(rows.some(line => /^Remote\s+git@github.com:example\/private.git$/.test(plain(line))));
-  assert.ok(rows.some(line => /^Remote updates\s+Not checked$/.test(plain(line)) && line.includes("\x1b[90m")));
+  const state = rows.find(line => /^State:\s+/.test(plain(line)));
+  assert.match(state, /\x1b\[37mState:\s+\x1b\[39m\x1b\[96m\x1b\[1mManual/);
+  assert.ok(rows.some(line => /^Paths:\s+sessions, missions$/.test(plain(line)) && line.includes("\x1b[97m")));
+  assert.ok(rows.some(line => /^Remote:\s+git@github.com:example\/private.git$/.test(plain(line))));
+  assert.ok(rows.some(line => /^Remote updates:\s+Not checked$/.test(plain(line)) && line.includes("\x1b[90m")));
   assert.ok(rows.includes(""));
   const actions = content.body.filter(line => typeof line !== "string");
   assert.deepEqual(actions.map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
   for (const line of actions) {
-    assert.ok(line.text.startsWith("\x1b[1m"));
+    assert.ok(line.text.startsWith("\x1b[1m• "));
     assert.doesNotMatch(line.text, /\x1b\[(?:3\d|4\d|9\d|10\d|38;|48;)/, "action foreground/background must remain Starline-owned for selection contrast");
   }
   assert.match(content.hint, /↑↓.*Enter.*Esc/);
@@ -299,17 +299,17 @@ test("colours are evaluated from the current theme without changing labels or ac
   const lines = content => content.body.map(line => typeof line === "string" ? line : line.text);
   assert.deepEqual(lines(dark).map(plain), lines(light).map(plain));
   assert.notDeepEqual(lines(dark), lines(light));
-  assert.ok(lines(light).some(line => /^State\s+Manual$/.test(plain(line)) && line.includes("\x1b[34m")));
+  assert.ok(lines(light).some(line => /^State:\s+Manual$/.test(plain(line)) && line.includes("\x1b[34m")));
 });
 
 test("settings have a coloured overview, stable semantic choices and a marked current mode", async t => {
   const f = await fixture(t);
-  f.choices.push("Mode  Manual", "Off", "Back");
+  f.choices.push("Mode: Manual", "Off", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
   const menu = f.dialogs[0], picker = f.dialogs[1];
   assert.equal(menu.title, "Sync settings");
-  assert.ok(menu.body.some(line => typeof line === "string" && /^State\s+Manual$/.test(plain(line)) && line.includes("\x1b[96m")));
-  assert.ok(menu.body.some(line => typeof line === "string" && /^Remote\s+git@/.test(plain(line))));
+  assert.ok(menu.body.some(line => typeof line === "string" && /^State:\s+Manual$/.test(plain(line)) && line.includes("\x1b[96m")));
+  assert.ok(menu.body.some(line => typeof line === "string" && /^Remote:\s+git@/.test(plain(line))));
   assert.deepEqual(picker.body.filter(line => typeof line !== "string" && line.current).map(line => plain(line.text)), ["Manual"]);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
   const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
@@ -330,14 +330,14 @@ test("Push and Pull retain the pre-push fingerprint and show direct operation na
   try {
     await new Promise(resolve => setImmediate(resolve));
     assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Push"]);
-    assert.ok(f.content().body.some(line => typeof line === "string" && /^State\s+Push$/.test(plain(line))));
-    assert.ok(f.content().body.some(line => typeof line === "string" && /^Mode\s+Manual$/.test(plain(line))));
+    assert.ok(f.content().body.some(line => typeof line === "string" && /^State:\s+Push$/.test(plain(line))));
+    assert.ok(f.content().body.some(line => typeof line === "string" && /^Mode:\s+Manual$/.test(plain(line))));
     assert.equal(f.content().body.filter(line => typeof line !== "string").length, 0);
     await f.commands.get("sync-pull").handler("", f.ctx);
     assert.match(f.notifications.at(-1)[0], /busy: Push/);
   } finally { release?.(); await pushing; }
   assert.equal(fingerprints, 1);
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Push completed$/.test(plain(line))));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action:\s+Push completed$/.test(plain(line))));
   await f.commands.get("sync-pull").handler("", f.ctx);
   assert.equal(fingerprints, 1, "Pull must not use the pre-push fingerprint path");
   assert.ok(f.statuses.some(([, text]) => text === "Sync: Pull"));
@@ -356,14 +356,14 @@ test("check outcomes use success and warning tones without presenting unchecked 
   t.after(() => { SyncService.prototype.check = original; });
   f.click();
   const check = () => f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+Not checked$/.test(plain(line))));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes:\s+Not checked$/.test(plain(line))));
   check(); await new Promise(resolve => setImmediate(resolve));
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+changed: 2$/.test(plain(line)) && line.includes("\x1b[93m")));
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates\s+3$/.test(plain(line)) && line.includes("\x1b[93m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes:\s+changed: 2$/.test(plain(line)) && line.includes("\x1b[93m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates:\s+3$/.test(plain(line)) && line.includes("\x1b[93m")));
   pending = false;
   check(); await new Promise(resolve => setImmediate(resolve));
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes\s+None at last check$/.test(plain(line)) && line.includes("\x1b[92m")));
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates\s+0$/.test(plain(line)) && line.includes("\x1b[92m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Local changes:\s+None at last check$/.test(plain(line)) && line.includes("\x1b[92m")));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Remote updates:\s+0$/.test(plain(line)) && line.includes("\x1b[92m")));
   assert.ok(f.content().body.some(line => typeof line === "string" && plain(line) === "Values reflect the last check."));
 });
 
@@ -374,11 +374,11 @@ test("error text cannot inject terminal controls or override its semantic error 
   f.click();
   f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Check status").onSelect();
   await new Promise(resolve => setImmediate(resolve));
-  const row = f.content().body.find(line => typeof line === "string" && /^Error\s+/.test(plain(line)));
+  const row = f.content().body.find(line => typeof line === "string" && /^Error:\s+/.test(plain(line)));
   assert.match(row, /\x1b\[91mSSH denied/);
   assert.doesNotMatch(row, /\x1b\[2J|\x1b\[32m/);
   assert.doesNotMatch(f.notifications.at(-1)[0], /\x1b/);
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Check failed$/.test(plain(line))));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action:\s+Check failed$/.test(plain(line))));
 });
 
 test("native fallback keeps plain labels, descriptions and semantic selection without a colour API", async t => {
@@ -388,7 +388,7 @@ test("native fallback keeps plain labels, descriptions and semantic selection wi
   const status = f.notifications.at(-1)[0];
   assert.match(status, /State: Manual/); assert.match(status, /Paths: sessions, missions/); assert.match(status, /Remote:/);
   assert.doesNotMatch(status, /\x1b|idle|upload|download/i);
-  f.choices.push("Mode  Manual", "Off", "Back");
+  f.choices.push("Mode: Manual", "Off", "Back");
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Off"]);
   assert.ok(f.dialogs.some(dialog => dialog.title.includes("Manual and Off still allow Push and Pull")));
@@ -403,7 +403,7 @@ test("diagnostic result payloads do not expand the status bubble into a JSON dum
   await f.commands.get("sync-settings").handler("", f.ctx);
   f.click();
   assert.ok(f.notifications.some(([text]) => text.includes('"remote": "ok"')));
-  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action\s+Doctor completed$/.test(plain(line))));
+  assert.ok(f.content().body.some(line => typeof line === "string" && /^Last action:\s+Doctor completed$/.test(plain(line))));
   assert.ok(f.content().body.every(line => typeof line !== "string" || !line.includes('"remote"')));
 });
 

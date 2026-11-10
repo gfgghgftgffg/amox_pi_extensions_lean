@@ -47,7 +47,7 @@ manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再�
 - **Prune orphan sessions**（操作项或 `/sync-prune`）扫描 `sessions/**/*.jsonl`，找出父会话不存在或父会话本身也被清理的子代理会话。父文件按 basename 不区分大小写比对，名字匹配 `type#8hex`；最近 10 分钟内修改过的文件和当前活跃会话会跳过；预览显示条数、体积和前几条名称；先提交快照删除，再删本地文件。仓库有暂存或未提交修改时拒绝执行，不删本地文件。`--yes` 跳过确认。**Prune before push** 会在手动、命令和自动 Push 前执行；清理失败只警告，不阻断 Push。
 - 网络 Git 操作（`clone`、`fetch`、`pull`、`push`）超时为 10 分钟，本地 Git 操作为 60 秒。被超时或取消终止的进程一律视为失败，即使 Pi 返回 exit code 0，也不会写入完成时间。能快进时 Pull 直接快进，否则在快照仓库中执行干净的三方合并；冲突会中止合并且不应用任何文件。Push 被非快进拒绝时会 fetch、在不 rebase、不 force 的前提下整合远端历史，并重试一次；Push 整合的文件在下一次 Pull 时应用。
 - Git 操作强制 `core.autocrlf=false`、`core.eol=lf`，快照仓库使用本地 `* -text` 属性，避免 Git 转换原始字节。已有 CRLF/LF 混合历史不会被自动改写；统一换行需要显式的手动迁移和 repack。Windows 优先使用原生 OpenSSH（`System32/OpenSSH/ssh.exe`），支持中文用户目录；不存在时及其他平台使用 `ssh`。保留非交互模式、连接超时及主机密钥验证，不复用自定义 `core.sshCommand`。
-- 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超出最新 20 份的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
+- 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Pull 和恢复只备份本次会被替换或删除的本地文件，并在清单中记录；只新增文件的 Pull 不创建备份。手动 **Create backup** 仍是完整纳管数据快照。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超量的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
 - 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
 
 不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。环境部署和机器专属配置交给 `amox-agent-bootstrap` 等部署流程，阅读版导出使用 Pi 原生 `/export`；同步器保留原始数据选择、备份恢复和手动备份清理。各项原因与后续维护边界见[功能取舍](MAINTENANCE.md#功能取舍与维护边界)。这是选择性跟进上游的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。每日审查上游正式发布，仅移植保留范围内有价值的改动；舍弃功能跳过，不能判断时由 ntfy 请维护者决定，不自动恢复原版模块。

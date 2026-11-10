@@ -39,7 +39,7 @@ export type Config = {
 export type Paths = { agentDir: string; configFile: string; backupDir: string };
 export type GitExecutor = (args: string[], cwd: string, timeoutMs?: number) => Promise<{ stdout: string; stderr: string; code: number; killed?: boolean }>;
 export type Status = { busy?: string; error?: string; localChanges?: string; remoteChanges?: number; checkedAt?: string };
-export type Backup = { id: string; createdAt: string; reason: string; includedPaths: string[] };
+export type Backup = { id: string; createdAt: string; reason: string; includedPaths: string[]; files?: string[] };
 export type BackupSummary = Backup;
 export type SyncResult = { changed: boolean; message: string; files: string[]; backupId?: string };
 export type SessionEntry = { path: string; parentSession?: string; name?: string; bytes?: number; mtimeMs?: number };
@@ -428,13 +428,19 @@ export class SyncService {
       finally { await fs.rm(tmp, { force: true }); }
     }
   }
-  private async makeBackup(reason: string): Promise<Backup> {
-    const files = await this.collect(this.paths.agentDir);
+  private async makeBackup(reason: string, selected?: Files): Promise<Backup> {
+    const files = selected ?? await this.collect(this.paths.agentDir);
     const id = `${new Date().toISOString().replaceAll(/[:.]/g, "-")}-${randomUUID()}`;
     const root = path.join(this.paths.backupDir, id); await noLinks(root);
     await fs.mkdir(path.join(root, "files"), { recursive: true });
     await this.write(path.join(root, "files"), files);
-    const manifest: Backup = { id, createdAt: new Date().toISOString(), reason, includedPaths: [...this.config.paths] };
+    const includedPaths = selected
+      ? [...new Set([...files.keys()].map(item => item.split("/")[0]!))].sort()
+      : [...this.config.paths];
+    const manifest: Backup = {
+      id, createdAt: new Date().toISOString(), reason, includedPaths,
+      ...(selected ? { files: [...files.keys()].sort() } : {}),
+    };
     await fs.writeFile(path.join(root, "manifest.json"), JSON.stringify(manifest, null, 2), { flag: "wx", mode: 0o600 });
     return manifest;
   }
@@ -450,6 +456,8 @@ export class SyncService {
       const manifest = JSON.parse(await fs.readFile(file, "utf8")) as Backup;
       if (manifest.id !== entry.name || !Array.isArray(manifest.includedPaths) || !Number.isFinite(Date.parse(manifest.createdAt)) || typeof manifest.reason !== "string") throw new Error(`Invalid backup manifest: ${entry.name}`);
       manifest.includedPaths.forEach(validatePath);
+      if (manifest.files !== undefined && (!Array.isArray(manifest.files) || manifest.files.some(item => typeof item !== "string"))) throw new Error(`Invalid backup file list: ${entry.name}`);
+      manifest.files?.forEach(validatePath);
       const filesDir = path.join(this.paths.backupDir, entry.name, "files"); await noLinks(filesDir);
       if (!(await stat(filesDir))?.isDirectory()) throw new Error(`Incomplete backup: ${entry.name}`);
       result.push(manifest);
@@ -457,7 +465,8 @@ export class SyncService {
     return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
   private async apply(files: Files, reason: string, deletions: string[] = [], preserve: Set<string> = new Set()): Promise<SyncResult> {
-    const changes: Files = new Map(); const replaced: string[] = []; const removed: string[] = [];
+    const changes: Files = new Map(); const backupFiles: Files = new Map();
+    const replaced: string[] = []; const removed: string[] = [];
     let active = this.activeSessionFile ? path.resolve(this.paths.agentDir, this.activeSessionFile) : undefined;
     if (active) {
       try { active = await fs.realpath(active); }
@@ -473,7 +482,8 @@ export class SyncService {
       const local = info ? await fs.readFile(target) : undefined;
       if (local?.equals(data)) continue;
       if (sameActive(target)) throw new Error(`Active session differs: ${relative}. Switch to a new session or close it before pull/restore; no files were applied.`);
-      changes.set(relative, data); if (local) replaced.push(relative);
+      changes.set(relative, data);
+      if (local) { replaced.push(relative); backupFiles.set(relative, local); }
     }
     for (const relative of deletions) {
       validatePath(relative);
@@ -482,17 +492,21 @@ export class SyncService {
       if (!info) continue;
       if (!info.isFile()) throw new Error(`File/directory conflict at ${relative}; move the local entry aside and retry`);
       if (sameActive(target)) throw new Error(`Active session cannot be deleted: ${relative}. Switch to a new session before pull/restore; no files were applied.`);
+      backupFiles.set(relative, await fs.readFile(target));
       removed.push(relative);
     }
     const preserved = preserve.size ? `; preserved ${preserve.size} local deletion(s) pending push` : "";
     if (!changes.size && !removed.length) return { changed: false, message: `Already up to date; no files applied or backup created${preserved}`, files: [] };
-    const backup = await this.makeBackup(reason);
+    const backup = backupFiles.size ? await this.makeBackup(reason, backupFiles) : undefined;
     await this.write(this.paths.agentDir, changes);
     for (const relative of removed) await fs.rm(path.join(this.paths.agentDir, relative), { force: true });
     const deleted = removed.length ? `; deleted ${removed.length} remote-deleted file(s)` : "";
-    const message = `Applied ${changes.size} file(s)${deleted}; replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files${preserved}. Recovery backup: ${backup.id}${replaced.length ? `; replaced: ${replaced.join(", ")}` : ""}`;
+    const recovery = backup
+      ? `Recovery backup: ${backup.id}`
+      : "No recovery backup was needed (only new files were added)";
+    const message = `Applied ${changes.size} file(s)${deleted}; replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files${preserved}. ${recovery}${replaced.length ? `; replaced: ${replaced.join(", ")}` : ""}`;
     this.config.lastResult = message;
-    return { changed: changes.size > 0 || removed.length > 0, message, files: [...changes.keys()], backupId: backup.id };
+    return { changed: changes.size > 0 || removed.length > 0, message, files: [...changes.keys()], backupId: backup?.id };
   }
   async planPruneSessions(): Promise<PrunePlan> {
     return selectOrphanSessions(await this.scanSessionEntries(), { activePath: this.activeSessionRelative() });

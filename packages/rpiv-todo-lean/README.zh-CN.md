@@ -1,16 +1,60 @@
 # @gfgghgftgffg/rpiv-todo-lean
 
-隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
-[`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo) 的精简封装：
-将完整任务管理引擎收束为一个紧凑的 `todo` 工具。运行时随上游更新。
+[English](README.md)
 
-原 lean 封装作者 [kunkun9527](https://github.com/kunkun9527/rpiv-todo-lean)，上游扩展作者
-[juicesharp](https://github.com/juicesharp/rpiv-mono)。两者均为 MIT 协议，本包保留原始 `LICENSE`。
+## 优点
 
-## 核心特性
+为 [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo) 提供更轻量的封装。任务、依赖、批量创建和 `/todos` 都还在，首轮就要带上的工具注册文本大约少 77%。
 
-* 保留上游任务生命周期、依赖、批量创建和 `/todos` 界面。
-* 压缩描述和 Schema，保留原生字段、校验、持久化与会话隔离。
+## 功能
+
+- 模型只看到一个 `todo` 工具：`create`、`update`、`list`、`get`、`delete`、`clear`。
+- 省略 `action` 时，带 `subject` 按创建处理，带 `id` 和可改字段按更新处理。其余情况由上游报错。
+- 字段、校验、持久化和按会话隔离仍在上游引擎里。`/todos` 仍可用。
+
+## 来源
+
+门面来自 [kunkun9527/rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean)。引擎是 [juicesharp/rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo)。本包跟随上游发布，不复制引擎。两者都是 MIT，本包保留原始 `LICENSE`。它属于 [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md)。
+
+## 使用方法
+
+建一条任务。只写 `subject` 即可：
+
+```json
+{ "subject": "Inspect the cache" }
+```
+
+一次建多条：
+
+```json
+{ "action": "create", "tasks": [{ "subject": "Inspect" }, { "subject": "Test" }] }
+```
+
+把一条标成完成。有 `id` 再加一个字段，就是更新：
+
+```json
+{ "id": "1", "status": "completed" }
+```
+
+列出、读取、删除，或清空：
+
+```json
+{ "action": "list" }
+```
+
+```json
+{ "action": "get", "id": "1" }
+```
+
+```json
+{ "action": "delete", "id": "1" }
+```
+
+```json
+{ "action": "clear" }
+```
+
+新任务一开始是 `pending`。分几步做时，保持一条为 `in_progress`，做完改成 `completed`。`list` 不显示已删除的任务。`clear` 清空列表并重新编号。依赖用 `blockedBy`。其余字段见[上游文档](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo)。
 
 ## 安装
 
@@ -28,20 +72,6 @@ node scripts/install-extension.mjs rpiv-todo-lean
 ```
 
 本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。请勿同时加载其它 `rpiv-todo` 包装扩展。
-
-## 使用方法
-
-模型仅看到一个 `todo` 工具，操作包括 `create`、`update`、`list`、`get`、`delete`、`clear`。
-通常需要显式传入 `action`；省略时封装会依据 `subject` 推断 `create`，或依据 `id` 加可变字段推断
-`update`，其余情况交由上游报错。
-
-创建任务传 `subject`；批量创建使用 `action: "create"` 和 `tasks`，例如
-`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`。
-更新和查询指定任务时传 `id`，依赖使用 `blockedBy`。
-
-新任务默认 `pending`。多步骤工作保持一个任务为 `in_progress`，完成后及时标记为 `completed`。
-`list` 默认不含已删除任务；`clear` 清空列表并重置 ID。
-完整字段、批量规则和 `/todos` 用法见[上游文档](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo)。
 
 ## 上下文占用（字符代理）
 

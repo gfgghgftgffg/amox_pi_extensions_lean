@@ -1,25 +1,59 @@
 # @gfgghgftgffg/pi-subagents-lean
 
-Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
-[`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents): the full subagent/workflow
-runtime behind one `subagent` tool. Runtime updates follow upstream.
+[简体中文](README.zh-CN.md)
 
-Original lean facade by [kunkun9527](https://github.com/kunkun9527/pi-subagents-lean); upstream
-extension by [tintinweb](https://github.com/tintinweb/pi-subagents). Both are MIT-licensed; the
-original `LICENSE` is preserved in this package.
+## Advantage
 
-## Core features
+A lighter wrapper for [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents). Agent, result, steer and workflow calls share one `subagent` tool, cutting the tool text sent on the first call by about 97%.
 
-* Full upstream runtime: agent discovery, spawning, background execution, result retrieval, mid-run
-  steering, workflows, schedules, and lifecycle handling are upstream's own code.
-* One provider-facing tool: `Agent`, `get_subagent_result`, `steer_subagent`, and `SubagentWorkflow`
-  are routed through `subagent` with `op` values `run`, `result`, `steer`, `workflow`, plus `help`.
-* Advanced parameters on demand: `input` carries a JSON object string validated against the hidden real
-  upstream schema before execution; `help` returns the complete current upstream schema.
-* Available agent names: `subagent_type` shows the enabled types captured at extension startup.
-  Reload the extension after changing agent definitions/settings; if an upstream description format is
-  unrecognized, use `help` with `input: "run"`.
-* Rendering delegated to upstream tools, so the original call/result cards are preserved.
+## Features
+
+- `run`, `result`, `steer`, `workflow` and `help` go through that one tool. Background tasks, workflows, schedules and the original result cards still use the upstream runtime.
+- Cold parameters go in `input` as a JSON object string. The wrapper checks them against the real upstream schema before the call. `help` returns that schema.
+- `subagent_type` lists the agent types enabled at startup. Reload after changing agent files. If the upstream description cannot be parsed, call `help` with `input` set to `"run"`.
+- The conversation viewer's jump-to-start and jump-to-latest keys follow the host `tui.altScreen` bindings. Home and End remain aliases.
+
+## Source
+
+The facade comes from [kunkun9527/pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean). The runtime is [tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
+
+## Usage
+
+Start an agent:
+
+```json
+{
+  "op": "run",
+  "prompt": "Find the implementation of the cache key.",
+  "description": "Locate cache key",
+  "subagent_type": "Explore",
+  "run_in_background": true
+}
+```
+
+Read a finished result. Use the `agent_id` from `run`, or a saved handle after reload:
+
+```json
+{ "op": "result", "agent_id": "agent-id" }
+```
+
+Send a new instruction to an agent that is still running:
+
+```json
+{ "op": "steer", "agent_id": "agent-id", "message": "Also check the tests." }
+```
+
+Run a workflow. Put its parameters in `input` as JSON text:
+
+```json
+{ "op": "workflow", "input": "{\"name\":\"review-panel\"}" }
+```
+
+See the full parameter list for one operation:
+
+```json
+{ "op": "help", "input": "run" }
+```
 
 ## Installation
 
@@ -38,42 +72,11 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `pi-subagents` wrapper alongside it.
 
-## Usage
-
-```json
-{
-  "op": "run",
-  "prompt": "Find the implementation of the cache key.",
-  "description": "Locate cache key",
-  "subagent_type": "Explore",
-  "run_in_background": true
-}
-```
-
-* `result` with `agent_id` retrieves output from a finished task, including its saved session record after reload; an ID or saved handle can identify it.
-* `steer` with `agent_id` and `message` redirects a running agent.
-* `workflow` runs a scripted multi-agent workflow; pass its parameters as JSON in `input`.
-* `help` with `input` set to one operation returns that upstream tool's full description and schema.
-
 ## Important: review your agent definitions
 
-The upstream runtime discovers built-in and custom agents across global, workspace, and project
-directories. This repository does not package private agents, sessions, or memory, but it intentionally
-preserves that discovery mechanism. After installation: review discovered agent definitions (especially
-their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, and watch for naming
-collisions with the built-in `general-purpose`, `Explore`, and `Plan` types. Built-in Explore inherits
-the session's model unless overridden; choose an agent-file model when cost or latency requires it.
-Conversation inheritance and reopening saved agents follow upstream: a removed worktree that held
-changes prevents reopening, while a clean one reopens in the main checkout. The conversation viewer's
-jump-to-start and jump-to-latest keys follow the host `tui.altScreen` bindings. See the
-[upstream behavior notes](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md) before relying on these paths.
+Upstream discovers built-in and custom agents in global, workspace and project directories. This package does not ship private agents, sessions or memory. After install, check each agent's `model`, remove types you do not want, and avoid names that collide with `general-purpose`, `Explore` and `Plan`. Built-in Explore inherits the session model unless the agent file sets one.
 
-Background tasks notify the parent on completion; do not poll or sleep. See the
-[upstream documentation](https://github.com/tintinweb/pi-subagents) for agent configuration,
-background execution, workflows, worktrees and `subagents.json` settings; extension integrations use
-upstream [events](https://github.com/tintinweb/pi-subagents#events) and
-[RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Reload the extension after changing agent
-definitions, discovery or trust settings to refresh the facade's available type list.
+A removed worktree that held changes cannot be reopened; a clean one reopens in the main checkout. Background tasks notify the parent when they finish. Agent files, workflows, worktrees and `subagents.json` are documented [upstream](https://github.com/tintinweb/pi-subagents); integrations use its [events](https://github.com/tintinweb/pi-subagents#events) and [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Reload after changing agent definitions, discovery or trust settings. Behavior notes are in the [changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md).
 
 ## Context footprint (character proxy)
 

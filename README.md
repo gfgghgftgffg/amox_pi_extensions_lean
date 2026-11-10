@@ -40,7 +40,7 @@ Update a local installation with `git pull --ff-only` and its installer. For a n
 
 ## Maintenance and deployment
 
-`amox-pi-sync` is a `selective-fork`: daily maintenance reviews published upstream changes against its documented feature boundaries, ports worthwhile retained behavior, skips removed features and asks the owner through ntfy when uncertain. Only verified ports trigger its own version bump; the full upstream suite is never restored. Every package has an independent version; the private root version identifies a release batch. With Starline, its status capsule opens the status/actions menu; `/sync-status` also works without Starline. See the [package README](packages/amox-pi-sync/README.md) for features and limitations.
+`amox-pi-sync` is a `selective-fork`: daily maintenance reviews published upstream changes against its documented feature boundaries, ports worthwhile retained behavior, skips removed features and asks the owner through ntfy when uncertain. Only verified ports trigger its own version bump; the full upstream suite is never restored. Every package has an independent version; the private root version identifies a release batch. With [Starline](https://github.com/Andy8647/pi-starline), its status capsule opens the status/actions menu; `/sync-status` also works without Starline. See the [package README](packages/amox-pi-sync/README.md) for features and limitations.
 
 Every day at 02:23 UTC (10:23 Beijing time), systemd starts an independent Pi SDK session, not a subagent. It makes no model calls when there are no upstream updates or a maintenance PR is already open. Adaptation and actual checks run in temporary copies, without changing personal installations or replacing the maintenance host.
 

@@ -2,7 +2,44 @@
 
 [简体中文](README.zh-CN.md)
 
-Standalone Pi agent-data sync over a private SSH Git repository. Package: `@gfgghgftgffg/amox-pi-sync`. Based on [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), `pi-sync-suite@0.1.1` (MIT; Copyright © 2026 Murat). The exact source reference is `npm:pi-sync-suite@0.1.1`; see [MAINTENANCE.md](MAINTENANCE.md).
+## Advantage
+
+Sync Pi sessions through a private Git repository, with paths you choose. Deleting a session also removes the child sessions it produced (orphan sessions), and that deletion is synced.
+
+## Features
+
+- Default paths are `sessions` and `missions`. You can include or exclude other agent-data paths. Files move as-is: no Markdown export and no JSONL merge. If both sides changed the same file, sync stops.
+- `/sync-prune` finds subagent sessions whose parent is gone, including descendants, previews them, and syncs that deletion. It does not run before push unless you turn that on.
+- A pull backs up only the files it is about to replace or delete.
+- With [Starline](https://github.com/Andy8647/pi-starline), a status capsule opens the actions. Without it, the same actions stay on `/sync-*`.
+
+## Source
+
+`@gfgghgftgffg/amox-pi-sync` is a selective fork of [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), based on MIT `pi-sync-suite@0.1.1` (Copyright © 2026 Murat). The source ref is `npm:pi-sync-suite@0.1.1`. Transport is SSH Git. See [MAINTENANCE.md](MAINTENANCE.md).
+
+## Usage
+
+Point it at a private SSH Git repository. This does not transfer files yet:
+
+```text
+/sync-setup git@host:owner/private-repo.git
+```
+
+Send local sessions, then bring remote sessions back:
+
+```text
+/sync-push
+/sync-pull
+```
+
+Preview orphan subagent sessions, then delete them and sync that deletion:
+
+```text
+/sync-prune
+/sync-prune --yes
+```
+
+`/sync-status` opens the same actions without [Starline](https://github.com/Andy8647/pi-starline). `/sync-settings` changes paths and whether prune runs before push.
 
 ## Install
 
@@ -21,32 +58,19 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-## Features
+## Details
 
-- **Raw snapshot sync.** Push and pull raw agent files through a private SSH Git repository. Managed paths are configurable; `sessions` and `missions` are the defaults. Files are transferred without Markdown/JSON export or semantic JSONL merging. A three-way merge is file-level and aborts if both sides changed the same file.
-- **Deletion propagation.** A per-device `syncedPaths` baseline records paths present at the last successful Push/Pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a recovery backup and preserves local missing baseline paths as pending deletions, so a Pull before Push does not resurrect them. Files that were never synced and unpulled remote-only files are not deleted. The baseline is seeded on first use from the intersection of local and snapshot paths; pre-upgrade deletions are not inferred automatically.
-- **Orphan-session pruning.** `Prune orphan sessions` / `/sync-prune [--yes]` finds subagent transcripts whose parent is missing or itself pruned. It compares parent basenames case-insensitively, accepts names matching `type#8hex`, cascades to descendants, skips files modified in the last 10 minutes and the active session, previews count/size/names, commits snapshot removals before local deletion, and refuses a dirty repository. `Prune before push` (default Off) runs before manual, command and automatic pushes; a prune failure warns but does not block the push.
-- **Transport safety.** Network Git operations (`clone`, `fetch`, `pull`, `push`) use a 10-minute timeout; local Git operations use 60 seconds. A process terminated by timeout or cancellation is a failure and is never recorded as completed, even if Pi reports exit code 0. Pull fast-forwards when possible; otherwise it performs a clean three-way merge. A rejected non-fast-forward push fetches, integrates remote history without rebase or force, and retries once; files integrated during push are applied on the next pull.
-- **Partial backups.** Pull and restore back up only the local files being replaced or deleted, and record them in the backup manifest. A pull that only adds new files creates no backup. Manual **Create backup** remains a full managed-data snapshot. Cleanup is manual and counts complete backup directories.
-- **Starline and native UI.** With Starline installed, the status capsule opens status, actions and settings; without Starline, Pi's native dialogs and plain status text remain. See [Settings and UI](#settings-and-ui).
-- **Cross-platform data integrity.** Windows prefers native OpenSSH (`System32/OpenSSH/ssh.exe`) when available, supporting non-ASCII user directories. Git commands force `core.autocrlf=false` and `core.eol=lf`, and the snapshot repository uses a local `* -text` attribute so raw bytes are not converted. Existing mixed CRLF/LF history is not rewritten automatically.
-
-## Commands
-
-| Command | Purpose |
-| --- | --- |
-| `/sync-setup git@host:owner/private-repo.git [interval]` | Configure an SSH repository and optional pull interval in minutes (no transfer) |
-| `/sync-push` | Push selected raw agent data |
-| `/sync-pull` | Pull selected raw agent data |
-| `/sync-prune [--yes]` | Preview and delete orphan subagent sessions plus their snapshot copies |
-| `/sync-settings` | Open settings and maintenance actions |
-| `/sync-status` | View status and actions; also works without Starline |
+- A per-device `syncedPaths` baseline records paths present at the last successful push or pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a backup and keeps local missing baseline paths as pending deletions, so a pull before push does not resurrect them. Files that were never synced, and remote-only files not yet pulled, are not deleted. The first baseline is the intersection of local and snapshot paths; deletions from before that baseline are not inferred.
+- Orphan prune compares parent basenames without case sensitivity, accepts names matching `type#8hex`, and cascades to descendants. It skips files modified in the last 10 minutes and the active session, previews count, size and names, writes the snapshot deletion before deleting locally, and refuses a dirty repository. Prune before push is off by default. A prune failure warns and does not block the push.
+- Network Git operations time out after 10 minutes. Local Git operations time out after 60 seconds. A process ended by timeout or cancellation is a failure, even if Pi reports exit code 0. Pull fast-forwards when it can; otherwise it does a clean three-way merge. A rejected non-fast-forward push fetches, integrates without rebase or force, and retries once.
+- Pull and restore back up only the local files being replaced or deleted. A pull that only adds files creates no backup. Manual create-backup is still a full snapshot of managed data.
+- Windows prefers native OpenSSH (`System32/OpenSSH/ssh.exe`) when it is available. Git commands force `core.autocrlf=false` and `core.eol=lf`, and the snapshot repo uses a local `* -text` attribute. Existing mixed line endings are not rewritten.
 
 ## Settings and UI
 
 - The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
 - Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled.
-- With Starline, the clickable status capsule opens details and actions. The status key remains `pi-sync` for existing placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`. There is no three-line widget.
+- With [Starline](https://github.com/Andy8647/pi-starline), the clickable status capsule opens details and actions. The status key remains `pi-sync` for existing placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`. There is no three-line widget.
 - Pill clicks anchor bubbles to the corresponding Starline cell, like Model; settings, submenus and confirmations retain that anchor. `/sync-status` uses the last clicked anchor, or a centered fallback before the first click. Text entry still uses Pi input dialogs.
 - **Bubble colour** defaults to **Follow pill**; alternatively choose the current theme’s accent, success, warning or error colour for borders and selection. Before a pill click, Follow pill uses theme accent. The optional `bubbleColor` setting stores `pill`, `accent`, `success`, `warning` or `error`; changing it performs no transfer. Without Starline this option is hidden and Pi renders its native dialogs.
 - Labels and values are separated by a colon (for example, `Paths: 2 configured`); Starline action rows start with `•`. Labels and values use Pi theme colours, while bold action rows keep Starline’s selection contrast. State shows Manual, Auto or Off directly; active operations use Push/Pull, with the configured mode shown separately. RPC and no-Starline output stay plain text.

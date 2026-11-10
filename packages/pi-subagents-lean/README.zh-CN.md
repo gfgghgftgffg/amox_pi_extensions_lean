@@ -1,21 +1,59 @@
 # @gfgghgftgffg/pi-subagents-lean
 
-隶属于 [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 单仓。基于
-[`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) 的精简封装：完整 Subagent/Workflow
-运行时收束为一个 `subagent` 工具。运行时随上游更新。
+[English](README.md)
 
-原 lean 封装作者 [kunkun9527](https://github.com/kunkun9527/pi-subagents-lean)，上游扩展作者
-[tintinweb](https://github.com/tintinweb/pi-subagents)。两者均为 MIT 协议，本包保留原始 `LICENSE`。
+## 优点
 
-## 核心特性
+为 [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) 提供更轻量的封装。Agent、取结果、中途改向和 Workflow 收成一个 `subagent`，首轮就要带上的工具注册文本大约少 97%。
 
-* 完整上游运行时：Agent 发现、后台派生、结果获取、运行中引导、Workflow、Schedule 与生命周期管理均使用上游实现。
-* 单一工具入口：`Agent`、`get_subagent_result`、`steer_subagent`、`SubagentWorkflow` 由 `subagent` 按
-  `run`/`result`/`steer`/`workflow`/`help` 操作路由。
-* 高级参数按需展开：`input` 传入 JSON 对象字符串，执行前会用真实上游 Schema 校验；`help` 返回当前上游完整 Schema。
-* 可用 Agent 名单：`subagent_type` 展示扩展启动时捕获的已启用类型。修改 Agent 定义或设置后需重新加载；上游描述
-  格式无法识别时，用 `help` 搭配 `input: "run"` 查询。
-* 渲染委托上游工具，保留原始调用/结果卡片。
+## 功能
+
+- `run`、`result`、`steer`、`workflow` 和 `help` 都走这一个工具。后台任务、workflow、日程和原来的结果卡片仍用上游运行时。
+- 冷门参数放在 `input` 里，是一段 JSON 对象字符串。调用前按真实上游 schema 校验。`help` 返回这份 schema。
+- `subagent_type` 列出扩展启动时启用的 Agent 类型。改了 Agent 文件后要重新加载。上游描述无法解析时，用 `help`，`input` 设为 `"run"`。
+- 对话观察器的跳到开头和跳到最新跟随宿主 `tui.altScreen` 绑定。Home 和 End 仍是别名。
+
+## 来源
+
+门面来自 [kunkun9527/pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean)。运行时是 [tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents)。本包跟随上游发布，不复制引擎。两者都是 MIT，本包保留原始 `LICENSE`。它属于 [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md)。
+
+## 使用方法
+
+启动一个 Agent：
+
+```json
+{
+  "op": "run",
+  "prompt": "Find the implementation of the cache key.",
+  "description": "Locate cache key",
+  "subagent_type": "Explore",
+  "run_in_background": true
+}
+```
+
+读取已完成的结果。用 `run` 返回的 `agent_id`；重新加载后也可以用保存的 handle：
+
+```json
+{ "op": "result", "agent_id": "agent-id" }
+```
+
+给还在跑的 Agent 发新指令：
+
+```json
+{ "op": "steer", "agent_id": "agent-id", "message": "Also check the tests." }
+```
+
+运行 workflow。参数写成 JSON 文本放进 `input`：
+
+```json
+{ "op": "workflow", "input": "{\"name\":\"review-panel\"}" }
+```
+
+查看某个操作的全部参数：
+
+```json
+{ "op": "help", "input": "run" }
+```
 
 ## 安装
 
@@ -34,38 +72,11 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。请勿同时加载其它 `pi-subagents` 包装扩展。
 
-## 使用方法
+## 重要提醒：检查 Agent 定义
 
-```json
-{
-  "op": "run",
-  "prompt": "Find the implementation of the cache key.",
-  "description": "Locate cache key",
-  "subagent_type": "Explore",
-  "run_in_background": true
-}
-```
+上游会扫描全局、工作区和项目目录里的内置及自定义 Agent。本包不附带私有 Agent、会话或记忆。安装后检查每个 Agent 的 `model`，删掉不需要的类型，并避开与 `general-purpose`、`Explore`、`Plan` 重名。内置 Explore 默认继承会话模型，除非 Agent 文件自己指定。
 
-* `result` 搭配 `agent_id` 查看已完成任务的输出，重载后可读取会话中保存的记录；可用 ID 或已存 handle 标识。
-* `steer` 搭配 `agent_id` 与 `message` 调整运行中的 Agent。
-* `workflow` 运行脚本化多 Agent 流程，参数以 JSON 放在 `input`。
-* `help` 的 `input` 传操作名，返回对应上游工具的完整描述与 Schema。
-
-## 重要提醒：检查 Agent 定义配置
-
-上游运行时会自动扫描全局、工作区及项目目录中的内置与自定义 Agent。本仓库不包含任何私有 Agent、会话或记忆配置，
-但完整继承该发现机制。安装后建议：检查扫描到的 Agent 定义（尤其是 `model` 字段）、移除不需要的类型、调整
-Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
-内置 Explore 默认继承会话模型；有成本或延迟要求时，在 Agent 文件中指定模型。
-上下文继承与已存 Agent 的重新打开沿用上游：已移除且曾有改动的 worktree 会阻止重新打开，
-干净的 worktree 则在主 checkout 中继续。对话观察器的跳到开头／最新键跟随宿主 `tui.altScreen` 绑定。
-依赖这些路径前请查看[上游行为说明](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
-
-后台任务完成后会通知父会话，无需轮询或等待。Agent 配置、后台执行、Workflow、worktree 和
-`subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)；扩展集成使用上游的
-[事件](https://github.com/tintinweb/pi-subagents#events)和
-[RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md)。
-修改 Agent 定义、发现范围或 trust 设置后重新加载扩展，刷新门面的可用类型名单。
+带过改动、后来被删掉的 worktree 不能重新打开；干净的 worktree 会在主 checkout 里打开。后台任务结束时通知父会话。Agent 文件、workflow、worktree 和 `subagents.json` 见[上游文档](https://github.com/tintinweb/pi-subagents)；集成使用它的[事件](https://github.com/tintinweb/pi-subagents#events)和 [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md)。改了 Agent 定义、发现范围或 trust 设置后重新加载。行为说明在[更新日志](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
 
 ## 上下文占用（字符代理）
 

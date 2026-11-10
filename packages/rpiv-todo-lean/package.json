@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/rpiv-todo-lean",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "type": "module",
   "description": "A lighter wrapper for @juicesharp/rpiv-todo: tasks and dependencies remain, with about 77% less tool text on the first call.",
   "license": "MIT",

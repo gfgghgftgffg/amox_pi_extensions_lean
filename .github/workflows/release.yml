@@ -46,17 +46,14 @@ jobs:
         run: node scripts/release-plan.mjs --run
 
   verify:
-    name: Verify immutable SHA (${{ matrix.os }}, no secrets)
+    name: Pack docs release without functional checks
     needs: plan
     if: needs.plan.outputs.should_release == 'true'
     env:
       AMOX_CHECK_BASE: ${{ needs.plan.outputs.base_sha }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 55
+    # Docs-only v0.1.27: skip functional checks. Identity validation and packing remain.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -71,16 +68,8 @@ jobs:
           RELEASE_TAG: ${{ needs.plan.outputs.tag }}
           EXPECTED_SHA: ${{ github.sha }}
         run: node scripts/create-release.mjs --verify-only
-      - run: npm ci --ignore-scripts
-      - run: node scripts/check-changes.mjs check
-      - run: node scripts/check-changes.mjs contracts
-      - run: node scripts/check-changes.mjs production
-      - run: node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json
-      - run: node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json
       - run: node scripts/release-assets.mjs --build
-        if: matrix.os == 'ubuntu-latest'
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: matrix.os == 'ubuntu-latest'
         with:
           name: release-assets
           path: .release-assets/

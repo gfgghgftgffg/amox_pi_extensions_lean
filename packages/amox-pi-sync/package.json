@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/amox-pi-sync",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "type": "module",
   "description": "Sync Pi sessions through a private Git repository, with selectable paths and synced deletion of orphan child sessions.",
   "license": "MIT",

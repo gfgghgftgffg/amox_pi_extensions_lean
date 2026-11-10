@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-web-access-lean",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "type": "module",
   "description": "A lighter wrapper for pi-web-access: one web_access tool, about 87% less tool text on the first call.",
   "license": "MIT",

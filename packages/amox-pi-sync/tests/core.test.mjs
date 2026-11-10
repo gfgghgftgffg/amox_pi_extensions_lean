@@ -657,3 +657,14 @@ test("pull backups contain only the local files being replaced or deleted", asyn
   await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/delete.jsonl")));
   await fs.access(path.join(f.paths.agentDir, "sessions/keep.jsonl"));
 });
+test("pull result summarizes large replaced file lists instead of listing every path", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  for (let i = 0; i < 10; i++) {
+    await f.write(f.paths.agentDir, `sessions/f${i}.jsonl`, `old ${i}`);
+    await f.write(f.config.repoDir, `sessions/f${i}.jsonl`, `new ${i}`);
+  }
+  const result = await f.service.pull();
+  assert.match(result, /replaced: sessions\/f0\.jsonl, sessions\/f1\.jsonl, sessions\/f2\.jsonl \(\+7 more\)/);
+  assert.ok(!result.includes("sessions/f3.jsonl"));
+});

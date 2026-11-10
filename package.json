@@ -1,6 +1,6 @@
 {
   "name": "amox-pi-extensions-lean",
-  "version": "0.1.24",
+  "version": "0.1.25",
   "private": true,
   "type": "module",
   "description": "Independently installable Pi extensions with reviewed upstream maintenance and a manually maintained sync fork.",

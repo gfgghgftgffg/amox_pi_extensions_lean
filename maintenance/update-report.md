@@ -1,17 +1,13 @@
 # Local upstream maintenance
 
-Base: 0d3a7a275d896df1d4e186ae59acda8e4c579a09
-Release after verified merge: v0.1.24
+Base: 37d1061b9a951313b9cd28a8eec4380c84ac26ec
+Release after verified merge: v0.1.25
 
-<!-- amox-release-summary:v0.1.24:start -->
-- 发布 `@gfgghgftgffg/amox-pi-sync@0.1.8`：新增 Prune orphan sessions，按父会话 basename、`type#8hex` 名字和固定点级联识别孤儿子代理会话，跳过最近 10 分钟修改及活跃会话。
-- Prune 先预览条数、体积和前几条名称，确认后先提交快照删除，再删本地文件；仓库有暂存或未提交修改时拒绝执行。新增 `/sync-prune [--yes]` 和默认 Off 的 **Prune before push**，三条 Push 路径都会在 Push 前执行，清理失败只警告不阻断。
-- 手动删除现在会传播：每台设备用 `syncedPaths` 基线记录已同步路径，Push 删除基线中本地已消失的文件；Pull 应用远端删除并保留本地待传播删除，删除前创建恢复备份。从未同步的本地文件和尚未 Pull 的远端文件不会被误删。
-- 首次启动时若没有基线，会从本地与现有快照同时存在的文件初始化，之后立即删除这些文件也会正常传播。
-- 升级前已经发生的删除不做自动推断，避免把“远端有、本机还没 Pull”的文件当成删除；孤儿会话可用 Prune 处理，之后的手动删除会自动传播。
-- Pull/恢复备份改为只保存本次会被替换或删除的本地文件，并在清单中列出；只新增文件的 Pull 不创建备份。手动 Create backup 仍是完整快照，Cleanup 仍为手动。
-- 本批仅发布 sync，其它三个 npm 包不升版、不重新发布。
-<!-- amox-release-summary:v0.1.24:end -->
+<!-- amox-release-summary:v0.1.25:start -->
+- 发布 `@gfgghgftgffg/amox-pi-sync@0.1.9`：气泡中的长文件列表只显示前 3 个路径加 `(+N more)`，并限制单行显示长度为 160 字符。
+- 即使一次同步产生大量文件变化，Check status / Push / Pull / Prune / Settings 等操作项也不会被挤出可见区域；完整结果仍保留在操作通知中。
+- 本批只包含这一处显示修复；Prune、删除传播、超时/分叉处理和局部备份沿用当前实现。其它三个 npm 包不升版、不重新发布。
+<!-- amox-release-summary:v0.1.25:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

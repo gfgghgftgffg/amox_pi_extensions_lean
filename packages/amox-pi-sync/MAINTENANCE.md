@@ -5,7 +5,7 @@
 - Upstream: [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), npm `pi-sync-suite@0.1.1`.
 - Source ref: `npm:pi-sync-suite@0.1.1` (published source baseline, not the repository's moving HEAD).
 - Upstream MIT notice is preserved verbatim in `LICENSE`: Copyright (c) 2026 Murat.
-- Local package: `@gfgghgftgffg/amox-pi-sync@0.1.8`, standalone TypeScript entrypoint `index.ts` and `core.ts`; no runtime dependency on the original suite.
+- Local package: `@gfgghgftgffg/amox-pi-sync@0.1.9`, standalone TypeScript entrypoint `index.ts` and `core.ts`; no runtime dependency on the original suite.
 
 ## Scope
 

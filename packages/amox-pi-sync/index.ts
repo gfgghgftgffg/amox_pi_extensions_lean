@@ -85,9 +85,9 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   }
 
   function makeService(): void {
-    service = config ? new SyncService(config, paths, async (args, cwd) => {
-      const result = await pi.exec("git", args, { cwd, timeout: 60_000 });
-      return { stdout: result.stdout, stderr: result.stderr, code: result.code };
+    service = config ? new SyncService(config, paths, async (args, cwd, timeoutMs) => {
+      const result = await pi.exec("git", args, { cwd, timeout: timeoutMs });
+      return { stdout: result.stdout, stderr: result.stderr, code: result.code, killed: result.killed };
     }) : undefined;
     if (service) service.activeSessionFile = ctx?.sessionManager.getSessionFile();
   }

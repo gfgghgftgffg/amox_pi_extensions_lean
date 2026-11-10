@@ -41,9 +41,10 @@ manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再�
 > 会话、missions 及其他选中文件可能包含秘密。请使用**私有 SSH 仓库**，检查同步路径，并保护远端和本地备份。私有 Git 不提供加密或秘密清除。
 
 - 路径相对于 Pi agent 数据目录，不是当前项目。可包含/排除任意安全的数据相对路径；扩展不改写工作目录。
-- 传输原始文件，不生成 Markdown/JSON 归档，不合并 JSONL。并发编辑不是语义合并；请协调多设备操作并查看诊断。
+- 传输原始文件，不生成 Markdown/JSON 归档，不做语义化 JSONL 合并。并发编辑不是语义合并；自动三方合并按文件进行，双方修改同一文件时会中止。请协调多设备操作并查看诊断。
 - 保留本地独有文件，不传播删除；同路径的不同内容以拉取数据为准，覆盖前备份；不得覆盖活跃会话。恢复备份只处理当前纳管范围。
-- Git 操作关闭自动换行转换，避免 Windows 的 `core.autocrlf` 改写原始会话。Windows 优先使用原生 OpenSSH（`System32/OpenSSH/ssh.exe`），支持中文用户目录；不存在时及其他平台使用 `ssh`。保留非交互模式、连接超时及主机密钥验证，不复用自定义 `core.sshCommand`。
+- 网络 Git 操作（`clone`、`fetch`、`pull`、`push`）超时为 10 分钟，本地 Git 操作为 60 秒。被超时或取消终止的进程一律视为失败，即使 Pi 返回 exit code 0，也不会写入完成时间。能快进时 Pull 直接快进，否则在快照仓库中执行干净的三方合并；冲突会中止合并且不应用任何文件。Push 被非快进拒绝时会 fetch、在不 rebase、不 force 的前提下整合远端历史，并重试一次；Push 整合的文件在下一次 Pull 时应用。
+- Git 操作强制 `core.autocrlf=false`、`core.eol=lf`，快照仓库使用本地 `* -text` 属性，避免 Git 转换原始字节。已有 CRLF/LF 混合历史不会被自动改写；统一换行需要显式的手动迁移和 repack。Windows 优先使用原生 OpenSSH（`System32/OpenSSH/ssh.exe`），支持中文用户目录；不存在时及其他平台使用 `ssh`。保留非交互模式、连接超时及主机密钥验证，不复用自定义 `core.sshCommand`。
 - 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超出最新 20 份的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
 - 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
 

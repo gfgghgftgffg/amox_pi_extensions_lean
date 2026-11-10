@@ -16,10 +16,10 @@ async function fixture(t, handler) {
   await fs.mkdir(paths.agentDir, { recursive: true });
   const config = createConfig("git@example.org:private/sync.git", paths);
   const calls = [];
-  const exec = async (raw, cwd) => {
+  const exec = async (raw, cwd, timeoutMs) => {
     const args = [...raw];
     while (args[0] === "-c") args.splice(0, 2);
-    calls.push({ args, raw, cwd });
+    calls.push({ args, raw, cwd, timeoutMs });
     const custom = await handler?.(args, cwd);
     if (custom) return custom;
     if (args[0] === "clone") await fs.mkdir(path.join(config.repoDir, ".git"), { recursive: true });
@@ -94,7 +94,9 @@ test("pull clones, ff-only, backup, remote-wins report, local-only preservation 
   assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/local.jsonl"), "utf8"), "keep");
   assert.equal(await fs.readFile(path.join(f.paths.agentDir, "settings.json"), "utf8"), "untouched");
   assert.equal(await fs.readFile(path.join(f.paths.backupDir, backupId, "files/sessions/same.jsonl"), "utf8"), "local");
-  assert.ok(f.calls.some(c => c.args.join(" ") === "pull --ff-only origin"));
+  assert.ok(f.calls.some(c => c.args.join(" ") === "fetch origin"));
+  assert.ok(f.calls.some(c => c.args.join(" ") === "merge --ff-only @{u}"));
+  assert.ok(!f.calls.some(c => c.args.join(" ") === "pull --ff-only origin"));
   assert.ok(!f.calls.some(c => c.args.includes("--force") || c.args.includes("--rebase")));
   assert.equal((await loadConfig(f.paths)).lastPullAt, f.config.lastPullAt);
 });
@@ -185,12 +187,12 @@ test("exclusive busy and cross-instance filesystem lock reject without queuing, 
   await assert.rejects(fs.access(`${f.paths.configFile}.lock`));
 });
 test("git failures retain actionable status, unlock, and never apply local data", async t => {
-  const f = await fixture(t, args => args[0] === "pull" ? { stdout: "", stderr: "Not possible to fast-forward", code: 128 } : undefined);
+  const f = await fixture(t, args => args[0] === "fetch" ? { stdout: "", stderr: "network unavailable", code: 128 } : undefined);
   await f.write(f.config.repoDir, ".git/HEAD", "mock");
   await f.write(f.config.repoDir, "sessions/a", "remote");
   await f.write(f.paths.agentDir, "sessions/a", "local");
-  await assert.rejects(f.service.pull(), /fast-forward.*Resolve repository conflicts/);
-  assert.match(f.service.status.error, /fast-forward/);
+  await assert.rejects(f.service.pull(), /network unavailable.*Resolve repository conflicts/);
+  assert.match(f.service.status.error, /network unavailable/);
   assert.equal(f.service.status.busy, undefined);
   assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/a"), "utf8"), "local");
   await f.service.backup();
@@ -204,6 +206,127 @@ test("fingerprints are stable and content-sensitive; doctor is offline and does 
   const checks = await f.service.doctor();
   assert.ok(checks.some(c => c.name === "repository" && !c.ok));
   assert.ok(!f.calls.some(c => ["clone", "fetch", "pull", "push"].includes(c.args[0])));
+});
+test("terminated Git transfers never record success or apply files", async t => {
+  const f = await fixture(t, args => args[0] === "fetch" ? { stdout: "", stderr: "", code: 0, killed: true } : undefined);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/a", "remote");
+  await f.write(f.paths.agentDir, "sessions/a", "local");
+  await assert.rejects(f.service.pull(), /terminated before completion/);
+  assert.equal(f.config.lastPullAt, undefined);
+  assert.equal(f.service.status.busy, undefined);
+  assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/a"), "utf8"), "local");
+  await assert.rejects(f.service.check(), /terminated before completion/);
+  assert.equal(f.service.status.checkedAt, undefined);
+});
+test("terminated push is not recorded as pushed", async t => {
+  const f = await fixture(t, args => args[0] === "push" ? { stdout: "", stderr: "", code: 0, killed: true } : undefined);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/a", "data");
+  await assert.rejects(f.service.push(), /terminated before completion/);
+  assert.equal(f.config.lastPushAt, undefined);
+  assert.equal(f.service.status.busy, undefined);
+  assert.equal(f.calls.filter(c => c.args[0] === "push").length, 1);
+});
+test("non-fast-forward push integrates remote history and retries once", async t => {
+  let pushes = 0;
+  const f = await fixture(t, args => {
+    if (args[0] === "push") {
+      pushes++;
+      return pushes === 1 ? { stdout: "", stderr: "! [rejected] HEAD -> main (fetch first)", code: 1 } : undefined;
+    }
+    if (args[0] === "merge-base") return { stdout: "", stderr: "", code: 1 };
+    if (args[0] === "merge") return { stdout: "", stderr: "", code: 0 };
+  });
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/a", "data");
+  const result = await f.service.push();
+  assert.equal(pushes, 2);
+  assert.match(result, /Integrated remote history/);
+  assert.deepEqual(f.calls.filter(c => c.args[0] === "merge").map(c => c.args), [["merge", "--no-edit", "@{u}"]]);
+  assert.ok(f.config.lastPushAt);
+  assert.ok(f.calls.every(c => !c.args.includes("--force")));
+});
+test("a conflicted push recovery aborts and records no push", async t => {
+  let pushes = 0;
+  const f = await fixture(t, args => {
+    if (args[0] === "push") { pushes++; return { stdout: "", stderr: "! [rejected] HEAD -> main (fetch first)", code: 1 }; }
+    if (args[0] === "merge-base") return { stdout: "", stderr: "", code: 1 };
+    if (args[0] === "merge" && args[1] === "--no-edit") return { stdout: "", stderr: "CONFLICT", code: 1 };
+  });
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/a", "data");
+  await assert.rejects(f.service.push(), /diverged.*not clean/);
+  assert.equal(pushes, 1);
+  assert.equal(f.config.lastPushAt, undefined);
+  assert.equal(f.service.status.busy, undefined);
+  assert.ok(f.calls.some(c => c.args.join(" ") === "merge --abort"));
+});
+test("pull with only local commits does not merge or rewrite history", async t => {
+  const f = await fixture(t, args => {
+    if (args[0] === "merge-base" && args[2] === "HEAD") return { stdout: "", stderr: "", code: 1 };
+    if (args[0] === "merge-base" && args[2] === "@{u}") return { stdout: "", stderr: "", code: 0 };
+  });
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/a", "local snapshot");
+  await f.write(f.paths.agentDir, "sessions/a", "local snapshot");
+  const result = await f.service.pull();
+  assert.doesNotMatch(result, /Merged diverged/);
+  assert.ok(!f.calls.some(c => c.args[0] === "merge"));
+});
+test("network Git operations use ten-minute timeouts while local Git stays bounded", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/a", "data");
+  await f.service.push();
+  assert.equal(f.calls.find(c => c.args[0] === "push").timeoutMs, 600_000);
+  assert.equal(f.calls.find(c => c.args.includes("add")).timeoutMs, 60_000);
+  await f.service.pull();
+  assert.equal(f.calls.find(c => c.args[0] === "fetch").timeoutMs, 600_000);
+  assert.equal(f.calls.find(c => c.args[0] === "merge").timeoutMs, 60_000);
+  const clone = await fixture(t, args => args[0] === "clone" ? { stdout: "", stderr: "", code: 0, killed: true } : undefined);
+  await assert.rejects(clone.service.check(), /terminated before completion/);
+  assert.equal(clone.calls.find(c => c.args[0] === "clone").timeoutMs, 600_000);
+});
+test("diverged pull performs a clean three-way merge and applies the merged snapshot", async t => {
+  const f = await fixture(t, args => {
+    if (args[0] === "merge-base") return { stdout: "", stderr: "", code: 1 };
+    if (args[0] === "merge") return { stdout: "merged", stderr: "", code: 0 };
+  });
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/remote", "remote");
+  await f.write(f.paths.agentDir, "sessions/local", "local");
+  const result = await f.service.pull();
+  assert.match(result, /^Merged diverged snapshots cleanly\. Applied 1/);
+  assert.deepEqual(f.calls.filter(c => c.args[0] === "merge").map(c => c.args), [["merge", "--no-edit", "@{u}"]]);
+  assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/remote"), "utf8"), "remote");
+  assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/local"), "utf8"), "local");
+  assert.ok(f.config.lastPullAt);
+});
+test("a conflicted divergence aborts and never records a pull or applies files", async t => {
+  const f = await fixture(t, args => {
+    if (args[0] === "merge-base") return { stdout: "", stderr: "", code: 1 };
+    if (args[0] === "merge" && args[1] === "--no-edit") return { stdout: "", stderr: "CONFLICT", code: 1 };
+  });
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/remote", "remote");
+  await f.write(f.paths.agentDir, "sessions/local", "local");
+  await assert.rejects(f.service.pull(), /diverged.*not clean/);
+  assert.equal(f.config.lastPullAt, undefined);
+  assert.equal(f.service.status.busy, undefined);
+  assert.ok(f.calls.some(c => c.args.join(" ") === "merge --abort"));
+  assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/local"), "utf8"), "local");
+  await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/remote")));
+});
+test("repository-local attributes keep raw bytes free of line-ending conversion", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, ".git/info/attributes", "*.md text\n");
+  await f.service.log();
+  const file = path.join(f.config.repoDir, ".git/info/attributes");
+  assert.equal(await fs.readFile(file, "utf8"), "*.md text\n* -text\n");
+  await f.service.log();
+  assert.equal(await fs.readFile(file, "utf8"), "*.md text\n* -text\n");
 });
 test("cleanup previews oldest excess and expired backups, never the newest retained ones", async t => {
   const f = await fixture(t);
@@ -295,6 +418,7 @@ test("check publishes checkedAt only after successful remote checks", async t =>
   }
   for (const { raw } of f.calls) {
     assert.ok(raw.includes("credential.interactive=false"));
+    assert.ok(raw.includes("core.eol=lf"));
     const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
     const expectedSsh = process.platform === "win32" && existsSync(nativeSsh)
       ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";

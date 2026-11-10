@@ -87,12 +87,13 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     fingerprint = undefined;
   }
 
-  function makeService(): void {
+  function makeService(): SyncService | undefined {
     service = config ? new SyncService(config, paths, async (args, cwd, timeoutMs) => {
       const result = await pi.exec("git", args, { cwd, timeout: timeoutMs });
       return { stdout: result.stdout, stderr: result.stderr, code: result.code, killed: result.killed };
     }) : undefined;
     if (service) service.activeSessionFile = ctx?.sessionManager.getSessionFile();
+    return service;
   }
 
   async function run(label: string, action: (sync: SyncService) => Promise<unknown>, quiet = false): Promise<boolean> {
@@ -445,7 +446,8 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     error = undefined;
     try {
       config = await loadConfig(paths);
-      makeService();
+      const active = makeService();
+      if (active) await active.initializeBaseline();
     } catch (failure) { error = message(failure); context.ui.notify(`amox-pi-sync config: ${error}`, "error"); }
     // Clear the old upstream widget without creating a replacement widget.
     context.ui.setWidget(STATUS_KEY, undefined);

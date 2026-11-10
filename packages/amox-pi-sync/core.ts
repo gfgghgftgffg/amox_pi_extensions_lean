@@ -374,6 +374,35 @@ export class SyncService {
     }
     await flush();
   }
+  /** Paths currently present under the managed roots, without reading file bodies. */
+  private async listPaths(root: string): Promise<Set<string>> {
+    const result = new Set<string>();
+    const visit = async (relative: string): Promise<void> => {
+      validatePath(relative);
+      const absolute = path.join(root, relative); await noLinks(absolute);
+      const info = await stat(absolute); if (!info) return;
+      if (info.isDirectory()) { for (const child of (await fs.readdir(absolute)).sort()) await visit(`${relative}/${child}`); }
+      else if (info.isFile()) result.add(relative);
+      else throw new Error(`Not a regular file: ${relative}`);
+    };
+    for (const item of this.config.paths) await visit(validatePath(item));
+    return result;
+  }
+  /**
+   * Seed a missing baseline from files present both locally and in an existing
+   * snapshot. Local-only and unpulled remote-only files stay outside the
+   * baseline, so later deletions propagate without deleting unseen remote data.
+   */
+  async initializeBaseline(): Promise<boolean> {
+    if (this.config.syncedPaths !== undefined) return false;
+    const gitDir = path.join(this.config.repoDir, ".git"); await noLinks(gitDir);
+    if (!(await stat(gitDir))) return false;
+    const local = await this.listPaths(this.paths.agentDir);
+    const snapshot = await this.listPaths(this.config.repoDir);
+    this.config.syncedPaths = [...local].filter(item => snapshot.has(item)).sort();
+    await saveConfig(this.config, this.paths);
+    return true;
+  }
   private async collect(root: string, scan = false): Promise<Files> {
     const files: Files = new Map();
     const visit = async (relative: string): Promise<void> => {

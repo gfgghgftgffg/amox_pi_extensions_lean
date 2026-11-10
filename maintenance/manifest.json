@@ -12,14 +12,14 @@
       "id": "pi-web-access-lean",
       "path": "packages/pi-web-access-lean",
       "packageName": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "entry": "index.ts",
       "upstreamPackage": "pi-web-access",
       "upstreamVersion": "0.47.0",
       "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
       "upstreamGitHead": "322e44fafc1aaa691779cdf2116584e67edd7645",
       "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
-      "leanCommit": "189484d37c0c346382597555b757480ec95b9397"
+      "leanCommit": "49a89158d14095b5853f945850a26369bf101363"
     },
     {
       "id": "rpiv-todo-lean",
@@ -42,15 +42,15 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.16",
+      "version": "0.1.17",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
-      "upstreamVersion": "0.23.1",
+      "upstreamVersion": "0.23.2",
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
-      "upstreamGitHead": "9bb6c822bae9f4fe8d33384b715a5e2e96d5df10",
+      "upstreamGitHead": "a35acfb3b699e49f579f494473c38c87592f6c8e",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
-      "leanCommit": "addf9e2e5a6c8f08719a4df48b10290b9214d902"
+      "leanCommit": "e4892d465a15467214ed390ed380bdfc3f179887"
     },
     {
       "id": "amox-pi-sync",
@@ -63,17 +63,21 @@
       "upstreamRepository": "https://github.com/MuratAitov/pi-sync.git",
       "upstreamRef": "npm:pi-sync-suite@0.1.1",
       "maintenanceMode": "selective-fork",
-      "sourceFiles": ["index.ts", "core.ts"],
+      "sourceFiles": [
+        "index.ts",
+        "core.ts"
+      ],
       "releaseVersioning": "independent",
       "toolContract": false,
       "registeredTools": []
     }
   ],
   "release": {
-    "version": "0.1.25",
-    "baseCommit": "37d1061b9a951313b9cd28a8eec4380c84ac26ec",
+    "version": "0.1.26",
+    "baseCommit": "ddc784a0e9c7d12a57b68cf8402231fc42b4c7ae",
     "packageIds": [
-      "amox-pi-sync"
+      "pi-web-access-lean",
+      "pi-subagents-lean"
     ]
   }
 }

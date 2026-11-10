@@ -58,7 +58,8 @@ node scripts/install-extension.mjs pi-subagents-lean
 Prompt/工具/扩展白名单，并注意与内置 `general-purpose`、`Explore`、`Plan` 的命名冲突。
 内置 Explore 默认继承会话模型；有成本或延迟要求时，在 Agent 文件中指定模型。
 上下文继承与已存 Agent 的重新打开沿用上游：已移除且曾有改动的 worktree 会阻止重新打开，
-干净的 worktree 则在主 checkout 中继续。依赖这些路径前请查看[上游行为说明](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
+干净的 worktree 则在主 checkout 中继续。对话观察器的跳到开头／最新键跟随宿主 `tui.altScreen` 绑定。
+依赖这些路径前请查看[上游行为说明](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
 
 后台任务完成后会通知父会话，无需轮询或等待。Agent 配置、后台执行、Workflow、worktree 和
 `subagents.json` 的配置见[上游文档](https://github.com/tintinweb/pi-subagents)；扩展集成使用上游的

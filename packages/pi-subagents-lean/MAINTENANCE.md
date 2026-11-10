@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.23.1`（精确固定；`dependencies`；此前为 0.22.1）。
+- `@tintinweb/pi-subagents@0.23.2`（精确固定；`dependencies`；此前为 0.23.1）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -290,3 +290,23 @@
   会话启动时的冲突退出仍只尝试从宿主激活集移除原工具名；facade 捕获的对象保持不变，
   不应把这种退出描述为 facade 工具被注销。
 - 字符代理值 `ceil(chars / 4)` 只用于横向比较，不代表真实模型计费 token。
+
+## 本次审查：0.23.1 → 0.23.2 与 lean 作者更新
+
+- sources.json 精确发布源码：`9bb6c822bae9f4fe8d33384b715a5e2e96d5df10` →
+  `a35acfb3b699e49f579f494473c38c87592f6c8e`。不采用未发布远端
+  `8df7fa7d8e8130151a8fbfa991a1d3fa6b443739`。对比两版 CHANGELOG、package.json、
+  `src/index.ts` 头部与工具清单（均为 4371 行、四工具名不变）、`src/ui/viewer-keys.ts`。
+  这是门面兼容审查，不是全仓逐文件审计。
+- 无工具、参数、required、默认值或执行签名变化。peer 仍为 Pi `>=1.1.0` 与 `typebox` `*`；
+  运行依赖范围不变。typebox v1／instancePath、启动类型描述正则、直接字段优先、
+  captured `withUsageReporting` execute、五参数／render 委派和 workflow 条件注册继续成立。
+- 唯一行为修复在对话观察器：`tui.altScreen.top`／`bottom` 与跳到最新分隔标签改为走用户键绑定，
+  Home/End 仍为别名，Ctrl+Home/Ctrl+End 也可滚动窗口观察器。由固定 npm 依赖承接，不复制 UI 实现，
+  也不把键位写进常驻 Schema。
+- lean 作者 `addf9e2e5a6c8f08719a4df48b10290b9214d902` →
+  `e4892d465a15467214ed390ed380bdfc3f179887`：完整入口、facade 测试、类型声明与 tsconfig 相同
+  （仍导入 `src/index.ts`）。package.json 仅包装版本与引擎 pin 0.22.1→0.23.1，README 更新字符代理。
+  不复用作者入口、锁文件、包装版本或测量；本仓继续用 npm `dist/index.js`。先前不复用的 op 推断／对象 input 决定不变。
+- 无门面源码变化，不新增回归、不改既有断言。中英文 README 只在现有行为段说明观察器跳转键跟随宿主绑定。
+  check 实际执行类型／既有回归、source/dist 契约、独立生产安装、字符代理与两类审计；结果以输出为准。

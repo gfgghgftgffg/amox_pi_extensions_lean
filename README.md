@@ -9,7 +9,7 @@ Three independent lean wrappers that shorten tool descriptions and schemas while
 | [pi-web-access-lean](packages/pi-web-access-lean/README.md) | `web_access` | Search, verification, web pages and PDFs |
 | [rpiv-todo-lean](packages/rpiv-todo-lean/README.md) | `todo` | Tasks, dependencies and progress |
 | [pi-subagents-lean](packages/pi-subagents-lean/README.md) | `subagent` | Subagents and workflows |
-| [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, backups and diagnostics; defaults to sessions + missions |
+| [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, deletion propagation, orphan-session pruning, backups and diagnostics; configurable sessions/missions |
 
 ## Installation
 
@@ -37,6 +37,16 @@ node scripts/install-extension.mjs amox-pi-sync
 ```
 
 Update a local installation with `git pull --ff-only` and its installer. For a new computer, see [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md).
+
+## amox-pi-sync features
+
+`amox-pi-sync` transfers raw agent data over a private SSH Git repository. Managed paths are configurable; `sessions` and `missions` are the defaults. Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone. Commands are `/sync-status`, `/sync-setup`, `/sync-push`, `/sync-pull`, `/sync-prune` and `/sync-settings`. With Starline, the status capsule opens the same actions in a bubble anchored to its footer cell, with optional theme colours; without Starline, native Pi dialogs and plain status text remain.
+
+- **Deletion propagation:** a per-device `syncedPaths` baseline records paths present at the last successful Push/Pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a recovery backup and preserves local missing baseline paths as pending deletions, so a Pull before Push does not resurrect them. Files that were never synced and unpulled remote-only files are not deleted. The baseline is seeded on first use from the intersection of local and snapshot paths; deletions made before that baseline are not inferred automatically.
+- **Orphan-session pruning:** `Prune orphan sessions` / `/sync-prune [--yes]` finds subagent transcripts whose parent is missing or itself pruned. It matches parent basenames case-insensitively and names like `type#8hex`, cascades to descendants, skips files modified in the last 10 minutes and the active session, previews count/size/names, commits snapshot removals before local deletion, and refuses a dirty repository. `Prune before push` (default Off) runs before manual, command and automatic pushes; a prune failure warns but does not block the push.
+- **Transport safety:** network Git operations use a 10-minute timeout and local operations 60 seconds. A killed or timed-out process is a failure and never records success. Pull fast-forwards or performs a clean file-level merge; Push integrates non-fast-forward remote history and retries once, without rebase or force.
+- **Backups:** Pull and restore back up only the local files being replaced or deleted; a pull that only adds files creates no backup. Manual Create backup remains a full managed-data snapshot. Cleanup is manual and counts complete backup directories.
+- **Platform and data safety:** Windows prefers native OpenSSH; Git line-ending conversion is disabled and the snapshot repository uses `* -text`, preserving raw bytes. Sessions may contain secrets: use a private repository and review the [package safety limits](packages/amox-pi-sync/README.md#data-and-safety).
 
 ## Maintenance and deployment
 

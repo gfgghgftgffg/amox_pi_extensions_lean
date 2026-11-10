@@ -9,7 +9,7 @@
 | [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | 搜索、核实、网页和 PDF |
 | [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | 任务、依赖和进度 |
 | [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | 子 Agent 和工作流 |
-| [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、备份与诊断；默认 sessions + missions |
+| [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、删除传播、孤儿会话清理、备份与诊断；可配置 sessions/missions |
 
 ## 安装
 
@@ -37,6 +37,16 @@ node scripts/install-extension.mjs amox-pi-sync
 ```
 
 本地安装通过 `git pull --ff-only` 和对应安装脚本更新。新电脑可按 [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md) 部署。
+
+## amox-pi-sync 特性
+
+`amox-pi-sync` 通过私有 SSH Git 仓库传输原始 agent 数据。纳管路径可配置，默认是 `sessions` 和 `missions`。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。命令包括 `/sync-status`、`/sync-setup`、`/sync-push`、`/sync-pull`、`/sync-prune` 和 `/sync-settings`。安装 Starline 时，状态胶囊在对应的底栏 cell 上打开同样的操作气泡，并可选主题配色；没有 Starline 时使用 Pi 原生弹框和纯文本状态。
+
+- **删除传播：** 每台设备用 `syncedPaths` 基线记录上次成功 Push/Pull 时的路径。Push 会从快照移除基线中本地已消失的路径；Pull 在恢复备份后应用远端删除，并把本地缺失的基线路径保留为待 Push 删除，因此先 Pull 也不会复活。从未同步的本地文件和尚未 Pull 的远端文件不会被删除。首次使用时基线由本地与快照路径的交集初始化；基线建立前已经发生的删除不会自动推断。
+- **孤儿会话清理：** `Prune orphan sessions` / `/sync-prune [--yes]` 找出父会话不存在或父会话本身也被清理的子代理会话。父文件按 basename 不区分大小写比对，名字匹配 `type#8hex`，并级联到后代；最近 10 分钟修改过的文件和当前活跃会话会跳过；先预览条数、体积和前几条名称，先提交快照删除，再删本地文件；仓库有未提交修改时拒绝执行。**Prune before push**（默认 Off）会在手动、命令和自动 Push 前执行；清理失败只警告，不阻断 Push。
+- **传输安全：** 网络 Git 操作超时 10 分钟，本地操作 60 秒。被终止或超时的进程一律视为失败，不记录成功。Pull 能快进则快进，否则执行干净的文件级合并；Push 会整合非快进远端历史并重试一次，不 rebase、不 force。
+- **备份：** Pull 和恢复只备份本次会被替换或删除的本地文件；只新增文件的 Pull 不创建备份。手动 Create backup 仍是完整纳管数据快照。Cleanup 为手动操作，按完整备份目录计数。
+- **平台与数据安全：** Windows 优先使用原生 OpenSSH；关闭 Git 换行转换，快照仓库使用 `* -text`，保留原始字节。会话可能包含秘密：请使用私有仓库，并阅读[包内安全限制](packages/amox-pi-sync/README.zh-CN.md#数据与安全)。
 
 ## 维护与部署
 

@@ -490,6 +490,9 @@ test("unchanged pulls do not create more recovery backups", async t => {
   await f.write(f.config.repoDir, ".git/HEAD", "mock");
   await f.write(f.config.repoDir, "sessions/a", "remote");
   await f.service.pull();
+  assert.equal((await f.service.listBackups()).length, 0, "new files need no recovery backup");
+  await f.write(f.config.repoDir, "sessions/a", "remote changed");
+  await f.service.pull();
   const backups = await f.service.listBackups();
   assert.equal(backups.length, 1);
   assert.match(await f.service.pull(), /up to date/);
@@ -633,4 +636,24 @@ test("initializeBaseline seeds only local/snapshot intersection so a later local
   await fs.access(path.join(f.config.repoDir, "sessions/remote.jsonl"));
   await fs.access(path.join(f.config.repoDir, "sessions/local.jsonl"));
   assert.deepEqual(f.config.syncedPaths, ["sessions/local.jsonl"]);
+});
+test("pull backups contain only the local files being replaced or deleted", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/replace.jsonl", "old replace");
+  await f.write(f.paths.agentDir, "sessions/keep.jsonl", "keep");
+  await f.write(f.paths.agentDir, "sessions/delete.jsonl", "old delete");
+  await f.write(f.config.repoDir, "sessions/replace.jsonl", "new replace");
+  await f.write(f.config.repoDir, "sessions/keep.jsonl", "keep");
+  f.config.syncedPaths = ["sessions/replace.jsonl", "sessions/keep.jsonl", "sessions/delete.jsonl"];
+  await f.service.pull();
+  const [backup] = await f.service.listBackups();
+  assert.deepEqual(backup.files, ["sessions/delete.jsonl", "sessions/replace.jsonl"]);
+  assert.deepEqual(backup.includedPaths, ["sessions"]);
+  assert.equal(await fs.readFile(path.join(f.paths.backupDir, backup.id, "files/sessions/replace.jsonl"), "utf8"), "old replace");
+  assert.equal(await fs.readFile(path.join(f.paths.backupDir, backup.id, "files/sessions/delete.jsonl"), "utf8"), "old delete");
+  await assert.rejects(fs.access(path.join(f.paths.backupDir, backup.id, "files/sessions/keep.jsonl")));
+  assert.equal(await fs.readFile(path.join(f.paths.agentDir, "sessions/replace.jsonl"), "utf8"), "new replace");
+  await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/delete.jsonl")));
+  await fs.access(path.join(f.paths.agentDir, "sessions/keep.jsonl"));
 });

@@ -115,3 +115,111 @@ test("diverged real Git clients merge disjoint push changes without force", asyn
   assert.equal(await fs.readFile(file(a, "b.jsonl"), "utf8"), '{"message":"b"}\n');
   assert.equal(await fs.readFile(file(a, "a.jsonl"), "utf8"), '{"message":"a"}\n');
 });
+
+test("diverged real Git clients merge disjoint pull changes and keep the repository clean", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "amox-git-pull-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const env = {
+    ...process.env, GIT_AUTHOR_NAME: "Sync Test", GIT_AUTHOR_EMAIL: "sync@example.invalid",
+    GIT_COMMITTER_NAME: "Sync Test", GIT_COMMITTER_EMAIL: "sync@example.invalid",
+    GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(root, "gitconfig"),
+  };
+  const git = (args, cwd) => {
+    const result = spawnSync("git", args, { cwd, env, encoding: "utf8" });
+    if (result.error) throw result.error;
+    return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", code: result.status ?? 1 };
+  };
+  const bare = path.join(root, "remote.git");
+  assert.equal(git(["init", "--bare", "--initial-branch=main", bare], root).code, 0);
+  const url = "git@example.invalid:private/sync.git";
+  const exec = async (args, cwd) => {
+    const actual = [...args];
+    const clone = actual.indexOf("clone");
+    if (clone >= 0) actual[clone + 2] = bare;
+    const result = git(actual, cwd);
+    if (actual.includes("get-url") && result.code === 0) result.stdout = `${url}\n`;
+    return result;
+  };
+  const make = async name => {
+    const paths = defaultPaths(path.join(root, name));
+    await fs.mkdir(path.join(paths.agentDir, "sessions"), { recursive: true });
+    const config = createConfig(url, paths);
+    return { paths, config, sync: new SyncService(config, paths, exec) };
+  };
+  const a = await make("a"), b = await make("b");
+  const file = (client, name) => path.join(client.paths.agentDir, "sessions", name);
+  await fs.writeFile(file(a, "base.jsonl"), '{"message":"base"}\n');
+  await a.sync.push();
+  await b.sync.pull();
+  await fs.writeFile(file(a, "a.jsonl"), '{"message":"a"}\n');
+  await a.sync.push();
+  await fs.writeFile(file(b, "b.jsonl"), '{"message":"b"}\n');
+  await fs.writeFile(path.join(b.config.repoDir, "sessions", "b.jsonl"), '{"message":"b"}\n');
+  assert.equal(git(["add", "--", "sessions/b.jsonl"], b.config.repoDir).code, 0);
+  assert.equal(git(["commit", "-m", "b local"], b.config.repoDir).code, 0);
+  const result = await b.sync.pull();
+  assert.match(result, /^Merged diverged snapshots cleanly\. Applied 1/);
+  assert.ok(b.config.lastPullAt);
+  assert.equal(git(["status", "--porcelain"], b.config.repoDir).stdout, "");
+  assert.equal(git(["log", "--merges", "--oneline"], b.config.repoDir).stdout.trim().split("\n").length, 1);
+  assert.equal(await fs.readFile(file(b, "a.jsonl"), "utf8"), '{"message":"a"}\n');
+  assert.equal(await fs.readFile(file(b, "b.jsonl"), "utf8"), '{"message":"b"}\n');
+  await b.sync.push();
+  await a.sync.pull();
+  assert.equal(await fs.readFile(file(a, "b.jsonl"), "utf8"), '{"message":"b"}\n');
+});
+
+test("a real conflicting pull aborts, names the conflict and leaves no merge state", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "amox-git-conflict-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const env = {
+    ...process.env, GIT_AUTHOR_NAME: "Sync Test", GIT_AUTHOR_EMAIL: "sync@example.invalid",
+    GIT_COMMITTER_NAME: "Sync Test", GIT_COMMITTER_EMAIL: "sync@example.invalid",
+    GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(root, "gitconfig"),
+  };
+  const git = (args, cwd) => {
+    const result = spawnSync("git", args, { cwd, env, encoding: "utf8" });
+    if (result.error) throw result.error;
+    return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", code: result.status ?? 1 };
+  };
+  const bare = path.join(root, "remote.git");
+  assert.equal(git(["init", "--bare", "--initial-branch=main", bare], root).code, 0);
+  const url = "git@example.invalid:private/sync.git";
+  const exec = async (args, cwd) => {
+    const actual = [...args];
+    const clone = actual.indexOf("clone");
+    if (clone >= 0) actual[clone + 2] = bare;
+    const result = git(actual, cwd);
+    if (actual.includes("get-url") && result.code === 0) result.stdout = `${url}\n`;
+    return result;
+  };
+  const make = async name => {
+    const paths = defaultPaths(path.join(root, name));
+    await fs.mkdir(path.join(paths.agentDir, "sessions"), { recursive: true });
+    const config = createConfig(url, paths);
+    return { paths, config, sync: new SyncService(config, paths, exec) };
+  };
+  const a = await make("a"), b = await make("b");
+  const file = (client, name) => path.join(client.paths.agentDir, "sessions", name);
+  await fs.writeFile(file(a, "shared.jsonl"), '{"message":"base"}\n');
+  await a.sync.push();
+  await b.sync.pull();
+  await fs.writeFile(file(a, "shared.jsonl"), '{"message":"a"}\n');
+  await a.sync.push();
+  await fs.writeFile(file(b, "shared.jsonl"), '{"message":"b"}\n');
+  await fs.writeFile(path.join(b.config.repoDir, "sessions", "shared.jsonl"), '{"message":"b"}\n');
+  assert.equal(git(["add", "--", "sessions/shared.jsonl"], b.config.repoDir).code, 0);
+  assert.equal(git(["commit", "-m", "b local"], b.config.repoDir).code, 0);
+  const localHead = git(["rev-parse", "HEAD"], b.config.repoDir).stdout.trim();
+  const lastPullAt = b.config.lastPullAt;
+  await assert.rejects(b.sync.pull(), error => {
+    assert.match(error.message, /not clean/);
+    assert.match(error.message, /shared\.jsonl/);
+    return true;
+  });
+  assert.equal(b.config.lastPullAt, lastPullAt);
+  assert.equal(await fs.readFile(file(b, "shared.jsonl"), "utf8"), '{"message":"b"}\n');
+  assert.equal(git(["rev-parse", "HEAD"], b.config.repoDir).stdout.trim(), localHead);
+  assert.equal(git(["status", "--porcelain"], b.config.repoDir).stdout, "");
+  assert.equal(git(["rev-parse", "--verify", "MERGE_HEAD"], b.config.repoDir).code, 128);
+});

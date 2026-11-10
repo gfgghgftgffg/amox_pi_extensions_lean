@@ -25,6 +25,11 @@ export function loadModelConfig(path) {
   if ((statSync(path).mode & 0o077) !== 0) throw new Error("Local model config must have mode 600");
   return modelConfig(readJson(path));
 }
+export function localPiMaxTurns(raw = process.env.AMOX_LOCAL_PI_MAX_TURNS) {
+  const turns = raw === undefined || raw === "" ? 80 : Number(raw);
+  if (!Number.isInteger(turns) || turns < 1 || turns > 1000) throw new Error("AMOX_LOCAL_PI_MAX_TURNS must be a whole number from 1 to 1000");
+  return turns;
+}
 const result = (text, extra = {}) => ({ content: [{ type: "text", text }], details: undefined, ...extra });
 export function createLocalTools({ repo, context, manifest, baseline, gate, plan, onCheckResult = () => {}, onOwnerDecision = () => {} }) {
   const reads = new Set();
@@ -153,8 +158,10 @@ export function createForkReviewTools({ repo, context, entry, evidence }) {
 // Review sessions are read-only; the adaptation session retains its candidate
 // through local and CI feedback.
 export async function openLocalPi({ repo, scratch, config, tools, log = console.log,
-  runtimeFactory = ModelRuntime.create, sessionFactory = createAgentSession, budgetMs = 45 * 60_000, instructions }) {
+  runtimeFactory = ModelRuntime.create, sessionFactory = createAgentSession, budgetMs = 45 * 60_000, instructions,
+  maxTurns = localPiMaxTurns() }) {
   config = modelConfig(config);
+  if (!Number.isInteger(maxTurns) || maxTurns < 1 || maxTurns > 1000) throw new Error("Local Pi max turns must be a whole number from 1 to 1000");
   mkdirSync(scratch, { recursive: true, mode: 0o700 });
   const runtime = await runtimeFactory({ credentials: new InMemoryCredentialStore(), modelsPath: null,
     refreshOnCreate: false, modelsStorePath: join(scratch, "models-store.json") });
@@ -180,11 +187,11 @@ export async function openLocalPi({ repo, scratch, config, tools, log = console.
   let turns = 0, modelMs = 0;
   session.subscribe((event) => {
     if (event.type === "tool_execution_start") log(`Pi tool: ${event.toolName}`);
-    if (event.type === "turn_end" && ++turns >= 80) void session.abort();
+    if (event.type === "turn_end" && ++turns >= maxTurns) void session.abort();
   });
   return {
     async prompt(brief) {
-      if (turns >= 80 || modelMs >= budgetMs) throw new Error("Local Pi time/turn budget exhausted");
+      if (turns >= maxTurns || modelMs >= budgetMs) throw new Error("Local Pi time/turn budget exhausted");
       const start = Date.now(), before = session.messages.length;
       let diagnostic;
       const timer = setTimeout(() => { void session.abort(); }, budgetMs - modelMs);

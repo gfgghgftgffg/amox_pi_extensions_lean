@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
-import { createLocalTools, openLocalPi } from "../scripts/lib/local-pi.mjs";
+import { createLocalTools, localPiMaxTurns, openLocalPi } from "../scripts/lib/local-pi.mjs";
 import { githubClient } from "../scripts/lib/github-maintenance.mjs";
 import { launcherEnvironment } from "../scripts/local-maintenance.mjs";
 import { sandboxArgs, sandboxRun } from "../scripts/lib/local-sandbox.mjs";
@@ -136,4 +136,20 @@ test("sandbox runs with Node installed outside /usr without exposing its toolcha
     assert.match(child.stdout, /external-node-isolated/);
     assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "sealed source\n");
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("local Pi turn budget defaults to 80 and can be raised through the launcher environment", () => {
+  const root = mkdtempSync(join(tmpdir(), "amox-turn-budget-")), previous = process.env.AMOX_LOCAL_PI_MAX_TURNS;
+  try {
+    delete process.env.AMOX_LOCAL_PI_MAX_TURNS;
+    assert.equal(localPiMaxTurns(), 80);
+    process.env.AMOX_LOCAL_PI_MAX_TURNS = "200";
+    assert.equal(localPiMaxTurns(), 200);
+    assert.equal(launcherEnvironment(root).AMOX_LOCAL_PI_MAX_TURNS, "200");
+    process.env.AMOX_LOCAL_PI_MAX_TURNS = "0";
+    assert.throws(() => localPiMaxTurns(), /1 to 1000/);
+  } finally {
+    if (previous === undefined) delete process.env.AMOX_LOCAL_PI_MAX_TURNS; else process.env.AMOX_LOCAL_PI_MAX_TURNS = previous;
+    rmSync(root, { recursive: true, force: true });
+  }
 });

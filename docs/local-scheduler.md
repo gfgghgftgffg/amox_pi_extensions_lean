@@ -79,7 +79,7 @@ journalctl -u amox-pi-actions.service -u amox-pi-actions-retry.service
 
 单次尝试上限 120 分钟，service 130 分钟兜底；两小时等待不占用该运行时间。SDK 即时重试仍关闭，只有上述安全范围内的服务器错误由持久化队列延迟重试。timer 使用 `Persistent=true`，启用前检查是否会补执行。暂停：`sudo systemctl disable --now amox-pi-actions.timer amox-pi-actions-retry.timer`。确认不再需要后再清理专用失败副本，避免磁盘耗尽。
 
-自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV` 和 `AMOX_MAINTENANCE_STATE`，并同步 unit 的写入权限与 TMPDIR。
+自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV`、`AMOX_MAINTENANCE_STATE` 和 `AMOX_LOCAL_PI_MAX_TURNS`，并同步 unit 的写入权限与 TMPDIR。`AMOX_LOCAL_PI_MAX_TURNS` 调整单次本地 SDK 会话的 turn 上限，默认 80，范围 1–1000；调高会增加运行时间和模型费用，主要用于诊断模型是否在读文件阶段耗尽预算。
 
 ## 可选 ntfy 通知
 

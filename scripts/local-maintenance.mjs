@@ -23,6 +23,7 @@ export function launcherEnvironment(stateRoot) {
   const temp = join(stateRoot, "tmp"); mkdirSync(temp, { recursive: true, mode: 0o700 });
   return { PATH: "/usr/bin:/bin", HOME: homedir(), LANG: "C.UTF-8", TMPDIR: temp, AMOX_MAINTENANCE_STATE: stateRoot,
     ...(process.env.AMOX_MODEL_CONFIG ? { AMOX_MODEL_CONFIG: process.env.AMOX_MODEL_CONFIG } : {}),
+    ...(process.env.AMOX_LOCAL_PI_MAX_TURNS ? { AMOX_LOCAL_PI_MAX_TURNS: process.env.AMOX_LOCAL_PI_MAX_TURNS } : {}),
     ...(process.env.AMOX_PUBLISH_ENV ? { AMOX_PUBLISH_ENV: process.env.AMOX_PUBLISH_ENV } : {}),
     ...(/^[a-f0-9]{32}$/.test(process.env.INVOCATION_ID ?? "") ? { INVOCATION_ID: process.env.INVOCATION_ID } : {}) };
 }

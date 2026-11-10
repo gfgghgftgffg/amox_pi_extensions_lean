@@ -617,3 +617,20 @@ test("pull refuses to delete the active session", async t => {
   await fs.access(active);
   assert.deepEqual(f.config.syncedPaths, ["sessions/active.jsonl"]);
 });
+test("initializeBaseline seeds only local/snapshot intersection so a later local deletion propagates", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.paths.agentDir, "sessions/local.jsonl", "local only");
+  await f.write(f.paths.agentDir, "sessions/both.jsonl", "local copy");
+  await f.write(f.config.repoDir, "sessions/both.jsonl", "snapshot copy");
+  await f.write(f.config.repoDir, "sessions/remote.jsonl", "remote only");
+  assert.equal(await f.service.initializeBaseline(), true);
+  assert.deepEqual(f.config.syncedPaths, ["sessions/both.jsonl"]);
+  assert.equal(await f.service.initializeBaseline(), false);
+  await fs.rm(path.join(f.paths.agentDir, "sessions/both.jsonl"));
+  await f.service.push();
+  await assert.rejects(fs.access(path.join(f.config.repoDir, "sessions/both.jsonl")));
+  await fs.access(path.join(f.config.repoDir, "sessions/remote.jsonl"));
+  await fs.access(path.join(f.config.repoDir, "sessions/local.jsonl"));
+  assert.deepEqual(f.config.syncedPaths, ["sessions/local.jsonl"]);
+});

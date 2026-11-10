@@ -2,7 +2,7 @@
 // Upstream: https://github.com/MuratAitov/pi-sync
 import { stripVTControlCharacters } from "node:util";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
-import { SyncService, createConfig, defaultPaths, loadConfig, saveConfig, validatePath, type Config } from "./core.ts";
+import { SyncService, createConfig, defaultPaths, loadConfig, saveConfig, validatePath, type Config, type PruneResult } from "./core.ts";
 
 type BubbleLine = string | { text: string; onSelect: () => void; current?: boolean };
 type Tone = "text" | "muted" | "dim" | "accent" | "success" | "warning" | "error";
@@ -25,6 +25,9 @@ const message = (error: unknown) => terminalText(error instanceof Error ? error.
 const displayTime = (value?: string) => value ? new Date(value).toLocaleString() : "Never";
 const modeLabel = (mode: Config["mode"]) => ({ manual: "Manual", auto: "Auto", off: "Off" })[mode];
 const terminalText = (value: string) => stripVTControlCharacters(value).replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+const formatPruneResult = (result: PruneResult) =>
+  `Pruned ${result.removed.length} local and ${result.repoRemoved} snapshot session(s)${result.skipped ? `; skipped ${result.skipped} recent/active` : ""}. Snapshot removal is committed locally; Push to publish.`;
 const menuHint = "↑↓ Enter Esc";
 
 export default function amoxPiSync(pi: ExtensionAPI): void {
@@ -132,6 +135,37 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     }
   }
 
+  async function pruneSessions(context: ExtensionContext, assumeYes = false): Promise<void> {
+    if (busy) { context.ui.notify(`Sync is busy: ${busy}.`, "warning"); return; }
+    if (!service || !config) { context.ui.notify("Run /sync-setup first.", "warning"); return; }
+    let plan;
+    try { plan = await service.planPruneSessions(); }
+    catch (failure) { report(failure); return; }
+    const count = plan.candidates.length;
+    const bytes = plan.candidates.reduce((total, candidate) => total + candidate.bytes, 0);
+    const skipped = plan.skipped ? `\nSkipped: ${plan.skipped} recent/active session(s).` : "";
+    if (!count) { context.ui.notify(`No orphan subagent sessions to prune.${skipped}`, "info"); return; }
+    const preview = plan.candidates.slice(0, 5).map(candidate => `• ${candidate.name} (${formatBytes(candidate.bytes)})`).join("\n");
+    const more = count > 5 ? `\n… and ${count - 5} more` : "";
+    const description = `${count} orphan subagent session(s), ${formatBytes(bytes)} total.\n${preview}${more}${skipped}\n\nSnapshot copies are committed locally first, then local files are deleted. Push afterwards to publish the deletion. Parent lookup is local; Pull first if another device may have the parent.`;
+    if (assumeYes) context.ui.notify(`Pruning ${count} orphan session(s), ${formatBytes(bytes)}.${skipped}`, "info");
+    else if (!await confirm(context, "Prune orphan sessions?", description)) return;
+    await run("Prune", async sync => formatPruneResult(await sync.pruneOrphanSessions(plan.candidates.map(candidate => candidate.path))));
+  }
+
+  async function pushWithPrune(quiet = false): Promise<boolean> {
+    if (busy) return await run("Push", sync => sync.push(), quiet);
+    if (config?.pruneOrphanSessionsBeforePush && service && ctx) {
+      try {
+        const result = await service.pruneOrphanSessions();
+        if (!quiet && (result.removed.length || result.repoRemoved)) ctx.ui.notify(formatPruneResult(result), "info");
+      } catch (failure) {
+        ctx.ui.notify(`amox-pi-sync prune: ${message(failure)}`, "warning");
+      }
+    }
+    return await run("Push", sync => sync.push(), quiet);
+  }
+
   async function startTimers(): Promise<void> {
     stopTimers();
     const token = generation;
@@ -156,7 +190,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
         if (token !== generation || next === fingerprint || busy) return;
         if (debounce) clearTimeout(debounce);
         debounce = setTimeout(() => {
-          if (token === generation && !busy) void run("Push", sync => sync.push(), true);
+          if (token === generation && !busy) void pushWithPrune(true);
         }, config!.pushDebounceMs);
       }).catch(failure => {
         const text = message(failure);
@@ -221,8 +255,9 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     if (config && !busy) {
       body.push("", context.ui.theme.fg("muted", "Actions"),
         { text: actionText(context, "Check status"), onSelect: () => { void run("Check", sync => sync.check()); } },
-        { text: actionText(context, "Push"), onSelect: () => { void run("Push", sync => sync.push()); } },
+        { text: actionText(context, "Push"), onSelect: () => { void pushWithPrune(); } },
         { text: actionText(context, "Pull"), onSelect: () => { void run("Pull", sync => sync.pull()); } },
+        { text: actionText(context, "Prune orphan sessions"), onSelect: () => { void pruneSessions(context); } },
       );
     } else if (!busy) body.push("");
     if (!busy) body.push({ text: actionText(context, "Settings"), onSelect: () => settings(context).catch(report) });
@@ -299,13 +334,17 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
         { value: "status", label: "Status" },
         { value: "mode", label: `Mode: ${config ? modeLabel(config.mode) : "Not configured"}` },
         { value: "paths", label: `Paths: ${config?.paths.length ?? 0} configured` },
+        { value: "prune", label: `Prune before push: ${config?.pruneOrphanSessionsBeforePush ? "On" : "Off"}` },
         ...(bubbleAPI(context)?.version === 1 ? [{ value: "color", label: `Bubble colour: ${colorChoices.find(choice => choice.value === (config?.bubbleColor ?? "pill"))!.label}` }] : []),
         "Backups", "Cleanup", "Diagnostics", "Back",
       ], { rows: overviewRows });
       if (!choice || choice === "Back") return;
       if (choice === "status") { showStatus(context); return; }
       if (!config || !service) { context.ui.notify("Run /sync-setup first.", "warning"); continue; }
-      if (choice === "color") {
+      if (choice === "prune") {
+        const next = { ...config, pruneOrphanSessionsBeforePush: !config.pruneOrphanSessionsBeforePush };
+        await persist(next);
+      } else if (choice === "color") {
         const selected = await select(context, "Sync bubble colour", [...colorChoices, "Back"], { current: config.bubbleColor ?? "pill" });
         if (!selected || selected === "Back") continue;
         const next = { ...config, bubbleColor: selected as NonNullable<Config["bubbleColor"]> };
@@ -442,7 +481,15 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   });
   pi.registerCommand("sync-push", {
     description: "Push the managed raw data snapshot",
-    handler: async () => { await run("Push", sync => sync.push()); },
+    handler: async () => { await pushWithPrune(); },
+  });
+  pi.registerCommand("sync-prune", {
+    description: "Preview and delete orphan subagent sessions and their snapshot copies",
+    handler: async (args, context) => {
+      const flag = args.trim();
+      if (flag && flag !== "--yes") { context.ui.notify("Usage: /sync-prune [--yes]", "warning"); return; }
+      await pruneSessions(context, flag === "--yes");
+    },
   });
   pi.registerCommand("sync-pull", {
     description: "Pull raw data, backing up files before replacement",
@@ -465,6 +512,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
           next.paths = [...config.paths];
           next.mode = config.mode;
           next.bubbleColor = config.bubbleColor;
+          next.pruneOrphanSessionsBeforePush = config.pruneOrphanSessionsBeforePush;
         }
         if (busy) throw new Error(`Sync is busy: ${busy}; retry setup after it finishes.`);
         stopTimers();

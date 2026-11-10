@@ -22,11 +22,15 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
-import { existsSync, realpathSync } from "node:fs";
+import { createReadStream, existsSync, realpathSync } from "node:fs";
+import { createInterface } from "node:readline";
 
 export type BubbleColor = "pill" | "accent" | "success" | "warning" | "error";
 export type Config = {
   bubbleColor?: BubbleColor;
+  pruneOrphanSessionsBeforePush?: boolean;
+  /** Managed paths present in the last successful push/pull; used to propagate deletions safely. */
+  syncedPaths?: string[];
   version: 1; repoUrl: string; repoDir: string; mode: "manual" | "auto" | "off";
   paths: string[]; pullIntervalMinutes: number; watchIntervalMs: number; pushDebounceMs: number;
   lastPushAt?: string; lastPullAt?: string; lastResult?: string;
@@ -38,6 +42,10 @@ export type Status = { busy?: string; error?: string; localChanges?: string; rem
 export type Backup = { id: string; createdAt: string; reason: string; includedPaths: string[] };
 export type BackupSummary = Backup;
 export type SyncResult = { changed: boolean; message: string; files: string[]; backupId?: string };
+export type SessionEntry = { path: string; parentSession?: string; name?: string; bytes?: number; mtimeMs?: number };
+export type PruneCandidate = { path: string; name: string; bytes: number };
+export type PrunePlan = { candidates: PruneCandidate[]; skipped: number };
+export type PruneResult = { removed: string[]; repoRemoved: number; skipped: number };
 
 // Canonicalize the trusted agent root (including existing parents). macOS /var
 // and /tmp are OS aliases; links inside managed data are still rejected below.
@@ -72,6 +80,66 @@ function inside(parent: string, child: string): boolean {
   return rel === "" || (!rel.startsWith(`..${path.sep}`) && rel !== ".." && !path.isAbsolute(rel));
 }
 function overlaps(a: string, b: string): boolean { return inside(a, b) || inside(b, a); }
+const ORPHAN_NAME = /^.+#[0-9a-f]{8}$/;
+const SESSION_RECENT_MS = 10 * 60_000;
+function baseName(value: string): string {
+  const parts = value.replaceAll("\\", "/").split("/");
+  return (parts.at(-1) ?? "").toLowerCase();
+}
+/** Pure candidate selection: parent basename + subagent name, iterated to a fixed point. */
+export function selectOrphanSessions(entries: SessionEntry[], options: { activePath?: string; now?: number; recentMs?: number } = {}): PrunePlan {
+  const now = options.now ?? Date.now();
+  const recentMs = options.recentMs ?? SESSION_RECENT_MS;
+  const active = options.activePath?.toLowerCase();
+  const byBase = new Map<string, SessionEntry[]>();
+  for (const entry of entries) {
+    const base = baseName(entry.path);
+    const list = byBase.get(base) ?? [];
+    list.push(entry);
+    byBase.set(base, list);
+  }
+  const isRecent = (entry: SessionEntry) => now - (entry.mtimeMs ?? 0) < recentMs;
+  const isActive = (entry: SessionEntry) => active !== undefined && entry.path.toLowerCase() === active;
+  const parentOf = (entry: SessionEntry) => {
+    if (typeof entry.parentSession !== "string" || !entry.parentSession) return { state: "missing" as const };
+    const list = byBase.get(baseName(entry.parentSession));
+    if (!list?.length) return { state: "missing" as const };
+    // Duplicate basenames are ambiguous; never treat either copy as an orphan.
+    if (list.length !== 1) return { state: "ambiguous" as const };
+    return { state: "found" as const, parent: list[0]! };
+  };
+  const compute = (protectRecent: boolean): Set<SessionEntry> => {
+    const candidates = new Set<SessionEntry>();
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const entry of entries) {
+        if (candidates.has(entry) || isActive(entry)) continue;
+        if (protectRecent && isRecent(entry)) continue;
+        if (typeof entry.name !== "string" || !ORPHAN_NAME.test(entry.name)) continue;
+        const parent = parentOf(entry);
+        if (parent.state === "ambiguous") continue;
+        if (parent.state === "missing" || candidates.has(parent.parent)) {
+          candidates.add(entry);
+          changed = true;
+        }
+      }
+    }
+    return candidates;
+  };
+  const structural = compute(false);
+  const selected = compute(true);
+  return {
+    candidates: [...selected]
+      .map(entry => ({ path: entry.path, name: entry.name!, bytes: Math.max(0, entry.bytes ?? 0) }))
+      .sort((a, b) => a.path.localeCompare(b.path)),
+    skipped: [...structural].filter(entry => !selected.has(entry)).length,
+  };
+}
+/** A path is managed when it equals or is below one of the configured relative paths. */
+function managedPath(relative: string, managed: string[]): boolean {
+  return managed.some(item => relative === item || relative.startsWith(`${item}/`));
+}
 function remote(url: string): void {
   if (typeof url !== "string" || /[\s\x00-\x1f]/.test(url)) throw new Error("Use an SSH git URL: git@host:path or ssh://user@host/path");
   if (/^[a-zA-Z0-9._-]+@[a-zA-Z0-9][a-zA-Z0-9.-]*:[a-zA-Z0-9_~][a-zA-Z0-9._~/-]*$/.test(url) && !url.split(":")[1]!.split("/").includes("..")) return;
@@ -94,12 +162,18 @@ function validate(config: Config, paths: Paths): void {
   }
   if (overlaps(config.repoDir, paths.backupDir) || inside(config.repoDir, paths.agentDir) || inside(config.repoDir, paths.configFile) || inside(paths.backupDir, paths.agentDir)) throw new Error("Unsafe repository/backup directory nesting");
   if (config.bubbleColor !== undefined && !["pill", "accent", "success", "warning", "error"].includes(config.bubbleColor)) throw new Error("Unsupported bubble colour");
+  if (config.pruneOrphanSessionsBeforePush !== undefined && typeof config.pruneOrphanSessionsBeforePush !== "boolean") throw new Error("pruneOrphanSessionsBeforePush must be boolean");
+  if (config.syncedPaths !== undefined) {
+    if (!Array.isArray(config.syncedPaths) || config.syncedPaths.some(item => typeof item !== "string")) throw new Error("syncedPaths must be a string array");
+    const paths = config.syncedPaths.map(validatePath);
+    if (new Set(paths).size !== paths.length) throw new Error("syncedPaths must not contain duplicates");
+  }
   const retention = config.retention ?? { keepBackups: 20, maxAgeDays: 180 };
   if (!Number.isInteger(retention.keepBackups) || retention.keepBackups < 0 || !Number.isFinite(retention.maxAgeDays) || retention.maxAgeDays <= 0) throw new Error("Invalid backup retention: keepBackups must be a nonnegative integer and maxAgeDays positive");
   for (const key of ["pullIntervalMinutes", "watchIntervalMs", "pushDebounceMs"] as const) if (!Number.isFinite(config[key]) || config[key] <= 0) throw new Error(`${key} must be positive`);
 }
 export function createConfig(repoUrl: string, paths = defaultPaths()): Config {
-  const config: Config = { version: 1, repoUrl, repoDir: path.join(paths.agentDir, "amox-pi-sync-repo"), mode: "manual", paths: ["sessions", "missions"], retention: { keepBackups: 20, maxAgeDays: 180 }, pullIntervalMinutes: 1440, watchIntervalMs: 10000, pushDebounceMs: 2500 };
+  const config: Config = { version: 1, repoUrl, repoDir: path.join(paths.agentDir, "amox-pi-sync-repo"), mode: "manual", paths: ["sessions", "missions"], pruneOrphanSessionsBeforePush: false, retention: { keepBackups: 20, maxAgeDays: 180 }, pullIntervalMinutes: 1440, watchIntervalMs: 10000, pushDebounceMs: 2500 };
   validate(config, paths); return config;
 }
 async function stat(file: string) { try { return await fs.lstat(file); } catch (e) { if ((e as NodeJS.ErrnoException).code === "ENOENT") return null; throw e; } }
@@ -210,6 +284,96 @@ export class SyncService {
     await this.ensureAttributes();
     for (const file of (await this.git(["ls-files", "-z"])).split("\0").filter(Boolean)) validatePath(file);
   }
+  private managedPaths(): string[] { return this.config.paths.map(validatePath); }
+  private activeSessionRelative(): string | undefined {
+    if (!this.activeSessionFile) return undefined;
+    const absolute = path.resolve(this.paths.agentDir, this.activeSessionFile);
+    let resolved = absolute;
+    try { resolved = realpathSync.native(absolute); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    const relative = path.relative(this.paths.agentDir, resolved);
+    if (!relative || relative === ".." || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) return undefined;
+    return validatePath(relative.split(path.sep).join("/"));
+  }
+  private async localFileExists(relative: string): Promise<boolean> {
+    const target = path.join(this.paths.agentDir, validatePath(relative));
+    await noLinks(target);
+    return Boolean(await stat(target));
+  }
+  private async readSessionHeader(file: string): Promise<{ parentSession?: string } | undefined> {
+    let handle: Awaited<ReturnType<typeof fs.open>> | undefined;
+    try {
+      handle = await fs.open(file, "r");
+      const buffer = Buffer.alloc(64 * 1024);
+      const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+      const first = buffer.subarray(0, bytesRead).toString("utf8").split("\n", 1)[0] ?? "";
+      const header = JSON.parse(first);
+      return { parentSession: typeof header?.parentSession === "string" && header.parentSession ? header.parentSession : undefined };
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT" || error instanceof SyntaxError) return undefined;
+      throw error;
+    } finally { await handle?.close(); }
+  }
+  private async readLastSessionName(file: string): Promise<string | undefined> {
+    let name: string | undefined;
+    let stream: ReturnType<typeof createReadStream> | undefined;
+    try {
+      stream = createReadStream(file, { encoding: "utf8" });
+      const lines = createInterface({ input: stream, crlfDelay: Infinity });
+      try {
+        for await (const line of lines) {
+          if (!line.includes("session_info")) continue;
+          try {
+            const entry = JSON.parse(line);
+            if (entry?.type === "session_info" && typeof entry.name === "string") name = entry.name;
+          } catch { /* ignore malformed lines while a transcript is being written */ }
+        }
+      } finally { lines.close(); }
+      return name;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+      throw error;
+    } finally { stream?.destroy(); }
+  }
+  private async scanSessionEntries(): Promise<SessionEntry[]> {
+    if (!this.managedPaths().includes("sessions")) throw new Error("Prune requires \"sessions\" in managed paths");
+    const root = path.join(this.paths.agentDir, "sessions");
+    await noLinks(root);
+    const rootInfo = await stat(root);
+    if (!rootInfo) return [];
+    if (!rootInfo.isDirectory()) throw new Error("sessions is not a directory");
+    const entries: SessionEntry[] = [];
+    const visit = async (absolute: string, relative: string): Promise<void> => {
+      await noLinks(absolute);
+      const info = await stat(absolute);
+      if (!info) return;
+      if (info.isDirectory()) {
+        for (const child of (await fs.readdir(absolute)).sort()) await visit(path.join(absolute, child), `${relative}/${child}`);
+        return;
+      }
+      if (!info.isFile() || !relative.toLowerCase().endsWith(".jsonl")) return;
+      const header = await this.readSessionHeader(absolute);
+      if (!header) return;
+      const name = header.parentSession ? await this.readLastSessionName(absolute) : undefined;
+      entries.push({ path: validatePath(`sessions/${relative}`), parentSession: header.parentSession, name, bytes: info.size, mtimeMs: info.mtimeMs });
+    };
+    for (const child of (await fs.readdir(root)).sort()) await visit(path.join(root, child), child);
+    return entries;
+  }
+  private async stageDeletions(files: string[]): Promise<void> {
+    let batch: string[] = []; let budget = 0;
+    const flush = async () => {
+      if (!batch.length) return;
+      await this.git(["--literal-pathspecs", "add", "-A", "--", ...batch]);
+      batch = []; budget = 0;
+    };
+    for (const file of files) {
+      const cost = file.length * 2 + 3;
+      if (budget + cost > 6000 && batch.length) await flush();
+      batch.push(file); budget += cost;
+    }
+    await flush();
+  }
   private async collect(root: string, scan = false): Promise<Files> {
     const files: Files = new Map();
     const visit = async (relative: string): Promise<void> => {
@@ -263,31 +427,106 @@ export class SyncService {
     }
     return result.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   }
-  private async apply(files: Files, reason: string): Promise<SyncResult> {
-    const changes: Files = new Map(); const replaced: string[] = [];
+  private async apply(files: Files, reason: string, deletions: string[] = [], preserve: Set<string> = new Set()): Promise<SyncResult> {
+    const changes: Files = new Map(); const replaced: string[] = []; const removed: string[] = [];
+    let active = this.activeSessionFile ? path.resolve(this.paths.agentDir, this.activeSessionFile) : undefined;
+    if (active) {
+      try { active = await fs.realpath(active); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    }
+    const sameActive = (target: string) => active && (process.platform === "win32"
+      ? path.resolve(target).toLowerCase() === active.toLowerCase() : path.resolve(target) === active);
     for (const [relative, data] of files) {
+      if (preserve.has(relative)) continue;
       const target = path.join(this.paths.agentDir, relative); await noLinks(target);
       const info = await stat(target);
       if (info && !info.isFile()) throw new Error(`File/directory conflict at ${relative}; move the local entry aside and retry`);
       const local = info ? await fs.readFile(target) : undefined;
       if (local?.equals(data)) continue;
-      const activePath = this.activeSessionFile && path.resolve(this.paths.agentDir, this.activeSessionFile);
-      let active = activePath;
-      if (activePath) {
-        try { active = await fs.realpath(activePath); }
-        catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
-      }
-      const samePath = active && (process.platform === "win32" ? path.resolve(target).toLowerCase() === active.toLowerCase() : path.resolve(target) === active);
-      if (samePath) throw new Error(`Active session differs: ${relative}. Switch to a new session or close it before pull/restore; no files were applied.`);
+      if (sameActive(target)) throw new Error(`Active session differs: ${relative}. Switch to a new session or close it before pull/restore; no files were applied.`);
       changes.set(relative, data); if (local) replaced.push(relative);
     }
-    if (!changes.size) return { changed: false, message: "Already up to date; no files applied or backup created", files: [] };
+    for (const relative of deletions) {
+      validatePath(relative);
+      const target = path.join(this.paths.agentDir, relative); await noLinks(target);
+      const info = await stat(target);
+      if (!info) continue;
+      if (!info.isFile()) throw new Error(`File/directory conflict at ${relative}; move the local entry aside and retry`);
+      if (sameActive(target)) throw new Error(`Active session cannot be deleted: ${relative}. Switch to a new session before pull/restore; no files were applied.`);
+      removed.push(relative);
+    }
+    const preserved = preserve.size ? `; preserved ${preserve.size} local deletion(s) pending push` : "";
+    if (!changes.size && !removed.length) return { changed: false, message: `Already up to date; no files applied or backup created${preserved}`, files: [] };
     const backup = await this.makeBackup(reason);
     await this.write(this.paths.agentDir, changes);
-    const message = `Applied ${changes.size} file(s); replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files. Recovery backup: ${backup.id}${replaced.length ? `; replaced: ${replaced.join(", ")}` : ""}`;
+    for (const relative of removed) await fs.rm(path.join(this.paths.agentDir, relative), { force: true });
+    const deleted = removed.length ? `; deleted ${removed.length} remote-deleted file(s)` : "";
+    const message = `Applied ${changes.size} file(s)${deleted}; replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files${preserved}. Recovery backup: ${backup.id}${replaced.length ? `; replaced: ${replaced.join(", ")}` : ""}`;
     this.config.lastResult = message;
-    return { changed: changes.size > 0, message, files: [...changes.keys()], backupId: backup.id };
+    return { changed: changes.size > 0 || removed.length > 0, message, files: [...changes.keys()], backupId: backup.id };
   }
+  async planPruneSessions(): Promise<PrunePlan> {
+    return selectOrphanSessions(await this.scanSessionEntries(), { activePath: this.activeSessionRelative() });
+  }
+  async pruneOrphanSessions(expectedPaths?: string[]): Promise<PruneResult> { return this.run("prune", async () => {
+    const plan = await this.planPruneSessions();
+    const expected = expectedPaths === undefined ? undefined : new Set(expectedPaths.map(validatePath));
+    const candidates = expected ? plan.candidates.filter(candidate => expected.has(candidate.path)) : plan.candidates;
+    if (!candidates.length) return { removed: [], repoRemoved: 0, skipped: plan.skipped };
+    const active = this.activeSessionRelative()?.toLowerCase();
+    let skipped = plan.skipped;
+    const selected: typeof candidates = [];
+    for (const candidate of candidates) {
+      const relative = validatePath(candidate.path);
+      if (active && relative.toLowerCase() === active) { skipped++; continue; }
+      const file = path.join(this.paths.agentDir, relative);
+      await noLinks(file);
+      const info = await stat(file);
+      if (info && !info.isFile()) throw new Error(`Not a regular file: ${relative}`);
+      // Recheck recency before touching the snapshot; a live subagent may have
+      // written the file while the preview was open.
+      if (info && Date.now() - info.mtimeMs < SESSION_RECENT_MS) { skipped++; continue; }
+      selected.push(candidate);
+    }
+    if (!selected.length) return { removed: [], repoRemoved: 0, skipped };
+    await this.ensureRepo();
+    if ((await this.git(["diff", "--cached", "--name-only"])).trim()) throw new Error("Repository has staged changes; run Push or resolve them before pruning");
+    if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; run Push or resolve them before pruning");
+    const repoRemoved: string[] = [];
+    for (const candidate of selected) {
+      const relative = validatePath(candidate.path);
+      const file = path.join(this.config.repoDir, relative);
+      await noLinks(file);
+      const info = await stat(file);
+      if (!info) continue;
+      if (!info.isFile()) throw new Error(`Not a regular file in snapshot: ${relative}`);
+      await fs.rm(file);
+      repoRemoved.push(relative);
+    }
+    if (repoRemoved.length) {
+      await this.stageDeletions(repoRemoved);
+      await this.git(["commit", "-m", `amox-pi-sync: prune ${repoRemoved.length} orphan subagent session(s)`]);
+    }
+    const removed: string[] = [];
+    for (const candidate of selected) {
+      const relative = validatePath(candidate.path);
+      if (active && relative.toLowerCase() === active) { skipped++; continue; }
+      const file = path.join(this.paths.agentDir, relative);
+      await noLinks(file);
+      const info = await stat(file);
+      if (!info) continue;
+      if (!info.isFile()) throw new Error(`Not a regular file: ${relative}`);
+      if (Date.now() - info.mtimeMs < SESSION_RECENT_MS) { skipped++; continue; }
+      await fs.rm(file);
+      removed.push(relative);
+    }
+    if (removed.length) {
+      const deleted = new Set(removed);
+      this.config.syncedPaths = this.config.syncedPaths?.filter(item => !deleted.has(item));
+      await saveConfig(this.config, this.paths);
+    }
+    return { removed, repoRemoved: repoRemoved.length, skipped };
+  }); }
   async check(): Promise<Status> { return this.run("check", async () => {
     this.status.checkedAt = undefined; this.status.remoteChanges = undefined;
     await this.ensureRepo(); await this.git(["fetch", "origin"], this.config.repoDir, NETWORK_TIMEOUT_MS);
@@ -336,7 +575,22 @@ export class SyncService {
     const files = await this.collect(this.paths.agentDir, true);
     // Validate the existing snapshot too; never follow nested symlinks or stage secrets.
     await this.collect(this.config.repoDir, true);
+    const managed = this.managedPaths();
+    // Only delete paths this device previously synced. Files that exist only in
+    // the remote snapshot (not yet pulled) are never inferred as local deletions.
+    const deletions = this.config.syncedPaths === undefined ? [] : this.config.syncedPaths
+      .filter(item => managedPath(item, managed) && !files.has(item));
     await this.write(this.config.repoDir, files);
+    const repoDeleted: string[] = [];
+    for (const relative of deletions) {
+      const file = path.join(this.config.repoDir, validatePath(relative));
+      await noLinks(file);
+      const info = await stat(file);
+      if (!info) continue;
+      if (!info.isFile()) throw new Error(`Not a regular file in snapshot: ${relative}`);
+      await fs.rm(file);
+      repoDeleted.push(relative);
+    }
     let batch: string[] = []; let budget = 0;
     for (const file of files.keys()) {
       // Include quoting/argument overhead within Windows' command-line limit.
@@ -347,6 +601,7 @@ export class SyncService {
       batch.push(file); budget += cost;
     }
     if (batch.length) await this.git(["--literal-pathspecs", "add", "--", ...batch]);
+    if (repoDeleted.length) await this.stageDeletions(repoDeleted);
     const staged = (await this.git(["diff", "--cached", "--name-only"])).trim();
     if (staged) await this.git(["commit", "-m", `amox-pi-sync: ${new Date().toISOString()}`]);
     // A rejected non-fast-forward push is recoverable without force. Any other
@@ -363,9 +618,11 @@ export class SyncService {
       await this.git(["push", "-u", "origin", "HEAD"], this.config.repoDir, NETWORK_TIMEOUT_MS);
     }
     this.config.lastPushAt = new Date().toISOString();
+    this.config.syncedPaths = [...files.keys()].sort();
+    const removed = repoDeleted.length ? `; removed ${repoDeleted.length} locally deleted file(s) from the snapshot` : "";
     this.config.lastResult = integrated
-      ? "Integrated remote history and pushed managed snapshot; run Pull to apply remote files (no force push)"
-      : "Pushed managed snapshot (no force push; remote-only files preserved)";
+      ? `Integrated remote history and pushed managed snapshot${removed}; run Pull to apply remote files (no force push)`
+      : `Pushed managed snapshot${removed} (no force push; unpulled remote files preserved)`;
     await saveConfig(this.config, this.paths);
     return this.config.lastResult;
   }); }
@@ -373,8 +630,21 @@ export class SyncService {
     await this.ensureRepo();
     if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; resolve them before pulling");
     const result = await this.integrateRemote();
-    const applied = await this.apply(await this.collect(this.config.repoDir, true), "before applying remote snapshot");
+    const snapshot = await this.collect(this.config.repoDir, true);
+    const snapshotPaths = new Set(snapshot.keys());
+    const managed = this.managedPaths();
+    const preserve = new Set<string>();
+    const deletions: string[] = [];
+    if (this.config.syncedPaths !== undefined) {
+      for (const relative of this.config.syncedPaths) {
+        if (!managedPath(relative, managed)) continue;
+        if (!snapshotPaths.has(relative)) deletions.push(relative);
+        else if (!(await this.localFileExists(relative))) preserve.add(relative);
+      }
+    }
+    const applied = await this.apply(snapshot, "before applying remote snapshot", deletions, preserve);
     this.config.lastPullAt = new Date().toISOString();
+    this.config.syncedPaths = [...snapshotPaths].sort();
     this.config.lastResult = `${result.merged ? "Merged diverged snapshots cleanly. " : ""}${applied.message}`;
     await saveConfig(this.config, this.paths); return this.config.lastResult;
   }); }

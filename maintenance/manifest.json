@@ -19,7 +19,7 @@
       "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
       "upstreamGitHead": "322e44fafc1aaa691779cdf2116584e67edd7645",
       "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
-      "leanCommit": "189484d37c0c346382597555b757480ec95b9397"
+      "leanCommit": "49a89158d14095b5853f945850a26369bf101363"
     },
     {
       "id": "rpiv-todo-lean",
@@ -50,7 +50,7 @@
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
       "upstreamGitHead": "a35acfb3b699e49f579f494473c38c87592f6c8e",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
-      "leanCommit": "addf9e2e5a6c8f08719a4df48b10290b9214d902"
+      "leanCommit": "e4892d465a15467214ed390ed380bdfc3f179887"
     },
     {
       "id": "amox-pi-sync",

@@ -64,7 +64,8 @@ their `model` fields), remove unneeded types, adjust prompts/tools/allowlists, a
 collisions with the built-in `general-purpose`, `Explore`, and `Plan` types. Built-in Explore inherits
 the session's model unless overridden; choose an agent-file model when cost or latency requires it.
 Conversation inheritance and reopening saved agents follow upstream: a removed worktree that held
-changes prevents reopening, while a clean one reopens in the main checkout. See the
+changes prevents reopening, while a clean one reopens in the main checkout. The conversation viewer's
+jump-to-start and jump-to-latest keys follow the host `tui.altScreen` bindings. See the
 [upstream behavior notes](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md) before relying on these paths.
 
 Background tasks notify the parent on completion; do not poll or sleep. See the

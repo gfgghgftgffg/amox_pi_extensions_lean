@@ -1,14 +1,12 @@
 # Local upstream maintenance
 
-Base: 37d1061b9a951313b9cd28a8eec4380c84ac26ec
-Release after verified merge: v0.1.25
+Base: ddc784a0e9c7d12a57b68cf8402231fc42b4c7ae
+Release after verified merge: v0.1.26
 
-<!-- amox-release-summary:v0.1.25:start -->
-- 发布 `@gfgghgftgffg/amox-pi-sync@0.1.9`：气泡中的长文件列表只显示前 3 个路径加 `(+N more)`，并限制单行显示长度为 160 字符。
-- 即使一次同步产生大量文件变化，Check status / Push / Pull / Prune / Settings 等操作项也不会被挤出可见区域；完整结果仍保留在操作通知中。
-- 本批只包含这一处显示修复；Prune、删除传播、超时/分叉处理和局部备份沿用当前实现。其它三个 npm 包不升版、不重新发布。
-<!-- amox-release-summary:v0.1.25:end -->
+<!-- amox-release-summary:v0.1.26:start -->
+pi-subagents-lean now tracks @tintinweb/pi-subagents 0.23.2. The conversation viewer’s jump-to-start and jump-to-latest keys follow the host tui.altScreen bindings (Home/End remain aliases). No new tools or parameters; the single subagent facade is unchanged. Lean-author commits were reviewed and not copied: web-access was documentation-only on an already tracked 0.47.0 pin, and the subagents author still imports source rather than the published dist entry.
+<!-- amox-release-summary:v0.1.26:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-Local scoped checks, the full repository suite, exact-head three-platform CI and independent merged-SHA Release verification are required. npm publication is confirmed only by the actual publishing job and public registry integrity.
+The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.

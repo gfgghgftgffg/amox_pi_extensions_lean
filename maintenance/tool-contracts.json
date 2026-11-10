@@ -8,7 +8,7 @@
   "upstream": {
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.23.1",
+      "version": "0.23.2",
       "entry": "node_modules/@tintinweb/pi-subagents/dist/index.js",
       "registeredTools": [
         "Agent",
@@ -777,7 +777,7 @@
   "lean": {
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.16",
+      "version": "0.1.17",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -858,7 +858,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"

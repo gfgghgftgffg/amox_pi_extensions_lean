@@ -223,3 +223,105 @@ test("a real conflicting pull aborts, names the conflict and leaves no merge sta
   assert.equal(git(["status", "--porcelain"], b.config.repoDir).stdout, "");
   assert.equal(git(["rev-parse", "--verify", "MERGE_HEAD"], b.config.repoDir).code, 128);
 });
+
+test("manual session deletion propagates through push and pull", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "amox-git-delete-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const env = {
+    ...process.env, GIT_AUTHOR_NAME: "Sync Test", GIT_AUTHOR_EMAIL: "sync@example.invalid",
+    GIT_COMMITTER_NAME: "Sync Test", GIT_COMMITTER_EMAIL: "sync@example.invalid",
+    GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(root, "gitconfig"),
+  };
+  const git = (args, cwd) => {
+    const result = spawnSync("git", args, { cwd, env, encoding: "utf8" });
+    if (result.error) throw result.error;
+    return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", code: result.status ?? 1 };
+  };
+  const bare = path.join(root, "remote.git");
+  assert.equal(git(["init", "--bare", "--initial-branch=main", bare], root).code, 0);
+  const url = "git@example.invalid:private/sync.git";
+  const exec = async (args, cwd) => {
+    const actual = [...args];
+    const clone = actual.indexOf("clone");
+    if (clone >= 0) actual[clone + 2] = bare;
+    const result = git(actual, cwd);
+    if (actual.includes("get-url") && result.code === 0) result.stdout = `${url}\n`;
+    return result;
+  };
+  const make = async name => {
+    const paths = defaultPaths(path.join(root, name));
+    await fs.mkdir(path.join(paths.agentDir, "sessions"), { recursive: true });
+    const config = createConfig(url, paths);
+    return { paths, config, sync: new SyncService(config, paths, exec) };
+  };
+  const a = await make("a"), b = await make("b");
+  const file = (client, name) => path.join(client.paths.agentDir, "sessions", name);
+  await fs.writeFile(file(a, "gone.jsonl"), '{"message":"delete me"}\n');
+  await fs.writeFile(file(a, "keep.jsonl"), '{"message":"keep"}\n');
+  await a.sync.push();
+  await b.sync.pull();
+  await fs.rm(file(b, "gone.jsonl"));
+  const pushed = await b.sync.push();
+  assert.match(pushed, /removed 1 locally deleted file/);
+  await assert.rejects(fs.access(file(b, "gone.jsonl")));
+  await assert.rejects(fs.access(path.join(b.config.repoDir, "sessions", "gone.jsonl")));
+  const pulled = await a.sync.pull();
+  assert.match(pulled, /deleted 1 remote-deleted file/);
+  await assert.rejects(fs.access(file(a, "gone.jsonl")));
+  await fs.access(file(a, "keep.jsonl"));
+  assert.deepEqual(a.config.syncedPaths, ["sessions/keep.jsonl"]);
+  assert.deepEqual(b.config.syncedPaths, ["sessions/keep.jsonl"]);
+});
+
+test("prune removes the snapshot copy so a later pull cannot resurrect the session", async t => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "amox-git-prune-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const env = {
+    ...process.env, GIT_AUTHOR_NAME: "Sync Test", GIT_AUTHOR_EMAIL: "sync@example.invalid",
+    GIT_COMMITTER_NAME: "Sync Test", GIT_COMMITTER_EMAIL: "sync@example.invalid",
+    GIT_TERMINAL_PROMPT: "0", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: path.join(root, "gitconfig"),
+  };
+  const git = (args, cwd) => {
+    const result = spawnSync("git", args, { cwd, env, encoding: "utf8" });
+    if (result.error) throw result.error;
+    return { stdout: result.stdout ?? "", stderr: result.stderr ?? "", code: result.status ?? 1 };
+  };
+  const bare = path.join(root, "remote.git");
+  assert.equal(git(["init", "--bare", "--initial-branch=main", bare], root).code, 0);
+  const url = "git@example.invalid:private/sync.git";
+  const exec = async (args, cwd) => {
+    const actual = [...args];
+    const clone = actual.indexOf("clone");
+    if (clone >= 0) actual[clone + 2] = bare;
+    const result = git(actual, cwd);
+    if (actual.includes("get-url") && result.code === 0) result.stdout = `${url}\n`;
+    return result;
+  };
+  const make = async name => {
+    const paths = defaultPaths(path.join(root, name));
+    await fs.mkdir(path.join(paths.agentDir, "sessions"), { recursive: true });
+    const config = createConfig(url, paths);
+    return { paths, config, sync: new SyncService(config, paths, exec) };
+  };
+  const a = await make("a"), b = await make("b");
+  const file = (client, name) => path.join(client.paths.agentDir, "sessions", name);
+  const old = new Date(Date.now() - 20 * 60_000);
+  const orphan = '{"type":"session","version":3,"id":"orphan","parentSession":"/old/home/sessions/missing.jsonl"}\n'
+    + '{"type":"session_info","name":"tr_coding#abcd1234"}\n';
+  await fs.writeFile(file(a, "orphan.jsonl"), orphan);
+  await fs.utimes(file(a, "orphan.jsonl"), old, old);
+  await fs.writeFile(file(a, "keep.jsonl"), '{"message":"keep"}\n');
+  await a.sync.push();
+  await b.sync.pull();
+  await fs.utimes(file(b, "orphan.jsonl"), old, old);
+  const result = await b.sync.pruneOrphanSessions();
+  assert.deepEqual(result, { removed: ["sessions/orphan.jsonl"], repoRemoved: 1, skipped: 0 });
+  await assert.rejects(fs.access(file(b, "orphan.jsonl")));
+  await assert.rejects(fs.access(path.join(b.config.repoDir, "sessions", "orphan.jsonl")));
+  await b.sync.push();
+  await a.sync.pull();
+  await assert.rejects(fs.access(file(a, "orphan.jsonl")));
+  await fs.access(file(a, "keep.jsonl"));
+  assert.deepEqual(b.config.syncedPaths, ["sessions/keep.jsonl"]);
+  assert.deepEqual(a.config.syncedPaths, ["sessions/keep.jsonl"]);
+});

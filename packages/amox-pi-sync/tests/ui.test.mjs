@@ -94,7 +94,7 @@ async function fixture(t, configured = true, starline = true) {
 
 test("manual startup is local-only and never creates an upstream widget", async t => {
   const f = await fixture(t);
-  assert.deepEqual([...f.commands.keys()].sort(), ["sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
+  assert.deepEqual([...f.commands.keys()].sort(), ["sync-prune", "sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   assert.ok(f.widgets.every(([, value]) => value === undefined));
   assert.equal(f.gitCalls.length, 0);
@@ -108,7 +108,7 @@ test("Starline and command status views retain the clicked cell placement", asyn
   assert.equal(content.title, "Amox Pi Sync");
   assert.ok(content.body.some(line => typeof line === "string" && /^Paths:\s+sessions, missions$/.test(plain(line))));
   assert.ok(content.body.some(line => typeof line === "string" && /^Remote updates:\s+Not checked$/.test(plain(line))));
-  assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
+  assert.deepEqual(content.body.filter(line => typeof line !== "string").map(line => plain(line.text)), ["Check status", "Push", "Pull", "Prune orphan sessions", "Settings"]);
   assert.equal(f.anchor().centerColumn, anchor.centerColumn);
   assert.equal(f.anchor().terminalWidth, anchor.terminalWidth);
   await f.commands.get("sync-status").handler("", f.ctx);
@@ -200,7 +200,7 @@ test("settings only offers retained functionality", async t => {
   const f = await fixture(t);
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs[0].starline, true);
-  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode: Manual", "Paths: 2 configured", "Bubble colour: Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
+  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode: Manual", "Paths: 2 configured", "Prune before push: Off", "Bubble colour: Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
 });
 
 test("pill Settings and its submenus share the Starline renderer and selection survives close-before-callback", async t => {
@@ -280,7 +280,7 @@ test("status separates muted labels, highlighted state and neutral values from s
   assert.ok(rows.some(line => /^Remote updates:\s+Not checked$/.test(plain(line)) && line.includes("\x1b[90m")));
   assert.ok(rows.includes(""));
   const actions = content.body.filter(line => typeof line !== "string");
-  assert.deepEqual(actions.map(line => plain(line.text)), ["Check status", "Push", "Pull", "Settings"]);
+  assert.deepEqual(actions.map(line => plain(line.text)), ["Check status", "Push", "Pull", "Prune orphan sessions", "Settings"]);
   for (const line of actions) {
     assert.ok(line.text.startsWith("\x1b[1m• "));
     assert.doesNotMatch(line.text, /\x1b\[(?:3\d|4\d|9\d|10\d|38;|48;)/, "action foreground/background must remain Starline-owned for selection contrast");
@@ -418,4 +418,98 @@ test("RPC uses plain native UI even if a Starline bridge is present", async t =>
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs.length, 1);
   assert.equal(f.dialogs[0].starline, undefined);
+});
+
+test("Prune orphan sessions previews candidates, then deletes exactly the confirmed paths", async t => {
+  const f = await fixture(t);
+  const previousPlan = SyncService.prototype.planPruneSessions;
+  const previousPrune = SyncService.prototype.pruneOrphanSessions;
+  let expected;
+  let finish;
+  const pruned = new Promise(resolve => { finish = resolve; });
+  SyncService.prototype.planPruneSessions = async () => ({
+    candidates: [
+      { path: "sessions/a.jsonl", name: "tr_coding#aaaaaaa1", bytes: 1024 },
+      { path: "sessions/b.jsonl", name: "general-purpose#bbbbbbb2", bytes: 2048 },
+    ],
+    skipped: 1,
+  });
+  SyncService.prototype.pruneOrphanSessions = async paths => {
+    expected = paths;
+    finish();
+    return { removed: ["sessions/a.jsonl"], repoRemoved: 1, skipped: 1 };
+  };
+  t.after(() => { SyncService.prototype.planPruneSessions = previousPlan; SyncService.prototype.pruneOrphanSessions = previousPrune; });
+  f.choices.push("Confirm");
+  f.click();
+  f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Prune orphan sessions").onSelect();
+  await pruned;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(expected, ["sessions/a.jsonl", "sessions/b.jsonl"]);
+  const dialog = f.dialogs.find(item => item.title === "Prune orphan sessions?");
+  assert.ok(dialog);
+  const preview = dialog.body.map(line => plain(typeof line === "string" ? line : line.text)).join("\n");
+  assert.match(preview, /2 orphan subagent session\(s\), 3\.0 KB total/);
+  assert.match(preview, /tr_coding#aaaaaaa1/);
+  assert.match(preview, /general-purpose#bbbbbbb2/);
+  assert.match(preview, /Skipped: 1/);
+  assert.match(f.notifications.at(-1)[0], /Pruned 1 local and 1 snapshot session/);
+});
+
+test("Prune before push runs before manual Push and /sync-push, and a prune failure only warns", async t => {
+  const f = await fixture(t);
+  const previousPrune = SyncService.prototype.pruneOrphanSessions;
+  const previousPush = SyncService.prototype.push;
+  const order = [];
+  let fail = false;
+  let finish;
+  const pushed = new Promise(resolve => { finish = resolve; });
+  SyncService.prototype.pruneOrphanSessions = async () => {
+    order.push("prune");
+    if (fail) throw new Error("prune unavailable");
+    return { removed: [], repoRemoved: 0, skipped: 0 };
+  };
+  SyncService.prototype.push = async () => {
+    order.push("push");
+    finish();
+    return "Pushed managed snapshot";
+  };
+  t.after(() => { SyncService.prototype.pruneOrphanSessions = previousPrune; SyncService.prototype.push = previousPush; });
+  f.choices.push("Prune before push: Off");
+  await f.commands.get("sync-settings").handler("", f.ctx);
+  const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
+  assert.equal(saved.pruneOrphanSessionsBeforePush, true);
+  f.click();
+  f.content().body.find(line => typeof line !== "string" && plain(line.text) === "Push").onSelect();
+  await pushed;
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(order, ["prune", "push"]);
+  order.length = 0;
+  await f.commands.get("sync-push").handler("", f.ctx);
+  assert.deepEqual(order, ["prune", "push"]);
+  order.length = 0;
+  fail = true;
+  await f.commands.get("sync-push").handler("", f.ctx);
+  assert.deepEqual(order, ["prune", "push"]);
+  assert.ok(f.notifications.some(([text, level]) => level === "warning" && text.includes("prune unavailable")));
+});
+
+test("/sync-prune --yes skips confirmation but still previews and deletes", async t => {
+  const f = await fixture(t);
+  const previousPlan = SyncService.prototype.planPruneSessions;
+  const previousPrune = SyncService.prototype.pruneOrphanSessions;
+  let expected;
+  SyncService.prototype.planPruneSessions = async () => ({
+    candidates: [{ path: "sessions/a.jsonl", name: "tr_coding#aaaaaaa1", bytes: 10 }], skipped: 0,
+  });
+  SyncService.prototype.pruneOrphanSessions = async paths => {
+    expected = paths;
+    return { removed: ["sessions/a.jsonl"], repoRemoved: 1, skipped: 0 };
+  };
+  t.after(() => { SyncService.prototype.planPruneSessions = previousPlan; SyncService.prototype.pruneOrphanSessions = previousPrune; });
+  f.choices.push("Back");
+  await f.commands.get("sync-prune").handler("--yes", f.ctx);
+  assert.deepEqual(expected, ["sessions/a.jsonl"]);
+  assert.ok(!f.dialogs.some(dialog => dialog.title === "Prune orphan sessions?"));
+  assert.ok(f.notifications.some(([text]) => text.includes("Pruning 1 orphan session")));
 });

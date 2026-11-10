@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { createJiti } from "jiti";
 const jiti = createJiti(import.meta.url);
-const { defaultPaths, createConfig, loadConfig, saveConfig, validatePath, SyncService } = await jiti.import("../core.ts");
+const { defaultPaths, createConfig, loadConfig, saveConfig, validatePath, selectOrphanSessions, SyncService } = await jiti.import("../core.ts");
 
 async function fixture(t, handler) {
   const root = await fs.mkdtemp(path.join(tmpdir(), "amox-sync-core-"));
@@ -496,4 +496,124 @@ test("unchanged pulls do not create more recovery backups", async t => {
   assert.deepEqual(await f.service.listBackups(), backups);
   assert.match(await f.service.pull(), /up to date/);
   assert.deepEqual(await f.service.listBackups(), backups);
+});
+
+const OLD = () => new Date(Date.now() - 20 * 60_000);
+async function writeSession(f, root, relative, parent, names) {
+  const lines = [JSON.stringify({ type: "session", version: 3, id: "test", ...(parent ? { parentSession: parent } : {}) })];
+  for (const name of names) lines.push(JSON.stringify({ type: "session_info", name }));
+  const file = await f.write(root, relative, `${lines.join("\n")}\n`);
+  await fs.utimes(file, OLD(), OLD());
+  return file;
+}
+test("orphan selection cascades only from a missing or orphan parent and matches basenames", () => {
+  const old = Date.now() - 20 * 60_000;
+  const entries = [
+    { path: "sessions/root.jsonl", name: "plain root", mtimeMs: old },
+    { path: "sessions/live-child.jsonl", parentSession: "/old/home/.pi/agent/sessions/ROOT.jsonl", name: "tr_coding#aaaaaaa1", mtimeMs: old },
+    { path: "sessions/orphan.jsonl", parentSession: "C:\\old\\sessions\\missing.jsonl", name: "general-purpose#bbbbbbb2", bytes: 12, mtimeMs: old },
+    { path: "sessions/grandchild.jsonl", parentSession: "/current/sessions/orphan.jsonl", name: "tr_verify#ccccccc3", bytes: 8, mtimeMs: old },
+    { path: "sessions/plain-fork.jsonl", parentSession: "/current/sessions/missing.jsonl", name: "my renamed fork", mtimeMs: old },
+  ];
+  const plan = selectOrphanSessions(entries, { now: Date.now() });
+  assert.deepEqual(plan.candidates.map(item => item.path), ["sessions/grandchild.jsonl", "sessions/orphan.jsonl"]);
+  assert.equal(plan.candidates.reduce((total, item) => total + item.bytes, 0), 20);
+  assert.equal(plan.skipped, 0);
+});
+test("orphan selection skips recent files, protects the active session and ignores ambiguous basenames", () => {
+  const old = Date.now() - 20 * 60_000;
+  const entries = [
+    { path: "sessions/recent.jsonl", parentSession: "/x/missing.jsonl", name: "tr_coding#aaaaaaa1", mtimeMs: Date.now() },
+    { path: "sessions/active.jsonl", parentSession: "/x/missing.jsonl", name: "tr_coding#bbbbbbb2", mtimeMs: old },
+    { path: "a/dup.jsonl", name: "plain", mtimeMs: old },
+    { path: "b/dup.jsonl", name: "plain", mtimeMs: old },
+    { path: "sessions/ambiguous.jsonl", parentSession: "/x/dup.jsonl", name: "tr_coding#ccccccc3", mtimeMs: old },
+  ];
+  const plan = selectOrphanSessions(entries, { activePath: "sessions/active.jsonl", now: Date.now() });
+  assert.deepEqual(plan.candidates, []);
+  assert.equal(plan.skipped, 1);
+});
+test("planPruneSessions reads the last session_info and reports recent candidates as skipped", async t => {
+  const f = await fixture(t);
+  await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, ["root name"]);
+  await writeSession(f, f.paths.agentDir, "sessions/orphan.jsonl", "/old/sessions/missing.jsonl", ["not a subagent", "tr_coding#abcd1234"]);
+  await writeSession(f, f.paths.agentDir, "sessions/grandchild.jsonl", path.join(f.paths.agentDir, "sessions", "orphan.jsonl"), ["tr_general#deadbeef"]);
+  const recent = await writeSession(f, f.paths.agentDir, "sessions/recent.jsonl", "/old/sessions/missing.jsonl", ["tr_search#12345678"]);
+  await fs.utimes(recent, new Date(), new Date());
+  const plan = await f.service.planPruneSessions();
+  assert.deepEqual(plan.candidates.map(item => item.path), ["sessions/grandchild.jsonl", "sessions/orphan.jsonl"]);
+  assert.equal(plan.skipped, 1);
+  assert.equal(f.calls.length, 0, "preview must not touch Git");
+});
+test("prune removes snapshot copies first, commits the deletion and then removes local files", async t => {
+  const f = await fixture(t);
+  await writeSession(f, f.paths.agentDir, "sessions/orphan.jsonl", "/old/sessions/missing.jsonl", ["tr_coding#abcd1234"]);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/orphan.jsonl", "snapshot");
+  f.config.syncedPaths = ["sessions/orphan.jsonl"];
+  const result = await f.service.pruneOrphanSessions();
+  assert.deepEqual(result, { removed: ["sessions/orphan.jsonl"], repoRemoved: 1, skipped: 0 });
+  await assert.rejects(fs.access(path.join(f.config.repoDir, "sessions/orphan.jsonl")));
+  await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/orphan.jsonl")));
+  assert.deepEqual(f.config.syncedPaths, []);
+  const add = f.calls.find(call => call.args.includes("-A") && call.args.includes("sessions/orphan.jsonl"));
+  assert.ok(add);
+  assert.ok(f.calls.some(call => call.args[0] === "commit" && call.args.includes("amox-pi-sync: prune 1 orphan subagent session(s)")));
+});
+test("prune refuses staged repository changes without touching local files", async t => {
+  const f = await fixture(t, args => args[0] === "diff" && args.includes("--cached") ? { stdout: "sessions/x\n", stderr: "", code: 0 } : undefined);
+  await writeSession(f, f.paths.agentDir, "sessions/orphan.jsonl", "/old/sessions/missing.jsonl", ["tr_coding#abcd1234"]);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await assert.rejects(f.service.pruneOrphanSessions(), /staged changes/);
+  await fs.access(path.join(f.paths.agentDir, "sessions/orphan.jsonl"));
+});
+test("push deletes only previously synced paths that are now missing locally", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/gone.jsonl", "old");
+  await f.write(f.config.repoDir, "sessions/keep.jsonl", "keep");
+  await f.write(f.paths.agentDir, "sessions/keep.jsonl", "keep");
+  f.config.syncedPaths = ["sessions/gone.jsonl", "sessions/keep.jsonl"];
+  await f.service.push();
+  await assert.rejects(fs.access(path.join(f.config.repoDir, "sessions/gone.jsonl")));
+  await fs.access(path.join(f.config.repoDir, "sessions/keep.jsonl"));
+  assert.deepEqual(f.config.syncedPaths, ["sessions/keep.jsonl"]);
+  assert.match(f.config.lastResult, /removed 1 locally deleted file/);
+  assert.ok(f.calls.some(call => call.args.includes("-A") && call.args.includes("sessions/gone.jsonl")));
+});
+test("push without a baseline preserves snapshot-only files and establishes the baseline", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/remote-only.jsonl", "remote");
+  await f.write(f.paths.agentDir, "sessions/local.jsonl", "local");
+  await f.service.push();
+  await fs.access(path.join(f.config.repoDir, "sessions/remote-only.jsonl"));
+  assert.deepEqual(f.config.syncedPaths, ["sessions/local.jsonl"]);
+});
+test("pull deletes remotely deleted files and preserves local deletions pending push", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/local-gone.jsonl", "still remote");
+  await f.write(f.config.repoDir, "sessions/keep.jsonl", "keep");
+  await f.write(f.paths.agentDir, "sessions/remote-gone.jsonl", "delete me");
+  await f.write(f.paths.agentDir, "sessions/keep.jsonl", "keep");
+  f.config.syncedPaths = ["sessions/remote-gone.jsonl", "sessions/local-gone.jsonl", "sessions/keep.jsonl"];
+  const result = await f.service.pull();
+  assert.match(result, /deleted 1 remote-deleted file/);
+  assert.match(result, /preserved 1 local deletion/);
+  await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/remote-gone.jsonl")));
+  await assert.rejects(fs.access(path.join(f.paths.agentDir, "sessions/local-gone.jsonl")));
+  await fs.access(path.join(f.paths.agentDir, "sessions/keep.jsonl"));
+  assert.deepEqual(f.config.syncedPaths, ["sessions/keep.jsonl", "sessions/local-gone.jsonl"]);
+  assert.equal((await f.service.listBackups()).length, 1);
+});
+test("pull refuses to delete the active session", async t => {
+  const f = await fixture(t);
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  const active = await f.write(f.paths.agentDir, "sessions/active.jsonl", "active");
+  f.service.activeSessionFile = active;
+  f.config.syncedPaths = ["sessions/active.jsonl"];
+  await assert.rejects(f.service.pull(), /Active session cannot be deleted/);
+  await fs.access(active);
+  assert.deepEqual(f.config.syncedPaths, ["sessions/active.jsonl"]);
 });

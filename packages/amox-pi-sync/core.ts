@@ -33,7 +33,7 @@ export type Config = {
   retention?: { keepBackups: number; maxAgeDays: number };
 };
 export type Paths = { agentDir: string; configFile: string; backupDir: string };
-export type GitExecutor = (args: string[], cwd: string) => Promise<{ stdout: string; stderr: string; code: number }>;
+export type GitExecutor = (args: string[], cwd: string, timeoutMs?: number) => Promise<{ stdout: string; stderr: string; code: number; killed?: boolean }>;
 export type Status = { busy?: string; error?: string; localChanges?: string; remoteChanges?: number; checkedAt?: string };
 export type Backup = { id: string; createdAt: string; reason: string; includedPaths: string[] };
 export type BackupSummary = Backup;
@@ -137,6 +137,10 @@ export async function saveConfig(config: Config, paths = defaultPaths()): Promis
 // Raw sessions are opaque bytes and intentionally bypass content scanning. Use a
 // trusted PRIVATE repository: sessions may contain credentials or private text.
 const secret = /-----BEGIN (?:RSA |OPENSSH |EC |DSA )?PRIVATE KEY-----|\bghp_[A-Za-z0-9_]{30,}\b|\bsk-[A-Za-z0-9_-]{20,}\b|\b(?:api[_-]?key|token|password|secret)\b\s*[:=]\s*["']?[^"'\s]{12,}/i;
+// Local Git work is bounded; network transfers can legitimately take minutes
+// for large session histories, and a killed transfer must never look successful.
+const LOCAL_TIMEOUT_MS = 60_000;
+const NETWORK_TIMEOUT_MS = 10 * 60_000;
 // Git for Windows SSH can misdecode non-ASCII home paths; prefer native OpenSSH.
 const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
 const sshCommand = process.platform === "win32" && existsSync(nativeSsh)
@@ -144,6 +148,7 @@ const sshCommand = process.platform === "win32" && existsSync(nativeSsh)
 const gitOptions = [
   "-c", "core.hooksPath=",
   "-c", "core.autocrlf=false",
+  "-c", "core.eol=lf",
   "-c", "credential.interactive=false",
   "-c", `core.sshCommand=${sshCommand} -oBatchMode=yes -oConnectTimeout=10`,
 ];
@@ -167,10 +172,28 @@ export class SyncService {
     } catch (e) { this.status.error = e instanceof Error ? e.message : String(e); throw e; }
     finally { try { if (lock) { await lock.close(); await fs.unlink(lockFile); } } finally { this.status.busy = undefined; } }
   }
-  private async git(args: string[], cwd = this.config.repoDir): Promise<string> {
-    const result = await this.exec([...gitOptions, ...args], cwd);
+  private async gitResult(args: string[], cwd = this.config.repoDir, timeoutMs = LOCAL_TIMEOUT_MS) {
+    const result = await this.exec([...gitOptions, ...args], cwd, timeoutMs);
+    // pi.exec can report code 0 for a process killed by its timeout; the killed
+    // flag is the only reliable failure signal for that path.
+    if (result.killed) throw new Error(`git ${args[0]} was terminated before completion (timeout or cancellation); no success was recorded. Verify the repository state before retrying.`);
+    return result;
+  }
+  private async git(args: string[], cwd = this.config.repoDir, timeoutMs = LOCAL_TIMEOUT_MS): Promise<string> {
+    const result = await this.gitResult(args, cwd, timeoutMs);
     if (result.code !== 0) throw new Error(`git ${args[0]} failed: ${result.stderr.trim() || result.stdout.trim() || `exit ${result.code}`}. Resolve repository conflicts manually; no force push or JSONL merge is performed.`);
     return result.stdout;
+  }
+  /** Keep raw bytes raw: local attributes override any text/EOL rules in the snapshot. */
+  private async ensureAttributes(): Promise<void> {
+    const file = path.join(this.config.repoDir, ".git", "info", "attributes");
+    await noLinks(file);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    let current = "";
+    try { current = await fs.readFile(file, "utf8"); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error; }
+    if (current.split(/\r?\n/).filter(Boolean).at(-1) === "* -text") return;
+    await fs.writeFile(file, `${current}${current && !current.endsWith("\n") ? "\n" : ""}* -text\n`, { mode: 0o600 });
   }
   private async ensureRepo(): Promise<void> {
     await noLinks(this.config.repoDir);
@@ -178,12 +201,13 @@ export class SyncService {
     if (!(await stat(gitDir))) {
       if (await stat(this.config.repoDir) && (await fs.readdir(this.config.repoDir)).length) throw new Error("Repository directory is nonempty but has no .git; choose an empty directory");
       await fs.mkdir(path.dirname(this.config.repoDir), { recursive: true });
-      await this.git(["clone", "--", this.config.repoUrl, this.config.repoDir], path.dirname(this.config.repoDir));
+      await this.git(["clone", "--", this.config.repoUrl, this.config.repoDir], path.dirname(this.config.repoDir), NETWORK_TIMEOUT_MS);
     }
     const origin = (await this.git(["remote", "get-url", "origin"])).trim();
     if (origin !== this.config.repoUrl) throw new Error("Repository origin differs from configured SSH URL; inspect it before syncing");
     const pushUrls = (await this.git(["remote", "get-url", "--push", "--all", "origin"])).trim().split(/\r?\n/);
     if (pushUrls.some(url => url !== this.config.repoUrl)) throw new Error("Repository push URL differs from configured SSH URL");
+    await this.ensureAttributes();
     for (const file of (await this.git(["ls-files", "-z"])).split("\0").filter(Boolean)) validatePath(file);
   }
   private async collect(root: string, scan = false): Promise<Files> {
@@ -266,7 +290,7 @@ export class SyncService {
   }
   async check(): Promise<Status> { return this.run("check", async () => {
     this.status.checkedAt = undefined; this.status.remoteChanges = undefined;
-    await this.ensureRepo(); await this.git(["fetch", "origin"]);
+    await this.ensureRepo(); await this.git(["fetch", "origin"], this.config.repoDir, NETWORK_TIMEOUT_MS);
     const local = await this.collect(this.paths.agentDir, true);
     const snapshot = await this.collect(this.config.repoDir, true);
     let added = 0; let changed = 0; let remoteOnly = 0;
@@ -277,11 +301,35 @@ export class SyncService {
     }
     for (const file of snapshot.keys()) if (!local.has(file)) remoteOnly++;
     const localChanges = added || changed || remoteOnly ? `added/local-only: ${added}; changed: ${changed}; remote-only: ${remoteOnly}` : "";
-    const upstream = await this.exec([...gitOptions, "rev-parse", "--verify", "@{u}"], this.config.repoDir);
+    const upstream = await this.gitResult(["rev-parse", "--verify", "@{u}"], this.config.repoDir);
     const remoteChanges = upstream.code === 0 ? Number((await this.git(["rev-list", "--count", "HEAD..@{u}"])).trim()) : undefined;
     this.status.localChanges = localChanges; this.status.remoteChanges = remoteChanges;
     this.status.checkedAt = new Date().toISOString(); return { ...this.status, busy: undefined };
   }); }
+  /** Fetch and integrate remote history without rewriting local commits. */
+  private async integrateRemote(): Promise<{ merged: boolean; fastForward: boolean }> {
+    await this.git(["fetch", "origin"], this.config.repoDir, NETWORK_TIMEOUT_MS);
+    const relation = await this.gitResult(["merge-base", "--is-ancestor", "HEAD", "@{u}"]);
+    if (relation.code === 0) {
+      await this.git(["merge", "--ff-only", "@{u}"]);
+      return { merged: false, fastForward: true };
+    }
+    if (relation.code !== 1) throw new Error(`git merge-base failed: ${relation.stderr.trim() || relation.stdout.trim() || `exit ${relation.code}`}`);
+    // The remote is not ahead. Distinguish a local-only commit (nothing to
+    // integrate) from true divergence before attempting a merge.
+    const ahead = await this.gitResult(["merge-base", "--is-ancestor", "@{u}", "HEAD"]);
+    if (ahead.code === 0) return { merged: false, fastForward: false };
+    if (ahead.code !== 1) throw new Error(`git merge-base failed: ${ahead.stderr.trim() || ahead.stdout.trim() || `exit ${ahead.code}`}`);
+    // Local and remote both have commits. Only accept a clean merge; any
+    // conflict restores the previous clean repository.
+    try {
+      await this.git(["merge", "--no-edit", "@{u}"]);
+      return { merged: true, fastForward: false };
+    } catch (error) {
+      try { await this.git(["merge", "--abort"]); } catch { /* no merge in progress */ }
+      throw new Error(`Remote and local snapshots diverged, and the three-way merge was not clean. The repository was restored. Resolve the divergence manually. ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
   async push(): Promise<string> { return this.run("push", async () => {
     await this.ensureRepo();
     if ((await this.git(["diff", "--cached", "--name-only"])).trim()) throw new Error("Repository has staged changes; inspect/commit them manually before sync");
@@ -301,19 +349,34 @@ export class SyncService {
     if (batch.length) await this.git(["--literal-pathspecs", "add", "--", ...batch]);
     const staged = (await this.git(["diff", "--cached", "--name-only"])).trim();
     if (staged) await this.git(["commit", "-m", `amox-pi-sync: ${new Date().toISOString()}`]);
-    // Always retry push, even when the previous attempt committed but failed offline.
-    await this.git(["push", "-u", "origin", "HEAD"]);
+    // A rejected non-fast-forward push is recoverable without force. Any other
+    // failure, including a killed transfer, is final and records no success.
+    const first = await this.gitResult(["push", "-u", "origin", "HEAD"], this.config.repoDir, NETWORK_TIMEOUT_MS);
+    let integrated = false;
+    if (first.code !== 0) {
+      if (!/non-fast-forward|fetch first|\[rejected\]|Updates were rejected/i.test(first.stderr)) {
+        throw new Error(`git push failed: ${first.stderr.trim() || first.stdout.trim() || `exit ${first.code}`}. Inspect the repository before retrying; no force push is performed.`);
+      }
+      const result = await this.integrateRemote();
+      integrated = result.merged || result.fastForward;
+      if (!integrated) throw new Error("git push was rejected, but the fetched remote is not ahead; inspect the repository before retrying.");
+      await this.git(["push", "-u", "origin", "HEAD"], this.config.repoDir, NETWORK_TIMEOUT_MS);
+    }
     this.config.lastPushAt = new Date().toISOString();
-    this.config.lastResult = "Pushed managed snapshot (no force push; remote-only files preserved)";
+    this.config.lastResult = integrated
+      ? "Integrated remote history and pushed managed snapshot; run Pull to apply remote files (no force push)"
+      : "Pushed managed snapshot (no force push; remote-only files preserved)";
     await saveConfig(this.config, this.paths);
     return this.config.lastResult;
   }); }
   async pull(): Promise<string> { return this.run("pull", async () => {
     await this.ensureRepo();
-    if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; resolve them before ff-only pull");
-    await this.git(["pull", "--ff-only", "origin"]);
-    const result = await this.apply(await this.collect(this.config.repoDir, true), "before applying remote snapshot");
-    this.config.lastPullAt = new Date().toISOString(); await saveConfig(this.config, this.paths); return result.message;
+    if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; resolve them before pulling");
+    const result = await this.integrateRemote();
+    const applied = await this.apply(await this.collect(this.config.repoDir, true), "before applying remote snapshot");
+    this.config.lastPullAt = new Date().toISOString();
+    this.config.lastResult = `${result.merged ? "Merged diverged snapshots cleanly. " : ""}${applied.message}`;
+    await saveConfig(this.config, this.paths); return this.config.lastResult;
   }); }
   async backup(): Promise<Backup> { return this.run("backup", () => this.makeBackup("manual")); }
   async listBackups(): Promise<Backup[]> { return this.run("listBackups", () => this.backups()); }

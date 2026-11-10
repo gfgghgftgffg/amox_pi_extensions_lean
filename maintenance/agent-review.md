@@ -1,9 +1,13 @@
 # Source review
 
-## amox-pi-sync menu labels
+## amox-pi-sync timeout and divergence recovery
 
-- Comparison base: `4cc4cc7b421c667a470c189ad5bd4dc627d22ede`. Owner-requested presentation-only patch; upstream remains `pi-sync-suite@0.1.1`.
-- `index.ts` separates informational labels and values with a colon. Settings show `Mode: Manual`, `Paths: 2 configured` and `Bubble colour: Follow pill`. Starline action rows start with `•`; native Pi selectors keep their own indicators.
-- Semantic action IDs, selection callbacks, colour handling, cell anchors, configuration and all sync operations are unchanged. Existing UI assertions track the new text and bullet prefix.
-- Local tests were intentionally not run at the owner's request. Existing exact-head three-platform CI and merged-SHA Release gates remain enabled.
-- Release batch `0.1.20` selects only `amox-pi-sync@0.1.4`, based on `4cc4cc7b421c667a470c189ad5bd4dc627d22ede`. Other package versions and publication files are unchanged.
+- Comparison base: `2251f09288333394de45633db005c6a9e7782505`. Upstream remains `pi-sync-suite@0.1.1` / `npm:pi-sync-suite@0.1.1`; no published upstream source was executed.
+- Upstream `src/git/client.ts` calls `pi.exec` without a timeout and treats only `code !== 0` as failure. Its pull path (`src/engine/syncEngine.ts`) fetches, counts incoming commits, then uses `pull --ff-only`; it has no pull-side divergence recovery. Its push path handles a non-fast-forward rejection with `fetch` + `pull --rebase`, aborting on failure, and does not force-push. Upstream sets no autocrlf/eol options and has no killed-process check.
+- This fork therefore needs its own timeout handling rather than porting an upstream fix. `index.ts` now forwards `killed`; `core.ts` treats it as failure before checking the exit code, so a timed-out transfer can never write `lastPushAt`, `lastPullAt` or `checkedAt`. Network operations use 10 minutes; local Git remains at 60 seconds.
+- Pull now fetches and fast-forwards, then applies the snapshot. If both sides have commits, it attempts one file-level three-way merge. A conflict aborts the merge and applies nothing. Local-only commits are distinguished from true divergence and are not merged.
+- Push rejects non-fast-forward with a one-time recovery: fetch, fast-forward or clean merge remote history without rebase or force, then retry once. Integrated remote files reach the agent directory on the next pull. Killed pushes, authentication errors and other failures are not retried.
+- Git commands force `core.autocrlf=false` and `core.eol=lf`. `ensureRepo` adds a repository-local `* -text` attribute (preserving existing lines) so Git never converts or line-merges raw bytes. Existing mixed CRLF/LF history is not rewritten automatically.
+- Regressions cover killed pull/push/check, network versus local timeouts, killed clone, local-ahead pull, clean and conflicted pull divergence, clean and conflicted push recovery, and a real two-client Git round trip with disjoint divergent changes. The real byte-preservation test keeps `autocrlf=true` and adds a repository `.gitattributes` text rule, proving the local `* -text` attribute wins and CRLF bytes survive push/pull.
+
+Local verification: sync typecheck and all 52 package tests, the full repository suite, scoped contracts and isolated production installation/loading. Dependency audits completed with upstream warnings (production: 6 affected packages, including 2 high-severity findings); this patch adds no dependency. Release batch `0.1.21` selects only `amox-pi-sync@0.1.5`, based on `2251f09288333394de45633db005c6a9e7782505`. Other package versions and publication files are unchanged.

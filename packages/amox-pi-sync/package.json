@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/amox-pi-sync",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "type": "module",
   "description": "Independent Pi agent-data sync fork with SSH Git transport, backups and optional Starline status.",
   "license": "MIT",

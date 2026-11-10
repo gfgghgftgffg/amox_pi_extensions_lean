@@ -513,3 +513,16 @@ test("/sync-prune --yes skips confirmation but still previews and deletes", asyn
   assert.ok(!f.dialogs.some(dialog => dialog.title === "Prune orphan sessions?"));
   assert.ok(f.notifications.some(([text]) => text.includes("Pruning 1 orphan session")));
 });
+test("long status values are truncated so bubble actions remain visible", async t => {
+  const f = await fixture(t);
+  const configFile = join(f.root, "amox-pi-sync.json");
+  const stored = JSON.parse(await readFile(configFile, "utf8"));
+  stored.lastResult = "x".repeat(500);
+  await writeFile(configFile, JSON.stringify(stored));
+  await f.events.get("session_start")({}, f.ctx);
+  f.click();
+  const row = f.content().body.find(line => typeof line === "string" && /^Last sync:/.test(plain(line)));
+  assert.ok(row);
+  assert.ok(plain(row).length <= 180, plain(row));
+  assert.ok(f.content().body.some(line => typeof line !== "string" && plain(line.text) === "Settings"));
+});

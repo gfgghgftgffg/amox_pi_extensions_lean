@@ -25,6 +25,11 @@ const message = (error: unknown) => terminalText(error instanceof Error ? error.
 const displayTime = (value?: string) => value ? new Date(value).toLocaleString() : "Never";
 const modeLabel = (mode: Config["mode"]) => ({ manual: "Manual", auto: "Auto", off: "Off" })[mode];
 const terminalText = (value: string) => stripVTControlCharacters(value).replace(/\r\n?/g, "\n").replace(/[\x00-\x08\x0b-\x1f\x7f]/g, "");
+const MAX_ROW_VALUE = 160;
+const displayValue = (value: string) => {
+  const text = terminalText(value);
+  return text.length > MAX_ROW_VALUE ? `${text.slice(0, MAX_ROW_VALUE - 1)}…` : text;
+};
 const formatBytes = (bytes: number) => bytes < 1024 ? `${bytes} B` : bytes < 1024 ** 2 ? `${(bytes / 1024).toFixed(1)} KB` : `${(bytes / 1024 ** 2).toFixed(1)} MB`;
 const formatPruneResult = (result: PruneResult) =>
   `Pruned ${result.removed.length} local and ${result.repoRemoved} snapshot session(s)${result.skipped ? `; skipped ${result.skipped} recent/active` : ""}. Snapshot removal is committed locally; Push to publish.`;
@@ -244,7 +249,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   function renderRows(context: ExtensionContext, rows: DetailRow[]): string[] {
     const theme = context.ui.theme;
     return rows.map(row => theme.fg("muted", `${`${row.label}:`.padEnd(15)} `)
-      + theme.fg(row.tone ?? "text", row.label === "State" ? theme.bold(terminalText(row.value)) : terminalText(row.value)));
+      + theme.fg(row.tone ?? "text", row.label === "State" ? theme.bold(displayValue(row.value)) : displayValue(row.value)));
   }
 
   // Targets inherit Starline's foreground so a selected row remains legible on

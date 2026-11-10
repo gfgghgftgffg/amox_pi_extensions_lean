@@ -81,6 +81,10 @@ function inside(parent: string, child: string): boolean {
 }
 function overlaps(a: string, b: string): boolean { return inside(a, b) || inside(b, a); }
 const ORPHAN_NAME = /^.+#[0-9a-f]{8}$/;
+/** Keep status text compact; full results still go to the action notification. */
+function listPreview(items: string[], limit = 3): string {
+  return `${items.slice(0, limit).join(", ")}${items.length > limit ? ` (+${items.length - limit} more)` : ""}`;
+}
 const SESSION_RECENT_MS = 10 * 60_000;
 function baseName(value: string): string {
   const parts = value.replaceAll("\\", "/").split("/");
@@ -504,7 +508,8 @@ export class SyncService {
     const recovery = backup
       ? `Recovery backup: ${backup.id}`
       : "No recovery backup was needed (only new files were added)";
-    const message = `Applied ${changes.size} file(s)${deleted}; replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files${preserved}. ${recovery}${replaced.length ? `; replaced: ${replaced.join(", ")}` : ""}`;
+    const replacedDetail = replaced.length ? `; replaced: ${listPreview(replaced)}` : "";
+    const message = `Applied ${changes.size} file(s)${deleted}; replaced ${replaced.length} differing local file(s) from remote/backup, preserved local-only files${preserved}. ${recovery}${replacedDetail}`;
     this.config.lastResult = message;
     return { changed: changes.size > 0 || removed.length > 0, message, files: [...changes.keys()], backupId: backup?.id };
   }

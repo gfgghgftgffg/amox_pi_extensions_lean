@@ -2,7 +2,7 @@
   "name": "@gfgghgftgffg/amox-pi-sync",
   "version": "0.1.9",
   "type": "module",
-  "description": "Independent Pi agent-data sync fork with SSH Git transport, backups and optional Starline status.",
+  "description": "Sync Pi sessions through a private Git repository, with selectable paths and synced deletion of orphan child sessions.",
   "license": "MIT",
   "publishConfig": {
     "access": "public"

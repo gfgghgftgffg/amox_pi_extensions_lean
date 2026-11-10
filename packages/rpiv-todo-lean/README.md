@@ -1,17 +1,60 @@
 # @gfgghgftgffg/rpiv-todo-lean
 
-Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
-[`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo): the
-complete task-management engine behind one compact `todo` tool. Runtime updates follow upstream.
+[简体中文](README.zh-CN.md)
 
-Original lean facade by [kunkun9527](https://github.com/kunkun9527/rpiv-todo-lean); upstream extension
-by [juicesharp](https://github.com/juicesharp/rpiv-mono). Both are MIT-licensed; the original `LICENSE`
-is preserved in this package.
+## Advantage
 
-## Core features
+A lighter wrapper for [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo). Tasks, dependencies, batch creation and `/todos` remain, with about 77% less tool text sent on the first call.
 
-* Keeps upstream task lifecycle, dependencies, batch creation and the `/todos` interface.
-* Compact descriptions and schema retain native fields, validation, persistence and session isolation.
+## Features
+
+- The model sees one `todo` tool: `create`, `update`, `list`, `get`, `delete`, `clear`.
+- If `action` is omitted, a `subject` means create, and an `id` plus a mutable field means update. Anything else is reported by upstream.
+- Fields, validation, persistence and per-session isolation stay on the upstream engine. `/todos` stays available.
+
+## Source
+
+The facade comes from [kunkun9527/rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean). The engine is [juicesharp/rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
+
+## Usage
+
+Create one task. A `subject` alone is enough:
+
+```json
+{ "subject": "Inspect the cache" }
+```
+
+Create several:
+
+```json
+{ "action": "create", "tasks": [{ "subject": "Inspect" }, { "subject": "Test" }] }
+```
+
+Mark one finished. An `id` plus a field is an update:
+
+```json
+{ "id": "1", "status": "completed" }
+```
+
+List, read, delete, or empty the list:
+
+```json
+{ "action": "list" }
+```
+
+```json
+{ "action": "get", "id": "1" }
+```
+
+```json
+{ "action": "delete", "id": "1" }
+```
+
+```json
+{ "action": "clear" }
+```
+
+New tasks start as `pending`. For several steps, keep one task `in_progress` and set it to `completed` when that step is done. `list` hides deleted tasks. `clear` empties the list and starts ids over. A dependency is `blockedBy`. Other fields are in the [upstream documentation](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo).
 
 ## Installation
 
@@ -29,21 +72,6 @@ node scripts/install-extension.mjs rpiv-todo-lean
 ```
 
 Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `rpiv-todo` wrapper alongside it.
-
-## Usage
-
-The model sees one tool, `todo`, with actions `create`, `update`, `list`, `get`, `delete`, `clear`.
-`action` is normally required; when it is omitted the facade infers `create` from `subject` or
-`update` from `id` plus a mutable field, and otherwise lets upstream report the error.
-
-Create a task with `subject`; batch creation uses `action: "create"` and `tasks`, for example
-`{"action":"create","tasks":[{"subject":"Inspect"},{"subject":"Test"}]}`.
-Use `id` to update or retrieve a task and `blockedBy` for dependencies.
-
-New tasks default to `pending`. For multi-step work, keep one task `in_progress` and mark it
-`completed` promptly when finished. `list` excludes deleted tasks by default; `clear` empties the list
-and resets IDs. See the [upstream documentation](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo)
-for all fields, batch rules and `/todos` usage.
 
 ## Context footprint (character proxy)
 

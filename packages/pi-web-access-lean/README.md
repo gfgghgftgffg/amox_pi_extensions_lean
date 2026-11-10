@@ -1,18 +1,62 @@
 # @gfgghgftgffg/pi-web-access-lean
 
-Part of the [`amox-pi-extensions-lean`](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md) monorepo. A lightweight Pi facade for
-[`pi-web-access`](https://github.com/nicobailon/pi-web-access) that keeps the full upstream
-search/fetch engine and compresses four provider tools into one `web_access` tool. Runtime updates follow upstream.
+[简体中文](README.zh-CN.md)
 
-Original lean facade by [kunkun9527](https://github.com/kunkun9527/pi-web-access-lean); upstream engine
-by [Nico Bailon](https://github.com/nicobailon/pi-web-access). Both are MIT-licensed; the original
-`LICENSE` is preserved in this package.
+## Advantage
 
-## Core features
+A lighter wrapper for [`pi-web-access`](https://github.com/nicobailon/pi-web-access). Search, checks, fetches and stored results share one `web_access` tool, cutting the tool text sent on the first call by about 87%.
 
-* Routes upstream search, checking, fetching and stored-content tools through `web_access`, without duplicate registrations.
-* Direct local PDF access accepts Unix/Windows paths and `file:///`, returning the saved Markdown with its path; result metadata reports the Markdown character count and page count when available.
-* Advanced parameters on demand: `help` returns the installed upstream's full description, schema and allowed search providers; select providers through JSON `input`.
+## Features
+
+- One tool covers `search`, `check`, `fetch`, `get` and `help`. The upstream engine still runs, and this package does not register those upstream tools a second time.
+- Local PDF paths and `file:///` return the saved Markdown and its path. Metadata includes the Markdown character count and, when the engine provides it, the page count. This path extracts Markdown only, not the upstream structured extract mode.
+- Uncommon parameters stay in `help`, including the allowed search providers. Pass them as a JSON object string in `input`.
+
+## Source
+
+The facade comes from [kunkun9527/pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean). The engine is [Nico Bailon's pi-web-access](https://github.com/nicobailon/pi-web-access). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
+
+## Usage
+
+Call `web_access` with `op` and `input`.
+
+Search:
+
+```json
+{ "op": "search", "input": "Pi coding agent extensions" }
+```
+
+Check a claim:
+
+```json
+{ "op": "check", "input": "The paper was published in 2024" }
+```
+
+Fetch a page or a local PDF:
+
+```json
+{ "op": "fetch", "input": "https://example.com/page" }
+```
+
+Continue a saved result. `input` is the response id from an earlier call:
+
+```json
+{ "op": "get", "input": "response-id" }
+```
+
+See every parameter for one operation:
+
+```json
+{ "op": "help", "input": "fetch" }
+```
+
+Extra fields go inside the `input` string as JSON:
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
+```
+
+If a result names an upstream tool, call the matching `web_access` operation instead. Page text is left as returned.
 
 ## Installation
 
@@ -33,31 +77,6 @@ Update a local Git installation by pulling the checkout and rerunning its instal
 
 Do not load this package alongside another `pi-web-access` wrapper, to avoid duplicate tool
 registrations.
-
-## Usage
-
-| `op` | Purpose | `input` |
-| --- | --- | --- |
-| `search` | Web search | Query string |
-| `check` | Check a claim or source | Claim string |
-| `fetch` | Fetch a URL or local PDF | URL or local PDF path |
-| `get` | Continue a stored result | Response ID |
-| `help` | Show full upstream parameters | Operation name |
-
-```json
-{ "op": "search", "input": "Pi coding agent extensions" }
-```
-
-Pass an explicit `op` and a string `input`; serialize batch or advanced parameters as a JSON object
-inside that string, for example:
-
-```json
-{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
-```
-
-When parameters are unclear, call `help` with `input` set to the operation name for the installed
-runtime's full description and schema. Translate upstream tool hints in results to the corresponding
-`web_access` operation; page bodies are not rewritten.
 
 ## Configuration and limits
 

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
@@ -15,7 +16,16 @@ function privateText(path) {
   return readFileSync(path, "utf8");
 }
 export function loadConfig(path) {
-  const config = JSON.parse(privateText(path)), url = new URL(config.server);
+  const config = JSON.parse(privateText(path));
+  if (config.transport === "hermes") {
+    if (typeof config.container !== "string" || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(config.container)) throw new Error("Invalid Hermes container name");
+    if (!Array.isArray(config.targets) || config.targets.length === 0 || config.targets.length > 4
+      || config.targets.some((target) => typeof target !== "string" || !/^(?:weixin|qqbot|telegram|discord|slack|signal|whatsapp)(?::[-\w@.#+]+)?$/.test(target))) {
+      throw new Error("Invalid Hermes notification target");
+    }
+    return { ...config, targets: [...new Set(config.targets)] };
+  }
+  const url = new URL(config.server);
   if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash
     || !/^[-_A-Za-z0-9]{1,64}$/.test(config.topic) || !isAbsolute(config.tokenFile)) throw new Error("Invalid notification configuration");
   return { ...config, server: url.href.replace(/\/?$/, "/") };
@@ -83,11 +93,7 @@ export async function completion(state, serviceResult, options) {
   return result;
 }
 
-export async function send(config, state, result, fetchImpl = fetch) {
-  const text = privateText(config.tokenFile).trim();
-  const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
-  const token = tokens.length === 1 ? tokens[0] : text;
-  if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
+export async function send(config, state, result, fetchImpl = fetch, exec = execFileSync) {
   const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
     /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|amox-pi-sync)$/.test(item?.name ?? "")
     && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 4).map(item => `${item.name}@${item.version}`);
@@ -102,9 +108,26 @@ export async function send(config, state, result, fetchImpl = fetch) {
     }
     message += suffix;
   }
+  const title = `Pi 每日维护：${result.title}`;
+  if (config.transport === "hermes") {
+    const failures = [];
+    for (const target of config.targets) {
+      try {
+        exec("podman", ["exec", config.container, "hermes", "send", "--to", target, "--subject", title, message],
+          { stdio: ["ignore", "ignore", "ignore"], timeout: 60000 });
+        console.log(`Hermes notification sent to ${target}.`);
+      } catch (error) { failures.push(`${target} (exit ${error?.status ?? "unknown"})`); }
+    }
+    if (failures.length === config.targets.length) throw new Error(`Hermes did not accept the notification: ${failures.join(", ")}`);
+    return;
+  }
+  const text = privateText(config.tokenFile).trim();
+  const tokens = [...new Set(text.match(/\btk_[A-Za-z0-9]+\b/g) || [])];
+  const token = tokens.length === 1 ? tokens[0] : text;
+  if (!token || /\s/.test(token) || tokens.length > 1) throw new Error("Invalid ntfy credential");
   const response = await fetchImpl(config.server, { method: "POST", redirect: "manual", signal: AbortSignal.timeout(15000),
     headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
-    body: JSON.stringify({ topic: config.topic, title: `Pi 每日维护：${result.title}`, message, priority: result.failed || result.needsDecision ? 4 : 3, tags: [result.failed ? "warning" : result.needsDecision ? "question" : result.pending ? "hourglass_flowing_sand" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
+    body: JSON.stringify({ topic: config.topic, title, message, priority: result.failed || result.needsDecision ? 4 : 3, tags: [result.failed ? "warning" : result.needsDecision ? "question" : result.pending ? "hourglass_flowing_sand" : "white_check_mark"], ...(result.link ? { click: result.link } : {}) }) });
   if (!response.ok) throw new Error("ntfy did not accept the notification");
 }
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -129,7 +152,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
         catch { result = { title: "状态查询失败", reason: "无法读取 GitHub 发布核验凭据", failed: true }; }
         result ||= await completion(state, process.env.SERVICE_RESULT, { api });
       }
-      await send(config, state, result); console.log("Maintenance notification accepted by ntfy.");
+      await send(config, state, result); console.log("Maintenance notification accepted.");
     } else console.log("Maintenance notifications are not configured; skipped.");
   } catch { console.error("Maintenance notification failed; inspect private configuration and service logs. No automatic duplicate POST."); process.exitCode = 1; }
 }

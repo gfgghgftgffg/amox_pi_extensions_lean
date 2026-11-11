@@ -81,8 +81,8 @@ journalctl -u amox-pi-actions.service -u amox-pi-actions-retry.service
 
 自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV`、`AMOX_MAINTENANCE_STATE` 和 `AMOX_LOCAL_PI_MAX_TURNS`，并同步 unit 的写入权限与 TMPDIR。`AMOX_LOCAL_PI_MAX_TURNS` 调整单次本地 SDK 会话的 turn 上限，默认 80，范围 1–1000；调高会增加运行时间和模型费用，主要用于诊断模型是否在读文件阶段耗尽预算。
 
-## 可选 ntfy 通知
+## 可选通知
 
-将 `server`、`topic`、`tokenFile` 写入仓库外的 `~/.config/amox-pi-notify.json`，例如 `{"server":"https://ntfy.example.com","topic":"maintenance","tokenFile":"/private/ntfy-token"}`；配置和 token 文件均设为 600。部署上述 service 后，结束钩子会通知成功、无更新、失败和超时；已合并版本等待现有 Release/npm job 的实际结果，不重复执行验收或发布。通知失败不改变原任务结果。未配置时跳过通知。
+将 `server`、`topic`、`tokenFile` 写入仓库外的 `~/.config/amox-pi-notify.json`，例如 `{"server":"https://ntfy.example.com","topic":"maintenance","tokenFile":"/private/ntfy-token"}`；配置和 token 文件均设为 600。也可以用已安装的 Hermes 发到微信、QQ 等平台：`{"transport":"hermes","container":"hermes","targets":["weixin","qqbot"]}`，通过 `podman exec <container> hermes send` 发送，任一目标成功即算通知成功。部署上述 service 后，结束钩子会通知成功、无更新、失败和超时；已合并版本等待现有 Release/npm job 的实际结果，不重复执行验收或发布。通知失败不改变原任务结果。未配置时跳过通知。
 
 显式测试：`node scripts/notify-maintenance.mjs --test`。自定义配置路径可用 `AMOX_NOTIFY_CONFIG`。

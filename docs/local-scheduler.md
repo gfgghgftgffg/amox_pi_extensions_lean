@@ -77,7 +77,7 @@ journalctl -u amox-pi-actions.service -u amox-pi-actions-retry.service
 
 状态和失败副本位于 `~/.local/state/amox-pi-maintenance`，从 `last-run.json` 找到对应候选和检查日志。失败后修复同一候选；不会在下一次调度自动接管旧 PR。不要因请求超时就重复推送、创建 PR 或 merge，先检查远端实际状态。npm 恢复见[发布说明](npm-publishing.zh-CN.md)。
 
-单次尝试上限 120 分钟，service 130 分钟兜底；两小时等待不占用该运行时间。SDK 即时重试仍关闭，只有上述安全范围内的服务器错误由持久化队列延迟重试。timer 使用 `Persistent=true`，启用前检查是否会补执行。暂停：`sudo systemctl disable --now amox-pi-actions.timer amox-pi-actions-retry.timer`。确认不再需要后再清理专用失败副本，避免磁盘耗尽。
+单次尝试上限 120 分钟，service 130 分钟兜底；两小时等待不占用该运行时间。SDK 即时重试仍关闭，只有上述安全范围内的服务器错误由持久化队列延迟重试。timer 使用 `Persistent=true`，启用前检查是否会补执行。暂停：`sudo systemctl disable --now amox-pi-actions.timer amox-pi-actions-retry.timer`。每日 `--run` 会删除超过 3 天的 `run-*` 副本。`last-run.json` 指向的未完成或失败候选会保留，`last-run.json`、`retry-state.json` 和锁文件不删。
 
 自定义路径可使用 `AMOX_MODEL_CONFIG`、`AMOX_PUBLISH_ENV`、`AMOX_MAINTENANCE_STATE` 和 `AMOX_LOCAL_PI_MAX_TURNS`，并同步 unit 的写入权限与 TMPDIR。`AMOX_LOCAL_PI_MAX_TURNS` 调整单次本地 SDK 会话的 turn 上限，默认 80，范围 1–1000；调高会增加运行时间和模型费用，主要用于诊断模型是否在读文件阶段耗尽预算。
 

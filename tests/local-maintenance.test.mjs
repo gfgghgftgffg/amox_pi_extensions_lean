@@ -8,7 +8,7 @@ import { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { createLocalTools, localPiMaxTurns, openLocalPi } from "../scripts/lib/local-pi.mjs";
 import { githubClient } from "../scripts/lib/github-maintenance.mjs";
-import { launcherEnvironment } from "../scripts/local-maintenance.mjs";
+import { launcherEnvironment, pruneOldRuns } from "../scripts/local-maintenance.mjs";
 import { sandboxArgs, sandboxRun } from "../scripts/lib/local-sandbox.mjs";
 
 // One real SDK conversation exercises failure -> repair -> recheck on the same
@@ -136,6 +136,24 @@ test("sandbox runs with Node installed outside /usr without exposing its toolcha
     assert.match(child.stdout, /external-node-isolated/);
     assert.equal(readFileSync(join(repo, "README.md"), "utf8"), "sealed source\n");
   } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test("aged maintenance run copies are pruned, except the active failure candidate and state files", () => {
+  const root = mkdtempSync(join(tmpdir(), "amox-prune-")), now = Date.now(), old = new Date(now - 4 * 24 * 60 * 60 * 1000);
+  const keep = join(root, "run-active"), drop = join(root, "run-old"), fresh = join(root, "run-fresh");
+  for (const path of [keep, drop, fresh, join(root, "tmp")]) mkdirSync(path);
+  writeFileSync(join(root, "last-run.json"), JSON.stringify({ status: "failed", repairPending: true, runDir: keep }));
+  writeFileSync(join(root, "retry-state.json"), "{}");
+  writeFileSync(join(drop, "marker"), "old");
+  for (const path of [keep, drop]) spawnSync("touch", ["-d", old.toISOString(), path]);
+  assert.equal(pruneOldRuns(root, { now, log() {} }), 1);
+  assert.equal(existsSync(drop), false);
+  assert.equal(existsSync(keep), true);
+  assert.equal(existsSync(fresh), true);
+  assert.equal(existsSync(join(root, "last-run.json")), true);
+  assert.equal(existsSync(join(root, "retry-state.json")), true);
+  assert.equal(existsSync(join(root, "tmp")), true);
+  rmSync(root, { recursive: true, force: true });
 });
 
 test("local Pi turn budget defaults to 80 and can be raised through the launcher environment", () => {

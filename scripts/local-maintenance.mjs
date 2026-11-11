@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -18,6 +18,29 @@ import { deferForkReview, reviewSelectiveForks } from "./lib/fork-review.mjs";
 import { runWithServerRetries } from "./lib/maintenance-retries.mjs";
 
 export const DEFAULT_REPO = "gfgghgftgffg/amox_pi_extensions_lean";
+export const RUN_RETENTION_MS = 3 * 24 * 60 * 60 * 1000;
+const ACTIVE_RUN_STATUSES = new Set(["starting", "reviewing-forks", "collecting-source", "adapting", "publishing", "ci-pending", "ci-failed", "failed", "fork-decision-required"]);
+export function pruneOldRuns(stateRoot, { now = Date.now(), maxAgeMs = RUN_RETENTION_MS, log = console.log } = {}) {
+  let protectedName;
+  try {
+    const last = JSON.parse(readFileSync(join(stateRoot, "last-run.json"), "utf8"));
+    if (last?.runDir && (ACTIVE_RUN_STATUSES.has(last.status) || last.repairPending || (last.publicationStarted && last.status !== "merged-after-ci"))) {
+      protectedName = last.runDir.split("/").pop();
+    }
+  } catch { /* Missing last-run still allows aged copies to be removed. */ }
+  let removed = 0;
+  for (const name of readdirSync(stateRoot)) {
+    if (!name.startsWith("run-") || name === protectedName) continue;
+    const path = join(stateRoot, name);
+    let stat;
+    try { stat = statSync(path); } catch { continue; }
+    if (!stat.isDirectory() || now - stat.mtimeMs < maxAgeMs) continue;
+    rmSync(path, { recursive: true, force: true });
+    removed++;
+  }
+  if (removed) log(`Pruned ${removed} maintenance run copies older than 3 days.`);
+  return removed;
+}
 const script = fileURLToPath(import.meta.url), sourceRoot = resolve(dirname(script), "..");
 export function launcherEnvironment(stateRoot) {
   const temp = join(stateRoot, "tmp"); mkdirSync(temp, { recursive: true, mode: 0o700 });
@@ -190,6 +213,7 @@ if (process.argv[1] && resolve(process.argv[1]) === script) {
       if (child.status === 75) console.log("Another maintenance invocation owns the lock; skipped without consuming a retry.");
       process.exitCode = child.status === 75 ? 0 : child.status ?? 1;
     } else {
+      if (args.includes("--run")) pruneOldRuns(stateRoot);
       const options = { stateRoot, configPath: process.env.AMOX_MODEL_CONFIG || undefined,
         publishEnv: process.env.AMOX_PUBLISH_ENV || undefined, dryRun: !args.includes("--run"), localOnly: args.includes("--local-only") };
       if (args.includes("--run") && !options.localOnly) {

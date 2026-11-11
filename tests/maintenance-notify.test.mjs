@@ -52,6 +52,28 @@ test("private ntfy config and a single authenticated POST, without redirects or 
     chmodSync(path, 0o644); assert.throws(() => loadConfig(path));
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
+test("Hermes transport sends to both targets, tolerates one failure and rejects when none succeed", { skip: process.platform === "win32" }, async () => {
+  const dir = mkdtempSync(join(tmpdir(), "amox-hermes-")), path = join(dir, "config.json");
+  try {
+    writeFileSync(path, JSON.stringify({ transport: "hermes", container: "hermes", targets: ["weixin", "qqbot"] }), { mode: 0o600 });
+    const config = loadConfig(path), calls = [];
+    await send(config, { version: "9.0.0" }, { title: "测试", reason: "fixture" }, undefined, (command, args) => {
+      calls.push([command, args]); return "";
+    });
+    assert.equal(calls.length, 2);
+    for (const [index, target] of ["weixin", "qqbot"].entries()) {
+      assert.equal(calls[index][0], "podman");
+      assert.deepEqual(calls[index][1].slice(0, 5), ["exec", "hermes", "hermes", "send", "--to"]);
+      assert.equal(calls[index][1][5], target);
+      assert.match(calls[index][1].at(-1), /发布批次：9\.0\.0/);
+    }
+    const okOnly = (command, args) => { if (args[5] === "qqbot") throw Object.assign(new Error("down"), { status: 1 }); return ""; };
+    await send(config, {}, { title: "测试", reason: "fixture" }, undefined, okOnly);
+    await assert.rejects(send(config, {}, { title: "测试", reason: "fixture" }, undefined, () => { throw Object.assign(new Error("down"), { status: 1 }); }), /qqbot \(exit 1\)/);
+    writeFileSync(path, JSON.stringify({ transport: "hermes", container: "hermes", targets: ["weixin --force"] })); assert.throws(() => loadConfig(path), /target/);
+    writeFileSync(path, JSON.stringify({ transport: "hermes", container: "hermes; rm -rf /", targets: ["weixin"] })); assert.throws(() => loadConfig(path), /container/);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
 test("service stop hook reports every outcome and ignores notification errors", () => {
   const unit = readFileSync(new URL("../scripts/systemd/amox-pi-actions.service", import.meta.url), "utf8");
   assert.match(unit, /ExecStopPost=-\/usr\/bin\/node .*\/scripts\/notify-maintenance\.mjs/);

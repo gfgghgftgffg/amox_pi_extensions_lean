@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Four independent lean wrappers that shorten tool descriptions and schemas while keeping upstream execution, plus the standalone `amox-pi-sync` data-sync extension. Lean runtime updates follow upstream. The current [tool snapshot](maintenance/tool-contracts.json) shows about **82.6%** less registered tool text across the four wrappers by character proxy, not billed tokens; the sync package is excluded.
+Five independently installable Pi extensions for search, task management, subagents, persistent goals and data sync. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **82.6%** less registered tool text across the four lean wrappers; the sync package is excluded.
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |
@@ -27,7 +27,7 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-Updates are manual: publication does not schedule updates on your computer. `pi update --extensions` updates npm sources, not local directories. To migrate, back up settings, find the old source with `pi list`, remove only that entry with `pi remove <old-source>`, and install its npm source. Restart Pi; keep one source per extension and do not separately load upstream engines. Service credentials and configuration are covered in each package README.
+See each package README for service credentials and configuration.
 
 For source or fixed-tag installation, use Git and run only the required per-extension installers; root `npm ci` is not needed:
 
@@ -45,19 +45,11 @@ Goal works alone; for subagents integration, install or update both npm packages
 
 Update a local installation with `git pull --ff-only` and its installer. For a new computer, see [amox-agent-bootstrap](https://github.com/gfgghgftgffg/amox-agent-bootstrap/blob/main/setup_for_pi.md).
 
-## Maintenance and deployment
-
-`amox-pi-sync` is a `selective-fork`: daily maintenance reviews published upstream changes against its documented feature boundaries, ports worthwhile retained behavior, skips removed features and asks the owner through ntfy when uncertain. Only verified ports trigger its own version bump; the full upstream suite is never restored. Every package has an independent version; the private root version identifies a release batch. With [Starline](https://github.com/Andy8647/pi-starline), its status capsule opens the status/actions menu; `/sync-status` also works without Starline. See the [package README](packages/amox-pi-sync/README.md) for features and limitations.
-
-Every day at 02:23 UTC (10:23 Beijing time), systemd starts an independent Pi SDK session, not a subagent. It makes no model calls when there are no upstream updates or a maintenance PR is already open. Adaptation and actual checks run in temporary copies, without changing personal installations or replacing the maintenance host.
-
-The fixed host merges only its own maintenance PR after exact-head Linux, macOS, Windows and `all-platforms-pass` success, fresh PR/base/main checks and a head-SHA condition. Release independently verifies the merged SHA on all three platforms, creates the GitHub Release and publishes the verified archives to npm through OIDC. CI and Release do not call a model; Release notes reuse the local Pi summary.
-
-Optional [ntfy notifications](docs/local-scheduler.md#可选通知) cover success, no updates, failure and timeout. Release success is reported after the Release/npm job succeeds; notification errors do not change the maintenance result.
+## Development
 
 - [Development and maintenance policy](docs/maintenance.md)
-- [Linux maintenance-host deployment](docs/local-scheduler.md)
-- [Release configuration, one-time npm setup and recovery](docs/npm-publishing.md)
+- [Maintenance-host deployment](docs/local-scheduler.md)
+- [npm publishing setup](docs/npm-publishing.md)
 
 ## Sources
 

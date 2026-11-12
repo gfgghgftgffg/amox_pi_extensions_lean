@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-goal-x-lean",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Lean tool metadata over the complete pi-goal-x runtime; preserves goal tools, commands, scheduling and auditing.",
   "license": "MIT",

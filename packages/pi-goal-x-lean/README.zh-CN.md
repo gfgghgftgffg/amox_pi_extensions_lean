@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-[pi-goal-x](https://github.com/tmonk/pi-goal-x) 的轻量包装：保留持久目标、自动续跑和完成审计，精简工具文案，不复制上游引擎。
+[pi-goal-x](https://github.com/tmonk/pi-goal-x) 的轻量包装，不复制上游引擎。通过 `pi-subagents-lean` 兼容 [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) 及其 workflow。
 
 ## 功能
 

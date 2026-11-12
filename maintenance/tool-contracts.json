@@ -1355,7 +1355,7 @@
   "lean": {
     "@gfgghgftgffg/pi-goal-x-lean": {
       "package": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "packages/pi-goal-x-lean/index.ts",
       "registeredTools": [
         "get_goal",

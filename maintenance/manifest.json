@@ -56,7 +56,7 @@
       "id": "pi-goal-x-lean",
       "path": "packages/pi-goal-x-lean",
       "packageName": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "entry": "index.ts",
       "maintenanceMode": "original-facade",
       "sourceFiles": [
@@ -93,10 +93,9 @@
     }
   ],
   "release": {
-    "version": "0.1.28",
-    "baseCommit": "a21bb31906e71d2927f2597ceb2bd0a8d92672aa",
+    "version": "0.1.29",
+    "baseCommit": "0d1ba7cd9aa438225239ba90081b083c1ce1ddeb",
     "packageIds": [
-      "pi-subagents-lean",
       "pi-goal-x-lean"
     ]
   }

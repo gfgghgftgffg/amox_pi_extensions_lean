@@ -12,7 +12,7 @@ Five independently installable Pi extensions for search, task management, subage
 | [pi-goal-x-lean](packages/pi-goal-x-lean/README.md) | Original goal tools | Persistent goals, continuation and completion auditing |
 | [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, deletion propagation, orphan-session pruning, backups and diagnostics; configurable sessions/missions |
 
-Minor adaptations let subagents and goal-x work together; see the [integration notes](packages/pi-goal-x-lean/MAINTENANCE.md#subagentsworkflow-联动的副作用与边界).
+Minor adaptations let subagents and goal-x work together; see the [integration notes](packages/pi-goal-x-lean/MAINTENANCE.md#subagents-and-workflow-integration-boundaries).
 
 ## Installation
 

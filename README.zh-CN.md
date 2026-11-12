@@ -12,7 +12,7 @@
 | [pi-goal-x-lean](packages/pi-goal-x-lean/README.zh-CN.md) | 原 goal 工具 | 持久目标、自动续跑和完成审计 |
 | [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、删除传播、孤儿会话清理、备份与诊断；可配置 sessions/missions |
 
-对 subagents 和 goal-x 做了轻微适配，使两者兼容联用，具体见[适配说明](packages/pi-goal-x-lean/MAINTENANCE.md#subagentsworkflow-联动的副作用与边界)。
+对 subagents 和 goal-x 做了轻微适配，使两者兼容联用，具体见[适配说明](packages/pi-goal-x-lean/MAINTENANCE.md#subagents-and-workflow-integration-boundaries)。
 
 ## 安装
 

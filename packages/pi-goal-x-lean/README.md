@@ -7,8 +7,7 @@ A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x). The 
 ## Features
 
 - Keeps upstream tools, commands, UI, settings and goal-file formats.
-- Integrates with `pi-subagents-lean` so the parent manages the goal and child sessions are identified automatically, without per-role setup.
-- During goal execution, blocks automatic continuation and completion while background Agent/workflow work launched through `subagent` is awaiting results.
+- Adds a small integration layer that keeps goals in the parent session and waits for tracked Agent/workflow results before automatic continuation or completion.
 
 ## Installation
 

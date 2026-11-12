@@ -81,16 +81,21 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   const readme = read("README.zh-CN.md"), english = read("README.md"), maintenance = read("docs/maintenance.md"), scheduler = read("docs/local-scheduler.md");
   assert.match(english, /\[简体中文\]\(README\.zh-CN\.md\)/);
   assert.match(readme, /\[English\]\(README\.md\)/);
-  assert.match(english, /no model calls when there are no upstream updates/);
-  assert.match(english, /02:23 UTC \(10:23 Beijing time\)/);
-  assert.match(english, /pi update --extensions/); assert.match(english, /one-time npm setup/);
+  for (const doc of [english, readme]) {
+    assert.match(doc, /docs\/maintenance\.md/);
+    assert.match(doc, /docs\/local-scheduler\.md/);
+    assert.match(doc, /pi update --extensions/);
+  }
   assert.match(english, /docs\/npm-publishing\.md/);
-  assert.match(readme, /安装和使用扩展不需要配置 Actions/); assert.match(readme, /没有上游更新.*不调用模型/);
-  assert.match(readme, /02:23 UTC/); assert.match(readme, /北京时间 10:23/); assert.match(readme, /docs\/local-scheduler\.md/);
-  assert.match(readme, /Release notes 复用本地 Pi/); assert.match(readme, /首次 npm 配置/);
-  assert.match(readme, /pi update --extensions/); assert.match(readme, /docs\/npm-publishing\.zh-CN\.md/);
+  assert.match(readme, /docs\/npm-publishing\.zh-CN\.md/);
+  assert.match(scheduler, /没有上游更新.*跳过模型/);
+  assert.match(scheduler, /02:23 UTC（北京时间 10:23）/);
+  assert.match(scheduler, /普通扩展用户不需要部署此服务/);
+  assert.match(maintenance, /Release notes 复用本地 Pi/);
+  assert.match(maintenance, /CI 和 Release 不调用模型/);
   for (const file of ["docs/npm-publishing.md", "docs/npm-publishing.zh-CN.md"]) {
     const guide = read(file); assert.match(guide, /release\.yml/); assert.match(guide, /Re-run failed jobs/);
+    assert.match(guide, /^## (?:First publication|首次发布)/m);
     assert.match(guide, /--fetch-retries=0/); assert.match(guide, /npm publish/); assert.match(guide, /2 (days|天)/);
     assert.doesNotMatch(guide, /npm login|npm whoami|Use npm account|使用 npm 账号|Confirm the account/);
   }
@@ -99,7 +104,7 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   assert.match(maintenance, /不是操作系统级沙箱/); assert.match(scheduler, /bubblewrap/);
   assert.match(maintenance, /README 只描述当前/); assert.match(read("maintenance/daily-update.md"), /更新现有段落，不追加逐版本升级历史/);
   assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /固定主机自动合并/);
-  assert.match(english, /head-SHA condition/); assert.match(readme, /以 head SHA 为条件单次合并/);
+  assert.match(maintenance, /再按 head SHA 发送一次请求/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
     for (const doc of [english, readme]) {
       assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
@@ -139,12 +144,12 @@ test("publication docs describe availability checks and first-publication setup 
     assert.doesNotMatch(intro, /\b\d+\.\d+\.\d+\b|not yet on npm|尚未上架/);
     assert.doesNotMatch(doc, /amox-pi-sync` (?:package is not published yet|尚未发布)/);
   }
+  for (const doc of [npmEnglish, npmChinese]) assert.match(doc, /OIDC/);
   for (const doc of [english, chinese, npmEnglish, npmChinese]) {
-    assert.match(doc, /OIDC/);
     assert.doesNotMatch(doc, /before npm delivery is available|sources once available|npm 才可用于安装|三个包可用后|initial release or a retry|首次或重试发布/);
   }
-  assert.match(english, /publication does not schedule updates on your computer/);
-  assert.match(chinese, /仓库发布不会在你的电脑上安排自动更新/);
+  assert.match(npmEnglish, /publication does not update personal installations/);
+  assert.match(npmChinese, /发布不更新个人安装/);
   for (const doc of [npmEnglish, npmChinese]) assert.match(doc, /Re-run failed jobs/);
   assert.match(workflow("release.yml"), /Unreleased tag vX\.Y\.Z/);
   assert.doesNotMatch(workflow("release.yml"), /Initial\/retry manual release/);

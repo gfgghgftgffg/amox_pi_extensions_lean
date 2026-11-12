@@ -46,7 +46,7 @@ CI 对精确 PR head 独立运行 Linux、macOS、Windows 检查，必须通过 
 
 固定主机自动合并当前维护会话创建的同仓非草稿 PR，合并前重新检查精确 head、最新 CI、PR 身份和 base/main，再按 head SHA 发送一次请求。不合并其它 PR，不直接推 main；检查失败、主干前进或写入结果不明就停止，不盲目重试。建议仓库规则要求 `all-platforms-pass` 和严格最新分支检查。
 
-发布批次版本增加后，Release 对合并 SHA 按相同范围重新执行三平台验收，仅打包 manifest.release 选中的 npm 包及其各自版本，附带哈希清单，再由独立 OIDC job 发布这些归档。未选包不打包、不查询 registry、不重新上传；其版本保持不变。日常成功路径无需人工合并或 npm 认证。已发布版本不可覆盖；出现回归须重新验证并发布更高的修复版本。
+发布批次版本增加后，Release 对合并 SHA 按相同范围重新执行三平台验收，仅打包 manifest.release 选中的 npm 包及其各自版本，附带哈希清单，再由独立 OIDC job 发布这些归档。未选包不打包、不查询 registry、不重新上传；其版本保持不变。日常成功路径无需人工合并或 npm 认证。已发布版本不可覆盖；出现回归须重新验证并发布更高的修复版本。Release notes 复用本地 Pi 提交并通过门禁验证的摘要；CI 和 Release 不调用模型。
 
 - [维护主机部署与运行](local-scheduler.md)
 - [npm 发布配置与恢复](npm-publishing.zh-CN.md)

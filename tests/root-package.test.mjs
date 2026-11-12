@@ -121,6 +121,11 @@ test("host-supplied Pi packages and typebox stay peers, never runtime dependenci
   assert.equal(rootPackage.dependencies, undefined, "no install-all runtime bundle");
 });
 
+test("source-install help lists every independent extension without installing", () => {
+  const output = checkedRun(process.execPath, [join(repoRoot, "scripts/install-extension.mjs"), "--help"], { cwd: repoRoot });
+  for (const { entry } of workspacePackages) assert.ok(output.includes(entry.id), entry.id);
+});
+
 test("each workspace packs its own entrypoint, LICENSE and maintenance records only", () => {
   for (const { entry, dir, pkg } of workspacePackages) {
     const output = checkedRun("npm", ["pack", "--dry-run", "--ignore-scripts", "--workspaces=false", "--json"], { cwd: dir });

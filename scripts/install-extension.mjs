@@ -10,7 +10,7 @@ import { checkedRun } from "./lib/process.mjs";
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const id = process.argv[2];
 if (process.argv.includes("--help")) {
-  console.log("node scripts/install-extension.mjs <pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|amox-pi-sync>");
+  console.log("node scripts/install-extension.mjs <pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|pi-goal-x-lean|amox-pi-sync>");
   process.exit(0);
 }
 let scratch;

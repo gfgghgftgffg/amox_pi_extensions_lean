@@ -126,6 +126,7 @@ export async function send(config, state, result, fetchImpl = fetch, exec = exec
       }
     }
     if (failures.length === config.targets.length) throw new Error(`Hermes did not accept the notification: ${failures.join(", ")}`);
+    if (failures.length) console.warn(`Hermes notification skipped: ${failures.join(", ")}`);
     return;
   }
   const text = privateText(config.tokenFile).trim();

@@ -12,6 +12,8 @@ Four independent lean wrappers that shorten tool descriptions and schemas while 
 | [pi-goal-x-lean](packages/pi-goal-x-lean/README.md) | Original goal tools | Persistent goals, continuation and completion auditing |
 | [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, deletion propagation, orphan-session pruning, backups and diagnostics; configurable sessions/missions |
 
+Minor adaptations let subagents and goal-x work together; see the [integration notes](packages/pi-goal-x-lean/MAINTENANCE.md#subagentsworkflow-联动的副作用与边界).
+
 ## Installation
 
 Supports Linux, macOS and Windows. Requires Pi `>=1.1.0`, Node `>=22.19.0` and npm; `pi-goal-x-lean` requires Pi `>=1.4.0 <2.0.0`, and `amox-pi-sync` also needs Git and working SSH authentication. Install only the packages you need, without version pins:

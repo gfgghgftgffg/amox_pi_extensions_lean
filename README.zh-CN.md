@@ -12,6 +12,8 @@
 | [pi-goal-x-lean](packages/pi-goal-x-lean/README.zh-CN.md) | 原 goal 工具 | 持久目标、自动续跑和完成审计 |
 | [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、删除传播、孤儿会话清理、备份与诊断；可配置 sessions/missions |
 
+对 subagents 和 goal-x 做了轻微适配，使两者兼容联用，具体见[适配说明](packages/pi-goal-x-lean/MAINTENANCE.md#subagentsworkflow-联动的副作用与边界)。
+
 ## 安装
 
 支持 Linux、macOS 和 Windows，需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm；`pi-goal-x-lean` 需要 Pi `>=1.4.0 <2.0.0`，`amox-pi-sync` 还需要 Git 和可用的 SSH 认证。按需安装，不固定版本：

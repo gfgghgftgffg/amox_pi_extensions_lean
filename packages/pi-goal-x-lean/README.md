@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x): persistent goals, automatic continuation and completion auditing with shorter tool text. The upstream engine is not copied.
+A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x). The upstream engine is not copied. Compatible with [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) and its workflows via `pi-subagents-lean`.
 
 ## Features
 

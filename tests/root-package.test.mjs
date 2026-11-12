@@ -54,7 +54,7 @@ test("no lifecycle hooks anywhere in the workspace tree", () => {
 test("workspace package metadata matches maintenance/manifest.json", () => {
   assert.equal(manifest.schemaVersion, 1);
   assert.doesNotThrow(() => workspaceVersions(repoRoot));
-  assert.equal(workspacePackages.length, 4);
+  assert.equal(workspacePackages.length, 5);
   for (const { entry, dir, pkg } of workspacePackages) {
     assert.equal(entry.id, entry.path.split("/").pop());
     assert.equal(pkg.name, entry.packageName);
@@ -77,8 +77,21 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
       assert.deepEqual(entry.sourceFiles, ["index.ts", "core.ts"]);
       assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
     } else {
-      assert.ok(entry.leanRepository.endsWith(`${entry.id}.git`), entry.leanRepository);
-      assert.match(entry.leanCommit, /^[0-9a-f]{40}$/);
+      if (entry.maintenanceMode === "original-facade") {
+        assert.equal(entry.id, "pi-goal-x-lean");
+        assert.match(entry.version, /^0\.1\.\d+$/);
+        assert.equal(entry.upstreamPackage, "pi-goal-x");
+        assert.equal(entry.upstreamRepository, "https://github.com/tmonk/pi-goal-x.git");
+        assert.equal(entry.upstreamEntry, "extensions/goal.ts");
+        assert.equal(entry.upstreamSource, "npm");
+        assert.equal(entry.upstreamRef, `npm:pi-goal-x@${entry.upstreamVersion}`);
+        assert.equal(entry.upstreamGitHead, undefined, "tag commits must not masquerade as publication gitHead");
+        assert.equal(entry.leanRepository, undefined, "an original facade has no external lean author repository");
+        assert.equal(entry.leanCommit, undefined);
+      } else {
+        assert.ok(entry.leanRepository.endsWith(`${entry.id}.git`), entry.leanRepository);
+        assert.match(entry.leanCommit, /^[0-9a-f]{40}$/);
+      }
       assert.equal(pkg.dependencies[entry.upstreamPackage], entry.upstreamVersion);
     }
     assert.deepEqual(pkg.pi.extensions, ["./index.ts"]);
@@ -108,8 +121,13 @@ test("host-supplied Pi packages and typebox stay peers, never runtime dependenci
   assert.equal(rootPackage.dependencies, undefined, "no install-all runtime bundle");
 });
 
+test("source-install help lists every independent extension without installing", () => {
+  const output = checkedRun(process.execPath, [join(repoRoot, "scripts/install-extension.mjs"), "--help"], { cwd: repoRoot });
+  for (const { entry } of workspacePackages) assert.ok(output.includes(entry.id), entry.id);
+});
+
 test("each workspace packs its own entrypoint, LICENSE and maintenance records only", () => {
-  for (const { dir, pkg } of workspacePackages) {
+  for (const { entry, dir, pkg } of workspacePackages) {
     const output = checkedRun("npm", ["pack", "--dry-run", "--ignore-scripts", "--workspaces=false", "--json"], { cwd: dir });
     const packed = JSON.parse(output)[0];
     assert.equal(packed.name, pkg.name);
@@ -117,6 +135,7 @@ test("each workspace packs its own entrypoint, LICENSE and maintenance records o
     for (const path of ["index.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) {
       assert.ok(files.includes(path), `packed tarball is missing ${path}`);
     }
+    for (const path of entry.sourceFiles ?? []) assert.ok(files.includes(path), `packed tarball is missing declared source ${path}`);
     if (pkg.name === "@gfgghgftgffg/amox-pi-sync") assert.ok(files.includes("core.ts"), "sync tarball must include its standalone core");
     assert.ok(!files.some((path) => path.startsWith("packages/") || path.startsWith("node_modules/")));
   }

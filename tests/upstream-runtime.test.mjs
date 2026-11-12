@@ -35,6 +35,8 @@ test("subagents runtime policy is shared by its adapter, typecheck, contracts an
   assert.ok(!adapter.includes(`${entry.upstreamPackage}/src/`), "production must not fall back to source");
   const config = JSON.parse(readFileSync(join(repoRoot, entry.path, "tsconfig.json"), "utf8"));
   assert.deepEqual(Object.keys(config.compilerOptions.paths), [specifier]);
-  assert.ok(manifest.packages.filter((item) => item.id !== entry.id).every((item) => item.upstreamEntry === undefined),
+  assert.ok(manifest.packages.filter((item) => ["pi-web-access-lean", "rpiv-todo-lean"].includes(item.id)).every((item) => item.upstreamEntry === undefined),
     "web and todo keep their existing discovery policy");
+  assert.equal(manifest.packages.find((item) => item.id === "pi-goal-x-lean").upstreamEntry, "extensions/goal.ts");
+  assert.ok(adapter.includes(`${entry.upstreamPackage}/dist/child-context.js`), "child context must use the actual published runner module");
 });

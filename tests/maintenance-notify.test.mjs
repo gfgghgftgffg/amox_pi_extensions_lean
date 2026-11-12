@@ -57,7 +57,9 @@ test("Hermes transport sends to both targets, tolerates one failure and rejects 
   try {
     writeFileSync(path, JSON.stringify({ transport: "hermes", container: "hermes", targets: ["weixin", "qqbot"] }), { mode: 0o600 });
     const config = loadConfig(path), calls = [];
-    await send(config, { version: "9.0.0" }, { title: "测试", reason: "fixture" }, undefined, (command, args, options) => {
+    const packages = ["pi-web-access-lean", "rpiv-todo-lean", "pi-subagents-lean", "amox-pi-sync", "pi-goal-x-lean"]
+      .map(id => ({ name: `@gfgghgftgffg/${id}`, version: "0.1.0" }));
+    await send(config, { version: "9.0.0", packages }, { title: "测试", reason: "fixture" }, undefined, (command, args, options) => {
       calls.push([command, args, options]); return "";
     });
     assert.equal(calls.length, 2);
@@ -68,6 +70,7 @@ test("Hermes transport sends to both targets, tolerates one failure and rejects 
       assert.equal(calls[index][1][5], target);
       assert.equal(calls[index][2].env.XDG_RUNTIME_DIR, expectedRuntime);
       assert.match(calls[index][1].at(-1), /发布批次：9\.0\.0/);
+      for (const pkg of packages) assert.ok(calls[index][1].at(-1).includes(`${pkg.name}@${pkg.version}`));
     }
     const okOnly = (command, args) => { if (args[5] === "qqbot") throw Object.assign(new Error("down"), { status: 1, stderr: "cannot connect to Podman socket" }); return ""; };
     await send(config, {}, { title: "测试", reason: "fixture" }, undefined, okOnly);

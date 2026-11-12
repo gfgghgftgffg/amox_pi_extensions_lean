@@ -2,7 +2,7 @@
 
 [简体中文](npm-publishing.zh-CN.md)
 
-The three existing lean packages are public on npm. If the `amox-pi-sync` package is not published yet, install it from a checkout until the first npm publication is confirmed. The repository contains four independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC; users only need the README installation commands.
+The repository contains five independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC. Check the corresponding Release's npm job and public npm metadata for package availability. New packages must complete the first-publication setup below before OIDC publication.
 
 ## Independent package releases
 
@@ -12,7 +12,7 @@ Local checks, exact-head three-platform CI and independent Release verification 
 
 ## Publishing configuration
 
-Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, `@gfgghgftgffg/pi-subagents-lean`, and `@gfgghgftgffg/amox-pi-sync`.
+Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, `@gfgghgftgffg/pi-subagents-lean`, `@gfgghgftgffg/pi-goal-x-lean`, and `@gfgghgftgffg/amox-pi-sync`.
 
 | Field | Value |
 | --- | --- |
@@ -22,9 +22,23 @@ Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-l
 | Environment | `release` |
 | Allowed actions | Direct `npm publish`, not stage-only |
 
-The three lean-package connections are already in use; configure and verify the separate `amox-pi-sync` connection before its first OIDC publication. Keep GitHub's `release` environment restricted to `main`, without human approval for unattended releases. Managing npm trust requires maintainer access and interactive 2FA; routine OIDC publication does not. A [new connection](https://docs.npmjs.com/trusted-publishers/) must complete its first successful publish within **2 days**. Do not repeat setup when moving the VPS.
+Retain existing connections; each new package needs a separate connection after its first publication below. Keep GitHub's `release` environment restricted to `main`, without human approval for unattended releases. Managing npm trust requires maintainer access and interactive 2FA; routine OIDC publication does not. A [new connection](https://docs.npmjs.com/trusted-publishers/) must complete its first successful publish within **2 days**. Do not repeat setup when moving the VPS.
 
 Only the npm job has `id-token: write`; it has read-only repository access and installs no extension dependencies. [The publisher](../scripts/publish-npm.mjs) validates the source SHA, tag, archive contents and registry integrity. Root `package.json` remains private. Pi, systemd and Actions Secrets need no npm token.
+
+## First publication (goal example)
+
+The OIDC publisher rejects a missing npm package identity before any uploads. It cannot bootstrap a new package by itself.
+
+1. Include the new package in the protected release selection and obtain its verified archive and `assets.json` from that GitHub Release. Check the package identity, version, source SHA and hashes; do not repack a working tree. Set `ARCHIVE` to the verified `.tgz` path.
+2. A maintainer with interactive npm authentication and 2FA publishes that verified archive once:
+
+   ```bash
+   npm publish "$ARCHIVE" --access public --tag latest --ignore-scripts --fetch-retries=0 --registry=https://registry.npmjs.org/
+   ```
+
+   Confirm the public version, `dist.integrity` and `latest` match the verified archive. An uncertain upload requires registry inspection before any retry.
+3. In `@gfgghgftgffg/pi-goal-x-lean`'s npm settings, add its own Trusted Publisher using the fields above. Re-run the original Release's failed npm job only after registry verification; it skips the matching goal archive and continues other selected packages. That skip does not exercise OIDC trust: the connection's first successful OIDC publication must use the next reviewed goal version within the connection's two-day window.
 
 ## Failure recovery
 

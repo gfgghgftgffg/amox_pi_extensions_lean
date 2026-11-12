@@ -1,13 +1,16 @@
 import { cpSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { checkedRun } from "./process.mjs";
 import { assertSafeRelativePath, HEX40, jsonText } from "./files.mjs";
 import { gitReadHttpError } from "./remote-errors.mjs";
+import { fetchPublishedSource } from "./fork-review.mjs";
+import { isExactStableVersion } from "./semver.mjs";
 
-// Resolve source revisions from trusted manifest repositories only. Nothing
-// from these repositories is installed, imported, or run in the agent job.
-export function collectSources({ repoRoot, outDir, plan, manifest, runGit = (args, options) => checkedRun("git", args, options) }) {
-  mkdirSync(outDir, { recursive: true });
+// Resolve exact Git commits or explicitly selected npm publications only.
+// Neither source is installed, imported, or run in the agent job.
+export async function collectSources({ repoRoot, outDir, plan, manifest, source = fetchPublishedSource,
+  runGit = (args, options) => checkedRun("git", args, options) }) {
+  mkdirSync(join(outDir, "context"), { recursive: true });
   const scratch = mkdtempSync(join(outDir, ".source-work-"));
   let total = 0;
   const records = [];
@@ -53,16 +56,34 @@ export function collectSources({ repoRoot, outDir, plan, manifest, runGit = (arg
     }
     records.push({ repository, revision, path: destination, directory: subdir ?? ".", relatedDirectories });
   }
+  async function materializeNpm(name, version, ref, destination) {
+    if (!isExactStableVersion(version) || ref !== `npm:${name}@${version}`) throw new Error("Invalid published source identity");
+    const material = await source(name, version);
+    for (const [path, content] of material.files) {
+      assertSafeRelativePath(path);
+      total += Buffer.byteLength(content);
+      if (total > 80_000_000) throw new Error("Upstream text context exceeds 80 MB");
+      const target = join(outDir, "context", destination, path);
+      mkdirSync(dirname(target), { recursive: true });
+      writeFileSync(target, content);
+    }
+    records.push({ source: "npm", ref, integrity: material.integrity, path: destination });
+  }
   try {
     for (const entry of manifest.packages) {
       if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) continue;
       const pkgPlan = plan.packagePlans.find((item) => item.id === entry.id);
       const leanPlan = plan.leanPlans.find((item) => item.id === entry.id);
       if (pkgPlan.versionChange === "bump") {
-        materialize(entry.upstreamRepository, entry.upstreamGitHead, `${entry.id}/upstream-before`, entry.upstreamRepositoryDirectory, entry.upstreamRelatedDirectories);
-        materialize(entry.upstreamRepository, pkgPlan.upstreamGitHead, `${entry.id}/upstream-after`, entry.upstreamRepositoryDirectory, entry.upstreamRelatedDirectories);
+        if (entry.upstreamSource === "npm") {
+          await materializeNpm(entry.upstreamPackage, entry.upstreamVersion, entry.upstreamRef, `${entry.id}/upstream-before`);
+          await materializeNpm(entry.upstreamPackage, pkgPlan.latestVersion, pkgPlan.upstreamRef, `${entry.id}/upstream-after`);
+        } else {
+          materialize(entry.upstreamRepository, entry.upstreamGitHead, `${entry.id}/upstream-before`, entry.upstreamRepositoryDirectory, entry.upstreamRelatedDirectories);
+          materialize(entry.upstreamRepository, pkgPlan.upstreamGitHead, `${entry.id}/upstream-after`, entry.upstreamRepositoryDirectory, entry.upstreamRelatedDirectories);
+        }
       }
-      if (leanPlan.changed) {
+      if (entry.maintenanceMode !== "original-facade" && leanPlan.changed) {
         materialize(entry.leanRepository, entry.leanCommit, `${entry.id}/lean-before`);
         materialize(entry.leanRepository, leanPlan.remoteHead, `${entry.id}/lean-after`);
       }

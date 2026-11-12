@@ -12,6 +12,7 @@
 - 冷门参数放在 `input` 里，是一段 JSON 对象字符串。调用前按真实上游 schema 校验。`help` 返回这份 schema。
 - `subagent_type` 列出扩展启动时启用的 Agent 类型。改了 Agent 文件后要重新加载。上游描述无法解析时，用 `help`，`input` 设为 `"run"`。
 - 对话观察器的跳到开头和跳到最新跟随宿主 `tui.altScreen` 绑定。Home 和 End 仍是别名。
+- 与 `pi-goal-x-lean` 联用时自动识别子会话，将目标管理留给父 Agent，无需逐个角色配置。
 
 ## 来源
 
@@ -71,6 +72,8 @@ node scripts/install-extension.mjs pi-subagents-lean
 ```
 
 本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。请勿同时加载其它 `pi-subagents` 包装扩展。
+
+需要 goal 联动时，通过 `pi install npm:@gfgghgftgffg/pi-goal-x-lean` 安装或更新配套的 [`pi-goal-x-lean`](../pi-goal-x-lean/README.zh-CN.md)。
 
 ## 重要提醒：检查 Agent 定义
 

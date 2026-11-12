@@ -6,6 +6,584 @@
     "nodeVersion": "v22.22.1"
   },
   "upstream": {
+    "pi-goal-x": {
+      "package": "pi-goal-x",
+      "version": "0.34.1",
+      "entry": "node_modules/pi-goal-x/extensions/goal.ts",
+      "registeredTools": [
+        "get_goal",
+        "create_goal",
+        "update_goal",
+        "set_goal_tasks",
+        "update_goal_task",
+        "goal_question",
+        "goal_questionnaire",
+        "propose_goal_draft"
+      ],
+      "activeToolNames": [
+        "create_goal",
+        "get_goal"
+      ],
+      "totals": {
+        "registeredProxyTokens": 2096,
+        "activeProxyTokens": 322
+      },
+      "tools": [
+        {
+          "name": "get_goal",
+          "active": true,
+          "source": "cli",
+          "description": "Read focused goal state. Default: compact summary. Retrieve full objective/contracts, tasks, or history in 4000-character pages with section and cursor. verbose preserves full legacy output.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "section": {
+                "type": "string",
+                "enum": [
+                  "summary",
+                  "objective",
+                  "tasks",
+                  "history"
+                ]
+              },
+              "task_id": {
+                "type": "string",
+                "description": "With section=tasks, retrieve one task."
+              },
+              "cursor": {
+                "type": "string",
+                "maxLength": 256,
+                "description": "Next page; repeat section/task."
+              },
+              "verbose": {
+                "type": "boolean",
+                "description": "Full detail mode."
+              },
+              "include_history": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 190,
+            "schema": 412,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 602
+          },
+          "proxyTokens": 151
+        },
+        {
+          "name": "create_goal",
+          "active": true,
+          "source": "cli",
+          "description": "Create and focus a persistent goal only on explicit user request; other open goals remain unchanged.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Never infer persistent goals, Sisyphus mode, or token budgets from an ordinary task. The objective must faithfully preserve all user requirements and ordered steps."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "objective"
+            ],
+            "properties": {
+              "objective": {
+                "type": "string",
+                "description": "Full objective; preserve ordered steps and done criteria."
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "regular",
+                  "sisyphus"
+                ],
+                "description": "Default regular; sisyphus only if requested."
+              },
+              "token_budget": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Whole-token budget, only if supplied by the user."
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 100,
+            "schema": 418,
+            "snippet": 0,
+            "guidelines": 164,
+            "total": 682
+          },
+          "proxyTokens": 171
+        },
+        {
+          "name": "update_goal",
+          "active": false,
+          "source": "cli",
+          "description": "Update lifecycle status or optionally save continuation. New waits require strictExecutionContract opt-in. Wait: future ISO deadline; reuse wait_id/deadline without polling on recheck. Completion is audited.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "blocked",
+                  "paused"
+                ],
+                "description": "Exclusive with continuation."
+              },
+              "continuation": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "ready"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "reason",
+                      "deadline"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "wait"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "deadline": {
+                        "type": "string"
+                      },
+                      "wait_id": {
+                        "type": "string"
+                      },
+                      "polling": {
+                        "type": "object",
+                        "required": [
+                          "interval_seconds",
+                          "max_checks"
+                        ],
+                        "properties": {
+                          "interval_seconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483
+                          },
+                          "max_checks": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "description": "Required when status is paused or blocked: describe the concrete blocker."
+              },
+              "attempted_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 240
+                },
+                "maxItems": 8,
+                "description": "Actions attempted against the blocker."
+              },
+              "suggested_action": {
+                "type": "string",
+                "description": "Optional suggested next step when status is paused."
+              },
+              "completion_summary": {
+                "type": "string",
+                "description": "Untrusted completion claim; never evidence."
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 207,
+            "schema": 1303,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 1510
+          },
+          "proxyTokens": 378
+        },
+        {
+          "name": "set_goal_tasks",
+          "active": false,
+          "source": "cli",
+          "description": "Set or restructure the task tree with user confirmation. Matching IDs retain progress; removed IDs are deleted. Confirmation stops the turn; continuation follows.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use tasks only for useful milestones. Restructure an existing tree only when the user asks or requirements structurally change. Input is a flat parent-linked tree, at most 50 tasks, within configured depth. lightweight_subtasks is valid only on parents."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "tasks"
+            ],
+            "properties": {
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Short stable slug e.g. 'task-1'"
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "Human-readable task title"
+                    },
+                    "parent_id": {
+                      "type": "string",
+                      "description": "Parent id; omit for roots."
+                    },
+                    "verification_contract": {
+                      "type": "string",
+                      "description": "Required completion evidence."
+                    },
+                    "lightweight_subtasks": {
+                      "type": "boolean",
+                      "description": "Children do not gate parent completion."
+                    }
+                  }
+                },
+                "description": "Flat parent-linked task list"
+              },
+              "block_completion": {
+                "type": "boolean",
+                "description": "Require all tasks resolved; default false."
+              },
+              "change_summary": {
+                "type": "string",
+                "description": "Optional summary of the task list change"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 162,
+            "schema": 806,
+            "snippet": 0,
+            "guidelines": 253,
+            "total": 1221
+          },
+          "proxyTokens": 306
+        },
+        {
+          "name": "update_goal_task",
+          "active": false,
+          "source": "cli",
+          "description": "Update task progress without stopping the turn. Use ordered updates for an atomic batch, or task_id/status for one task. An invalid update rejects the whole batch.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "start requires pending and sets current task. complete requires evidence for contracted tasks and completed/skipped non-lightweight children. skipped requires a reason and explicit user direction or a hard contradiction; never skip to avoid work. pending reopens skipped tasks only; completed tasks are immutable. Completing/skipping the current task clears focus."
+          ],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "type": "string",
+                "description": "Single-task form; with updates, any non-empty root fields must repeat one batch entry."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "start",
+                  "complete",
+                  "skipped",
+                  "pending",
+                  ""
+                ]
+              },
+              "updates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "status"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "start",
+                        "complete",
+                        "skipped",
+                        "pending"
+                      ]
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 100,
+                "description": "Ordered atomic batch. An empty array is allowed only with valid single-task fields."
+              },
+              "evidence": {
+                "type": "string",
+                "description": "Completion evidence; max 200 chars."
+              },
+              "reason": {
+                "type": "string",
+                "description": "Required for skipped."
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 163,
+            "schema": 819,
+            "snippet": 0,
+            "guidelines": 364,
+            "total": 1346
+          },
+          "proxyTokens": 337
+        },
+        {
+          "name": "goal_question",
+          "active": false,
+          "source": "cli",
+          "description": "Ask one structured question during a user-started goal draft.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "question"
+            ],
+            "properties": {
+              "question": {
+                "type": "string",
+                "description": "The question to ask."
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "description": "A concise answer option."
+                }
+              },
+              "recommended": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Zero-based recommended option."
+              },
+              "allow_custom": {
+                "type": "boolean",
+                "description": "Allow a custom answer; defaults to true."
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 61,
+            "schema": 428,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 489
+          },
+          "proxyTokens": 123
+        },
+        {
+          "name": "goal_questionnaire",
+          "active": false,
+          "source": "cli",
+          "description": "Ask a short structured questionnaire during a user-started goal draft.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "questions"
+            ],
+            "properties": {
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "question",
+                    "options"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Stable question id."
+                    },
+                    "question": {
+                      "type": "string",
+                      "description": "Question for the user."
+                    },
+                    "context": {
+                      "type": "string",
+                      "description": "Optional short context."
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "description": "Answer option."
+                      }
+                    },
+                    "recommended": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "allow_custom": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 70,
+            "schema": 553,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 623
+          },
+          "proxyTokens": 156
+        },
+        {
+          "name": "propose_goal_draft",
+          "active": false,
+          "source": "cli",
+          "description": "Present the drafted objective and agent-selected task plan for explicit user confirmation.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use only during a /goal, /sisyphus, or /goal-tweak guided draft.",
+            "Clarify ambiguity before proposing. Include tasks when the work naturally decomposes into trackable milestones; omit them for genuinely simple work.",
+            "Set token_budget only when the user explicitly asked for a token budget or a spend limit. Never invent, estimate, or infer one from the objective's size; omitting it creates a goal with no budget.",
+            "Confirmation creates or revises the goal atomically. Continue Chatting leaves drafting active for refinement."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "objective"
+            ],
+            "properties": {
+              "objective": {
+                "type": "string",
+                "description": "Complete proposed objective; preserve it exactly for budget-only tweaks."
+              },
+              "token_budget": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Only on user request: positive whole-token lifetime limit; null removes it. Omit to retain the current tweak budget or create without one."
+              },
+              "auto_continue": {
+                "type": "boolean",
+                "description": "Defaults to true."
+              },
+              "sisyphus": {
+                "type": "boolean",
+                "description": "Must match the user-selected goal mode."
+              },
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "description": "Short stable slug, for example task-1."
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "Human-readable task title."
+                    },
+                    "parent_id": {
+                      "type": "string",
+                      "description": "Optional parent task id in this proposal."
+                    },
+                    "verification_contract": {
+                      "type": "string",
+                      "description": "Evidence required for this task."
+                    },
+                    "lightweight_subtasks": {
+                      "type": "boolean",
+                      "description": "True only for a task with lightweight children."
+                    }
+                  }
+                },
+                "description": "Flat parent-linked task tree to confirm with the goal."
+              },
+              "block_completion": {
+                "type": "boolean",
+                "description": "Require task completion before goal completion."
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 90,
+            "schema": 1286,
+            "snippet": 0,
+            "guidelines": 517,
+            "total": 1893
+          },
+          "proxyTokens": 474
+        }
+      ]
+    },
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
       "version": "0.23.2",
@@ -257,10 +835,10 @@
         "web_enable"
       ],
       "activeToolNames": [
-        "web_search",
-        "source_check",
         "fetch_content",
-        "get_search_content"
+        "get_search_content",
+        "source_check",
+        "web_search"
       ],
       "totals": {
         "registeredProxyTokens": 1110,
@@ -775,9 +1353,546 @@
     }
   },
   "lean": {
+    "@gfgghgftgffg/pi-goal-x-lean": {
+      "package": "@gfgghgftgffg/pi-goal-x-lean",
+      "version": "0.1.0",
+      "entry": "packages/pi-goal-x-lean/index.ts",
+      "registeredTools": [
+        "get_goal",
+        "create_goal",
+        "update_goal",
+        "set_goal_tasks",
+        "update_goal_task",
+        "goal_question",
+        "goal_questionnaire",
+        "propose_goal_draft"
+      ],
+      "activeToolNames": [
+        "create_goal",
+        "get_goal"
+      ],
+      "totals": {
+        "registeredProxyTokens": 1535,
+        "activeProxyTokens": 238
+      },
+      "tools": [
+        {
+          "name": "get_goal",
+          "active": true,
+          "source": "cli",
+          "description": "Read goal summary; section=objective|tasks|history pages full details with cursor. task_id selects a task; verbose returns full legacy output.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "section": {
+                "type": "string",
+                "enum": [
+                  "summary",
+                  "objective",
+                  "tasks",
+                  "history"
+                ]
+              },
+              "task_id": {
+                "type": "string"
+              },
+              "cursor": {
+                "type": "string",
+                "maxLength": 256
+              },
+              "verbose": {
+                "type": "boolean"
+              },
+              "include_history": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 142,
+            "schema": 275,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 417
+          },
+          "proxyTokens": 105
+        },
+        {
+          "name": "create_goal",
+          "active": true,
+          "source": "cli",
+          "description": "Create and focus a persistent goal only at the user's request. mode=sisyphus follows ordered steps; token_budget caps lifetime spending, not context.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Never infer persistent goals, Sisyphus mode, or token budgets from an ordinary task. The objective must faithfully preserve all user requirements and ordered steps."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "objective"
+            ],
+            "properties": {
+              "objective": {
+                "type": "string"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "regular",
+                  "sisyphus"
+                ]
+              },
+              "token_budget": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 149,
+            "schema": 217,
+            "snippet": 0,
+            "guidelines": 164,
+            "total": 530
+          },
+          "proxyTokens": 133
+        },
+        {
+          "name": "update_goal",
+          "active": false,
+          "source": "cli",
+          "description": "Complete (audited), block, or pause a goal; reason required for blocked/paused. Alternatively declare continuation; wait requires strictExecutionContract and a future ISO deadline. Reuse wait_id/deadline on recheck.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "blocked",
+                  "paused"
+                ]
+              },
+              "continuation": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "ready"
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "required": [
+                      "kind",
+                      "reason",
+                      "deadline"
+                    ],
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "const": "wait"
+                      },
+                      "reason": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2000
+                      },
+                      "deadline": {
+                        "type": "string"
+                      },
+                      "wait_id": {
+                        "type": "string"
+                      },
+                      "polling": {
+                        "type": "object",
+                        "required": [
+                          "interval_seconds",
+                          "max_checks"
+                        ],
+                        "properties": {
+                          "interval_seconds": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 2147483
+                          },
+                          "max_checks": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "additionalProperties": false
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "attempted_actions": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 240
+                },
+                "maxItems": 8
+              },
+              "suggested_action": {
+                "type": "string"
+              },
+              "completion_summary": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 215,
+            "schema": 985,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 1200
+          },
+          "proxyTokens": 300
+        },
+        {
+          "name": "set_goal_tasks",
+          "active": false,
+          "source": "cli",
+          "description": "Confirm a flat parent-linked task tree; matching IDs retain progress, removed IDs are deleted. block_completion defaults false. Confirmation stops the turn, then continues.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use tasks only for useful milestones. Restructure an existing tree only when the user asks or requirements structurally change. Input is a flat parent-linked tree, at most 50 tasks, within configured depth. lightweight_subtasks is valid only on parents."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "tasks"
+            ],
+            "properties": {
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "verification_contract": {
+                      "type": "string"
+                    },
+                    "lightweight_subtasks": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "block_completion": {
+                "type": "boolean"
+              },
+              "change_summary": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 172,
+            "schema": 410,
+            "snippet": 0,
+            "guidelines": 253,
+            "total": 835
+          },
+          "proxyTokens": 209
+        },
+        {
+          "name": "update_goal_task",
+          "active": false,
+          "source": "cli",
+          "description": "Update task_id/status or ordered atomic updates; one invalid entry rejects the batch. Evidence completes contracted tasks; reason is required to skip.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "start requires pending and sets current task. complete requires evidence for contracted tasks and completed/skipped non-lightweight children. skipped requires a reason and explicit user direction or a hard contradiction; never skip to avoid work. pending reopens skipped tasks only; completed tasks are immutable. Completing/skipping the current task clears focus."
+          ],
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "task_id": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "start",
+                  "complete",
+                  "skipped",
+                  "pending",
+                  ""
+                ]
+              },
+              "updates": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "task_id",
+                    "status"
+                  ],
+                  "properties": {
+                    "task_id": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "start",
+                        "complete",
+                        "skipped",
+                        "pending"
+                      ]
+                    },
+                    "evidence": {
+                      "type": "string"
+                    },
+                    "reason": {
+                      "type": "string"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "maxItems": 100
+              },
+              "evidence": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 150,
+            "schema": 526,
+            "snippet": 0,
+            "guidelines": 364,
+            "total": 1040
+          },
+          "proxyTokens": 260
+        },
+        {
+          "name": "goal_question",
+          "active": false,
+          "source": "cli",
+          "description": "Ask one user-started drafting question. recommended is zero-based; allow_custom defaults true.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "question"
+            ],
+            "properties": {
+              "question": {
+                "type": "string"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "recommended": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "allow_custom": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 94,
+            "schema": 246,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 340
+          },
+          "proxyTokens": 85
+        },
+        {
+          "name": "goal_questionnaire",
+          "active": false,
+          "source": "cli",
+          "description": "Ask a batch of user-started drafting questions. recommended is zero-based; allow_custom defaults true.",
+          "promptSnippet": "",
+          "promptGuidelines": [],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "questions"
+            ],
+            "properties": {
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "question",
+                    "options"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "question": {
+                      "type": "string"
+                    },
+                    "context": {
+                      "type": "string"
+                    },
+                    "options": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "recommended": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "allow_custom": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 102,
+            "schema": 407,
+            "snippet": 0,
+            "guidelines": 0,
+            "total": 509
+          },
+          "proxyTokens": 128
+        },
+        {
+          "name": "propose_goal_draft",
+          "active": false,
+          "source": "cli",
+          "description": "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; sisyphus must match the user's mode.",
+          "promptSnippet": "",
+          "promptGuidelines": [
+            "Use only during a /goal, /sisyphus, or /goal-tweak guided draft.",
+            "Clarify ambiguity before proposing. Include tasks when the work naturally decomposes into trackable milestones; omit them for genuinely simple work.",
+            "Set token_budget only when the user explicitly asked for a token budget or a spend limit. Never invent, estimate, or infer one from the objective's size; omitting it creates a goal with no budget.",
+            "Confirmation creates or revises the goal atomically. Continue Chatting leaves drafting active for refinement."
+          ],
+          "parameters": {
+            "type": "object",
+            "required": [
+              "objective"
+            ],
+            "properties": {
+              "objective": {
+                "type": "string"
+              },
+              "token_budget": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "auto_continue": {
+                "type": "boolean"
+              },
+              "sisyphus": {
+                "type": "boolean"
+              },
+              "tasks": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "title"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "parent_id": {
+                      "type": "string"
+                    },
+                    "verification_contract": {
+                      "type": "string"
+                    },
+                    "lightweight_subtasks": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "block_completion": {
+                "type": "boolean"
+              }
+            },
+            "additionalProperties": false
+          },
+          "chars": {
+            "description": 194,
+            "schema": 548,
+            "snippet": 0,
+            "guidelines": 517,
+            "total": 1259
+          },
+          "proxyTokens": 315
+        }
+      ],
+      "upstreamPackage": "pi-goal-x"
+    },
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.18",
+      "version": "0.1.19",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"

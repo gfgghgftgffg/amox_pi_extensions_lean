@@ -7,6 +7,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createIsolatedEnvironment, isolatedEnvironmentVariables } from "../scripts/lib/isolated-pi-session.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const snapshot = JSON.parse(readFileSync(join(repoRoot, "maintenance", "tool-contracts.json"), "utf8"));
@@ -48,7 +49,8 @@ test("every recorded tool has consistent char accounting and a proxy token count
 test("lean facades are smaller than their pinned upstream engines", () => {
   assert.deepEqual(
     Object.values(snapshot.lean).map((record) => record.tools.map((tool) => tool.name)).flat().sort(),
-    ["subagent", "todo", "web_access"],
+    ["create_goal", "get_goal", "goal_question", "goal_questionnaire", "propose_goal_draft",
+      "set_goal_tasks", "subagent", "todo", "update_goal", "update_goal_task", "web_access"],
   );
   for (const [id, record] of Object.entries(snapshot.lean)) {
     const upstream = snapshot.upstream[record.upstreamPackage];
@@ -65,10 +67,22 @@ test("lean facades are smaller than their pinned upstream engines", () => {
 });
 
 test("the tracked snapshot matches a fresh isolated capture", { timeout: 300_000 }, () => {
-  const check = spawnSync(process.execPath, ["scripts/capture-contracts.mjs", "--check"], {
-    cwd: repoRoot,
-    encoding: "utf8",
-  });
-  assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
-  assert.match(check.stdout, /snapshot is current/);
+  const isolated = createIsolatedEnvironment({ prefix: "amox-goal-contract-check-" });
+  try {
+    const env = { ...process.env, ...isolatedEnvironmentVariables(isolated) };
+    for (const key of Object.keys(env)) {
+      if (key.startsWith("PI_GOAL_") || key.startsWith("PI_SUBAGENT_")) delete env[key];
+    }
+    Object.assign(env, {
+      PI_GOAL_ROOT: join(isolated.root, "goal-pool"),
+      PI_GOAL_SETTINGS_FILE: join(isolated.root, "goal-settings.json"),
+      PI_GOAL_GLOBAL_SETTINGS_FILE: join(isolated.root, "global-goal-settings.json"),
+    });
+    const check = spawnSync(process.execPath, [join(repoRoot, "scripts/capture-contracts.mjs"), "--check"], {
+      cwd: isolated.cwd, env, encoding: "utf8", timeout: 290_000,
+    });
+    assert.equal(check.error, undefined, check.error?.message);
+    assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
+    assert.match(check.stdout, /snapshot is current/);
+  } finally { isolated.cleanup(); }
 });

@@ -1,0 +1,47 @@
+# pi-goal-x-lean
+
+[简体中文](README.zh-CN.md)
+
+A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x): persistent goals, automatic continuation and completion auditing with shorter tool text. The upstream engine is not copied.
+
+## Features
+
+- Keeps upstream tools, commands, UI, settings and goal-file formats.
+- Integrates with `pi-subagents-lean` so the parent manages the goal and child sessions are identified automatically, without per-role setup.
+- During goal execution, blocks automatic continuation and completion while background Agent/workflow work launched through `subagent` is awaiting results.
+
+## Installation
+
+Requires Pi `>=1.4.0 <2.0.0` and Node `>=22.19.0`. Install without a version pin:
+
+```bash
+pi install npm:@gfgghgftgffg/pi-goal-x-lean
+pi update --extensions
+```
+
+Goal works alone. For subagents integration, also run `pi install npm:@gfgghgftgffg/pi-subagents-lean`. Keep one source per extension; do not separately load upstream `pi-goal-x`.
+
+For a Git checkout, use `node scripts/install-extension.mjs pi-goal-x-lean`.
+
+## Usage
+
+```text
+/goal Add CSV export to reports, with tests and usage documentation.
+```
+
+Confirm the plan to start. Use `/goal-direct` for direct creation, `/sisyphus` for ordered steps, `/goal-tweak` to revise, and `/goal-pause` / `/goal-resume` to pause or resume. See the [upstream guide](https://github.com/tmonk/pi-goal-x#readme) for all commands.
+
+## Context footprint (character proxy)
+
+<!-- amox-measurement:start -->
+| Package | Registered character proxy |
+| --- | ---: |
+| @gfgghgftgffg/pi-goal-x-lean | 1535 |
+| pi-goal-x | 2096 |
+
+Fixed ceil(characters / 4), not provider billing tokens.
+<!-- amox-measurement:end -->
+
+## Maintenance
+
+See [MAINTENANCE.md](MAINTENANCE.md) for integration scope, concurrency limits, side effects and upgrade checks.

@@ -23,8 +23,8 @@ function metadata() {
   for (const entry of state.manifest.packages.filter(entry => entry !== fork)) {
     const workspace = state.workspaces.find(workspace => workspace.id === entry.id);
     for (const [name, version] of Object.entries(workspace.pkg.dependencies)) npm[name] = { latestStable: version, gitHead: entry.upstreamGitHead };
-    git[entry.upstreamRepository] = { head: entry.upstreamGitHead };
-    git[entry.leanRepository] = { head: entry.leanCommit };
+    git[entry.upstreamRepository] = { head: entry.upstreamGitHead ?? "a".repeat(40) };
+    if (entry.leanRepository) git[entry.leanRepository] = { head: entry.leanCommit };
   }
   return { npm, git };
 }
@@ -59,7 +59,7 @@ test("automatic source collection and version staging leave the sync fork untouc
   try {
     const plan = buildUpdatePlan({ ...state, metadata: metadata() });
     mkdirSync(join(scratch, "sources", "context"), { recursive: true });
-    assert.deepEqual(collectSources({ repoRoot: root, outDir: join(scratch, "sources"), ...state, plan,
+    assert.deepEqual(await collectSources({ repoRoot: root, outDir: join(scratch, "sources"), ...state, plan,
       runGit() { throw new Error("No source fetch expected for an unchanged plan"); } }), []);
     const work = join(scratch, "repo");
     mkdirSync(work);

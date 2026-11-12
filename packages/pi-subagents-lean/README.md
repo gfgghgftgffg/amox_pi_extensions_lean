@@ -12,6 +12,7 @@ A lighter wrapper for [`@tintinweb/pi-subagents`](https://github.com/tintinweb/p
 - Cold parameters go in `input` as a JSON object string. The wrapper checks them against the real upstream schema before the call. `help` returns that schema.
 - `subagent_type` lists the agent types enabled at startup. Reload after changing agent files. If the upstream description cannot be parsed, call `help` with `input` set to `"run"`.
 - The conversation viewer's jump-to-start and jump-to-latest keys follow the host `tui.altScreen` bindings. Home and End remain aliases.
+- With `pi-goal-x-lean`, child sessions are identified automatically and goal management stays with the parent; no per-role setup is needed.
 
 ## Source
 
@@ -71,6 +72,8 @@ node scripts/install-extension.mjs pi-subagents-lean
 ```
 
 Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `pi-subagents` wrapper alongside it.
+
+For optional goal integration, also install or update [`pi-goal-x-lean`](../pi-goal-x-lean/README.md) with `pi install npm:@gfgghgftgffg/pi-goal-x-lean`.
 
 ## Important: review your agent definitions
 

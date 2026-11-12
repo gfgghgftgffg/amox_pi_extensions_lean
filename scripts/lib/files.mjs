@@ -50,7 +50,7 @@ export function adapterWritable(path, manifest, plan) {
     if (entry.maintenanceMode === "manual-fork") return false;
     if (entry.maintenanceMode === "selective-fork" && !plan?.forkPlans?.some(item => item.id === entry.id && item.decision === "port")) return false;
     const rest = path.startsWith(`${entry.path}/`) ? path.slice(entry.path.length + 1) : "";
-    return rest === entry.entry || (entry.maintenanceMode === "selective-fork" && entry.sourceFiles?.includes(rest))
+    return rest === entry.entry || (["selective-fork", "original-facade"].includes(entry.maintenanceMode) && entry.sourceFiles?.includes(rest))
       || ["README.md", "README.zh-CN.md", "MAINTENANCE.md"].includes(rest)
       || /^tests\/[A-Za-z0-9_-]+\.test\.mjs$/.test(rest);
   });

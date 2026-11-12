@@ -148,3 +148,173 @@ test("unselected core.ts cannot be changed, removed or newly added", () => {
     assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: rpiv-todo-lean\/core\.ts/);
   } finally { f.cleanup(); }
 });
+
+for (const helper of ["integration.ts", "delegation.ts"]) test(`unselected goal ${helper} is protected even after removal from package files`, () => {
+  const f = releaseFixture(), goal = "pi-goal-x-lean";
+  try {
+    for (const file of ["integration.ts", "delegation.ts"]) {
+      f.write(`packages/${goal}/${file}`, readFileSync(new URL(`../packages/${goal}/${file}`, import.meta.url), "utf8"));
+    }
+    const base = f.commit(); bumpWeb(f, base);
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+    const path = `packages/${goal}/${helper}`, original = readFileSync(join(f.root, path), "utf8");
+    const changed = new RegExp(`Unselected published package changed: ${goal}/${helper.replace(".", "\\.")}$`);
+    f.write(path, original + "\n// unselected helper change\n");
+    assert.throws(() => validateReleaseChanges(f.root, base), changed);
+    const pkg = f.read(`packages/${goal}/package.json`), previous = structuredClone(pkg);
+    pkg.files = pkg.files.filter(file => file !== helper); f.write(`packages/${goal}/package.json`, pkg);
+    assert.throws(() => validateReleaseChanges(f.root, base), changed);
+    f.git(["rm", "-f", path]);
+    assert.throws(() => validateReleaseChanges(f.root, base), changed);
+    f.write(path, original); f.write(`packages/${goal}/package.json`, previous);
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+  } finally { f.cleanup(); }
+});
+
+test("unselected published TypeScript additions are checked without protecting arbitrary source files", () => {
+  const f = releaseFixture(), goal = "pi-goal-x-lean";
+  try {
+    const base = f.commit(); bumpWeb(f, base);
+    const helper = "support.ts", path = `packages/${goal}/${helper}`;
+    f.write(path, "// not yet published\n");
+    f.write(`packages/${goal}/tests/fixtures/private.ts`, "// unpublished fixture\n");
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
+    const pkg = f.read(`packages/${goal}/package.json`); pkg.files.push(helper); f.write(`packages/${goal}/package.json`, pkg);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: pi-goal-x-lean\/support\.ts$/);
+  } finally { f.cleanup(); }
+});
+
+const goalSubagentsPair = [sub, "pi-goal-x-lean"];
+
+test("goal/subagents ABI validation closes both directions for source, manifest, lock and contract changes", () => {
+  const f = releaseFixture();
+  try {
+    const before = data(f);
+    const changes = [
+      ["source", (after, entry) => [`${entry.path}/${entry.id === sub ? "index.ts" : "delegation.ts"}`]],
+      ["manifest", (after, entry) => {
+        entry.upstreamVersion = nextPatch(entry.upstreamVersion);
+        return ["maintenance/manifest.json"];
+      }],
+      ["lock", (after, entry) => {
+        const dependency = after.lock.packages[`node_modules/${entry.upstreamPackage}`];
+        dependency.version = nextPatch(dependency.version);
+        return ["package-lock.json"];
+      }],
+      ["lean contract", (after, entry) => {
+        after.snapshot.lean[entry.packageName].version = nextPatch(entry.version);
+        return ["maintenance/tool-contracts.json"];
+      }],
+      ["upstream contract", (after, entry) => {
+        after.snapshot.upstream[entry.upstreamPackage].version = nextPatch(entry.upstreamVersion);
+        return ["maintenance/tool-contracts.json"];
+      }],
+    ];
+    for (const id of goalSubagentsPair) for (const [kind, change] of changes) {
+      const after = structuredClone(before), entries = after.manifest.packages;
+      const paths = change(after, entries.find(entry => entry.id === id));
+      const scope = scopeFromChanges({ entries, before, after, paths });
+      assert.equal(scope.full, false, `${id}: ${kind} stays package-local`);
+      assert.deepEqual(scope.packageIds, goalSubagentsPair, `${id}: ${kind} validates only the ABI pair`);
+      assert.deepEqual(checkCommands(scope).slice(0, 3), [
+        ["node", ["scripts/check-selected.mjs", "--packages", goalSubagentsPair.join(",")]],
+        ["npm", ["run", "contracts:check", "--", "--packages", goalSubagentsPair.join(",")]],
+        ["npm", ["run", "verify:production", "--", "--packages", goalSubagentsPair.join(",")]],
+      ]);
+    }
+    const scope = scopeFromChanges({ entries: before.manifest.packages, before, after: structuredClone(before),
+      paths: [...goalSubagentsPair, todo].map(id => `packages/${id}/index.ts`) });
+    assert.equal(scope.full, false);
+    assert.deepEqual(scope.packageIds, [todo, ...goalSubagentsPair], "closure retains other affected owners without duplicates");
+  } finally { f.cleanup(); }
+});
+
+test("goal/subagents daily gate captures and checks the ABI pair without expanding the independent release", async t => {
+  const { mkdirSync, rmSync, writeFileSync } = await import("node:fs");
+  const { stageVersions } = await import("../scripts/local-maintenance.mjs");
+  const { createCheckGate, protectedBaseline, validateLocalChanges } = await import("../scripts/lib/local-checks.mjs");
+  const { releaseEntries } = await import("../scripts/lib/package-selection.mjs");
+  for (const selected of goalSubagentsPair) await t.test(selected, async () => {
+    const f = releaseFixture(), scratch = `${f.root}-checks`;
+    mkdirSync(scratch);
+    try {
+      const goal = goalSubagentsPair[1], sibling = goalSubagentsPair.find(id => id !== selected);
+      for (const helper of ["delegation.ts", "integration.ts"]) {
+        f.write(`packages/${goal}/${helper}`, readFileSync(new URL(`../packages/${goal}/${helper}`, import.meta.url), "utf8"));
+      }
+      const existingTest = `packages/${selected}/tests/retained.test.mjs`, retained = "// retained regression assertions\n";
+      f.write(existingTest, retained);
+      const base = f.commit(), manifest = f.read("maintenance/manifest.json");
+      f.git(["config", "user.name", "Fixture"]); f.git(["config", "user.email", "fixture@example.invalid"]);
+      const workspaces = manifest.packages.map(entry => ({ id: entry.id, path: entry.path,
+        packageJsonPath: `${entry.path}/package.json`, pkg: f.read(`${entry.path}/package.json`) }));
+      const originals = new Map(workspaces.map(workspace => [workspace.id, readFileSync(join(f.root, workspace.packageJsonPath), "utf8")]));
+      const plan = { leanPlans: [], packagePlans: manifest.packages.filter(entry => entry.id === selected).map(entry => {
+        const latestVersion = nextPatch(entry.upstreamVersion);
+        return { id: entry.id, versionChange: "bump", latestVersion, upstreamGitHead: "b".repeat(40),
+          upstreamRef: `npm:${entry.upstreamPackage}@${latestVersion}`,
+          dependencyChanges: [{ name: entry.upstreamPackage, to: latestVersion }] };
+      }) };
+      const baseline = protectedBaseline(f.root, manifest, plan);
+      const staged = await stageVersions({ work: f.root, scratch, baseCommit: base, state: { manifest, workspaces, plan },
+        execute: async () => {
+          // Stand in only for npm's lockfile writes; staging/gate/scope logic is real.
+          const lock = f.read("package-lock.json"), root = f.read("package.json");
+          lock.version = root.version; lock.packages[""].version = root.version;
+          const pkg = f.read(`packages/${selected}/package.json`);
+          lock.packages[`packages/${selected}`].version = pkg.version;
+          lock.packages[`packages/${selected}`].dependencies = pkg.dependencies;
+          for (const [name, version] of Object.entries(pkg.dependencies)) lock.packages[`node_modules/${name}`].version = version;
+          f.write("package-lock.json", lock);
+          return { ok: true };
+        } });
+      assert.deepEqual(staged.packageIds, [selected]);
+      assert.deepEqual(staged.manifest.release.packageIds, [selected]);
+      assert.deepEqual(loadCheckScope(f.root, base).packageIds, goalSubagentsPair);
+      assert.equal(loadCheckScope(f.root, base).full, false);
+      for (const workspace of workspaces.filter(workspace => workspace.id !== selected)) {
+        assert.equal(readFileSync(join(f.root, workspace.packageJsonPath), "utf8"), originals.get(workspace.id));
+        assert.equal(staged.generated.has(workspace.packageJsonPath), false);
+      }
+      f.write(existingTest, "// removed assertions\n");
+      assert.throws(() => validateLocalChanges(f.root, staged.manifest, baseline, staged.generated, plan), /Existing tests are append-only/);
+      f.write(existingTest, retained);
+      const siblingSource = `packages/${sibling}/${sibling === goal ? "delegation.ts" : "index.ts"}`;
+      const originalSource = readFileSync(join(f.root, siblingSource), "utf8");
+      f.write(siblingSource, originalSource + "\n// unselected ABI repair\n");
+      assert.throws(() => loadCheckScope(f.root, base), /Unselected published package changed/);
+      f.write(siblingSource, originalSource);
+
+      f.write("maintenance/agent-review.md", "# Exact upstream source review\n");
+      const calls = []; let incompatible = true;
+      const gate = createCheckGate({ repo: f.root, scratch, manifest: staged.manifest, plan, baseCommit: base,
+        baseline, generated: staged.generated, log() {}, execute: async ({ command, args, writable }) => {
+          calls.push([command, args]);
+          if (command === "npm" && args[1] === "contracts") {
+            const snapshot = f.read("maintenance/tool-contracts.json");
+            const entry = staged.manifest.packages.find(entry => entry.id === selected);
+            snapshot.lean[entry.packageName].version = entry.version;
+            snapshot.upstream[entry.upstreamPackage].version = entry.upstreamVersion;
+            writeFileSync(writable[0][0], `${JSON.stringify(snapshot, null, 2)}\n`);
+          }
+          const failed = incompatible && args[0] === "scripts/check-selected.mjs";
+          return { ok: !failed, status: failed ? 1 : 0, timedOut: false, output: failed ? "Sibling dist ABI incompatible" : "ok" };
+        } });
+      const summary = "- Validate goal/subagents compatibility against the published dist ABI.";
+      const failed = await gate.check(summary);
+      assert.equal(failed.ok, false); assert.match(failed.output, /Sibling dist ABI incompatible/);
+      assert.throws(() => gate.verified(), /No unchanged, locally verified candidate/);
+      assert.deepEqual(calls, [
+        ["npm", ["run", "contracts", "--", "--packages", goalSubagentsPair.join(",")]],
+        checkCommands(loadCheckScope(f.root, base))[0],
+      ], "daily capture and functional checks both use the pair; failure stops later checks");
+      const candidate = f.git(["rev-parse", "HEAD"]);
+      calls.length = 0; incompatible = false;
+      const passed = await gate.check(summary);
+      assert.equal(passed.ok, true); assert.equal(passed.sha, candidate); assert.equal(gate.verified(), candidate);
+      assert.deepEqual(calls.slice(1), checkCommands(loadCheckScope(f.root, base)));
+      assert.deepEqual(releaseEntries(f.root).map(entry => entry.id), [selected], "validation never adds a publish target");
+      assert.equal(f.git(["diff", "--name-only", base, "--", `packages/${sibling}`]), "", "sibling source, version and docs stay untouched");
+    } finally { f.cleanup(); rmSync(scratch, { recursive: true, force: true }); }
+  });
+});

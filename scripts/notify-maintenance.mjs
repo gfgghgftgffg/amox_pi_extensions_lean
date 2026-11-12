@@ -111,12 +111,19 @@ export async function send(config, state, result, fetchImpl = fetch, exec = exec
   const title = `Pi 每日维护：${result.title}`;
   if (config.transport === "hermes") {
     const failures = [];
+    // The maintenance unit runs with ProtectHome=read-only, which also makes
+    // /run/user/<uid> read-only; podman still needs to find its runtime socket.
+    const env = { ...process.env };
+    if (!env.XDG_RUNTIME_DIR && typeof process.getuid === "function") env.XDG_RUNTIME_DIR = `/run/user/${process.getuid()}`;
     for (const target of config.targets) {
       try {
         exec("podman", ["exec", config.container, "hermes", "send", "--to", target, "--subject", title, message],
-          { stdio: ["ignore", "ignore", "ignore"], timeout: 60000 });
+          { stdio: ["ignore", "ignore", "pipe"], timeout: 60000, env });
         console.log(`Hermes notification sent to ${target}.`);
-      } catch (error) { failures.push(`${target} (exit ${error?.status ?? "unknown"})`); }
+      } catch (error) {
+        const detail = String(error?.stderr ?? "").replace(/\btk_[A-Za-z0-9]+/g, "tk_***").trim().split("\n").at(-1)?.slice(0, 200);
+        failures.push(`${target} (exit ${error?.status ?? "unknown"}${detail ? `: ${detail}` : ""})`);
+      }
     }
     if (failures.length === config.targets.length) throw new Error(`Hermes did not accept the notification: ${failures.join(", ")}`);
     return;
@@ -154,5 +161,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       }
       await send(config, state, result); console.log("Maintenance notification accepted.");
     } else console.log("Maintenance notifications are not configured; skipped.");
-  } catch { console.error("Maintenance notification failed; inspect private configuration and service logs. No automatic duplicate POST."); process.exitCode = 1; }
+  } catch (error) {
+    const detail = String(error?.message ?? "").replace(/\btk_[A-Za-z0-9]+/g, "tk_***").slice(0, 500);
+    console.error(`Maintenance notification failed${detail ? `: ${detail}` : ""}. No automatic duplicate POST.`);
+    process.exitCode = 1;
+  }
 }

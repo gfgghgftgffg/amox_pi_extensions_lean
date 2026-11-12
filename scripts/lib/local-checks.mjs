@@ -14,7 +14,7 @@ export function git(repo, args) {
   try {
     return execFileSync("git", ["-C", repo, "-c", "core.hooksPath=/dev/null", "-c", "commit.gpgSign=false", ...args],
       { encoding: "utf8", timeout: 90_000, maxBuffer: 20_000_000,
-        env: { PATH: "/usr/bin:/bin", HOME: process.env.HOME, LANG: "C.UTF-8", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
+        env: { PATH: process.platform === "win32" ? process.env.PATH : "/usr/bin:/bin", HOME: process.env.HOME, LANG: "C.UTF-8", GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null", GIT_TERMINAL_PROMPT: "0" } }).trim();
   } catch (error) {
     // Never classify push/commit errors as permission to replay publication.
     if (args[0] === "clone") throw gitReadHttpError(error.stderr) ?? error;

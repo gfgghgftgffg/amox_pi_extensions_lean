@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { upstreamPlan } from "./check-upstream.mjs";
 import { jsonText, nextPatch } from "./lib/files.mjs";
@@ -25,7 +25,7 @@ export function pruneOldRuns(stateRoot, { now = Date.now(), maxAgeMs = RUN_RETEN
   try {
     const last = JSON.parse(readFileSync(join(stateRoot, "last-run.json"), "utf8"));
     if (last?.runDir && (ACTIVE_RUN_STATUSES.has(last.status) || last.repairPending || (last.publicationStarted && last.status !== "merged-after-ci"))) {
-      protectedName = last.runDir.split("/").pop();
+      protectedName = basename(last.runDir);
     }
   } catch { /* Missing last-run still allows aged copies to be removed. */ }
   let removed = 0;

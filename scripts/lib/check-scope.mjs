@@ -67,6 +67,12 @@ export function scopeFromChanges({ entries, paths, before, after }) {
     else for (const entry of affected) ids.add(entry.id);
   }
   if (!ids.size) expand("no package-local scope can be established");
+  // Validation-only ABI pair, independent of npm dependencies/release selection.
+  const integrationPair = ["pi-subagents-lean", "pi-goal-x-lean"];
+  if (!full && integrationPair.some((id) => ids.has(id))) {
+    for (const id of integrationPair) ids.add(id);
+    reasons.push("goal/subagents global v1 API and native result/notification ABI");
+  }
   return { full, packageIds: entries.filter((entry) => full || ids.has(entry.id)).map((entry) => entry.id), reasons };
 }
 
@@ -96,8 +102,14 @@ export function validateReleaseChanges(repoRoot, baseRef) {
     if (change < 0) throw new Error(`Refusing npm version downgrade: ${entry.id}`);
     if (change > 0) bumped.push(entry.id);
     if (!selected.some((item) => item.id === entry.id)) {
-      const files = ["package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"];
-      if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.push("core.ts");
+      const current = readJson(join(repoRoot, entry.path, "package.json"));
+      // Check both published source lists before metadata so removing a files
+      // entry cannot hide a changed or deleted source from the comparison base.
+      const sources = [...new Set([...(previous.files ?? []), ...(current.files ?? [])])]
+        .filter((file) => typeof file === "string" && file.endsWith(".ts")
+          && (previousFiles.has(`${entry.path}/${file}`) || existsSync(join(repoRoot, entry.path, file))));
+      const files = new Set([...sources, "package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"]);
+      if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.add("core.ts");
       for (const file of files) {
         if (!previousFiles.has(`${entry.path}/${file}`) || !existsSync(join(repoRoot, entry.path, file))
           || git(repoRoot, ["show", `${baseRef}:${entry.path}/${file}`]) !== readFileSync(join(repoRoot, entry.path, file), "utf8")) {

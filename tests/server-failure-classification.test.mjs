@@ -90,7 +90,7 @@ test("launcher forwards only a valid systemd invocation ID for notification corr
   }
 });
 
-test("explicit public Git read HTTP failures are classified, not assertion strings or credentialed URLs", () => {
+test("explicit public Git read HTTP failures are classified, not assertion strings or credentialed URLs", async () => {
   const line = "fatal: unable to access 'https://github.com/example/repo.git/': The requested URL returned error: 502";
   assert.equal(serverFailure(gitReadHttpError(line))?.httpStatus, 502);
   assert.equal(serverFailure(gitReadHttpError(`git failed: ${line}`))?.phase, "upstream-read");
@@ -100,7 +100,7 @@ test("explicit public Git read HTTP failures are classified, not assertion strin
   const f = releaseFixture();
   try {
     const entry = f.manifest.packages[0];
-    assert.throws(() => collectSources({ repoRoot: f.root, outDir: join(f.root, "context-fixture"), manifest: { packages: [entry] },
+    await assert.rejects(collectSources({ repoRoot: f.root, outDir: join(f.root, "context-fixture"), manifest: { packages: [entry] },
       plan: { packagePlans: [{ id: entry.id, versionChange: "bump", upstreamGitHead: "b".repeat(40) }], leanPlans: [{ id: entry.id, changed: false }] },
       runGit: args => { if (args.includes("fetch")) throw new Error(`git failed: ${line}`); return ""; },
     }), error => serverFailure(error)?.httpStatus === 502);

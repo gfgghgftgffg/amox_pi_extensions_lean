@@ -164,7 +164,8 @@ function snapshotFrom(captures) {
       version: target.version,
       entry: relative(repoRoot, target.entryPath).replaceAll("\\", "/"),
       registeredTools: result.tools.map((tool) => tool.name),
-      activeToolNames: result.activeToolNames,
+      // Hosts expose active membership in different iteration orders.
+      activeToolNames: [...result.activeToolNames].sort(),
       totals: totals(result.tools),
       tools: result.tools,
     };

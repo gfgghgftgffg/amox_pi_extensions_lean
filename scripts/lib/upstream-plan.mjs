@@ -28,6 +28,13 @@ export function buildUpdatePlan({ manifest, workspaces, metadata }) {
     if (!workspace || !isExactStableVersion(currentVersion)) {
       fail("invalid-manifest", entry.id, `${entry.id} 的工作区依赖必须锁定精确稳定版本`); continue;
     }
+    const npmSource = entry.upstreamSource === "npm";
+    const originalFacade = entry.maintenanceMode === "original-facade";
+    if ((entry.upstreamSource !== undefined && !npmSource)
+      || (npmSource && (entry.upstreamRef !== `npm:${primary}@${currentVersion}` || entry.upstreamVersion !== currentVersion))
+      || (originalFacade && (entry.leanRepository !== undefined || entry.leanCommit !== undefined))) {
+      fail("invalid-manifest", entry.id, `${entry.id} 来源必须为精确 npm 基线；原创门面不能声明外部 lean 来源`); continue;
+    }
     const primaryMeta = metadata.npm?.[primary];
     if (!isExactStableVersion(primaryMeta?.latestStable)) {
       fail("invalid-metadata", entry.id, `缺少或非法元数据: ${primary} latestStable`); continue;
@@ -61,24 +68,30 @@ export function buildUpdatePlan({ manifest, workspaces, metadata }) {
         }
       }
     }
-    if (versionChange === "bump" && !HEX40.test(primaryMeta.gitHead ?? "")) {
+    if ((!npmSource && versionChange === "bump" && !HEX40.test(primaryMeta.gitHead ?? ""))
+      || (primaryMeta.gitHead !== undefined && !HEX40.test(primaryMeta.gitHead))) {
       fail("invalid-metadata", entry.id, `${primary}@${latestVersion} 缺少有效 npm publication gitHead；不回退到 repo HEAD`); continue;
     }
     const leanGit = metadata.git?.[entry.leanRepository];
-    if (!HEX40.test(leanGit?.head ?? "")) {
-      fail("invalid-metadata", entry.id, `${entry.leanRepository} 缺少有效 git HEAD`); continue;
-    }
-    if (!HEX40.test(entry.leanCommit ?? "")) {
-      fail("invalid-manifest", entry.id, `${entry.id} leanCommit 非法`); continue;
+    if (!originalFacade) {
+      if (!HEX40.test(leanGit?.head ?? "")) {
+        fail("invalid-metadata", entry.id, `${entry.leanRepository} 缺少有效 git HEAD`); continue;
+      }
+      if (!HEX40.test(entry.leanCommit ?? "")) {
+        fail("invalid-manifest", entry.id, `${entry.id} leanCommit 非法`); continue;
+      }
     }
     packagePlans.push({ id: entry.id, path: entry.path, packageJsonPath: workspace.packageJsonPath,
       packageName: entry.packageName, upstreamPackage: primary, upstreamRepository: entry.upstreamRepository,
       currentVersion, latestVersion, versionChange, dependencyChanges, coupledSkipped,
-      upstreamGitHead: versionChange === "bump" ? primaryMeta.gitHead : entry.upstreamGitHead,
+      ...(npmSource ? { upstreamRef: `npm:${primary}@${latestVersion}` }
+        : { upstreamGitHead: versionChange === "bump" ? primaryMeta.gitHead : entry.upstreamGitHead }),
       remoteGitHead: metadata.git?.[entry.upstreamRepository]?.head });
-    leanPlans.push({ id: entry.id, repository: entry.leanRepository, currentCommit: entry.leanCommit,
-      remoteHead: leanGit.head, changed: leanGit.head !== entry.leanCommit });
-    if (leanGit.head !== entry.leanCommit) warnings.push(`${entry.id}: lean 仓库 HEAD 变化，需要逐项复用审查（manual reuse review）`);
+    if (!originalFacade) {
+      leanPlans.push({ id: entry.id, repository: entry.leanRepository, currentCommit: entry.leanCommit,
+        remoteHead: leanGit.head, changed: leanGit.head !== entry.leanCommit });
+      if (leanGit.head !== entry.leanCommit) warnings.push(`${entry.id}: lean 仓库 HEAD 变化，需要逐项复用审查（manual reuse review）`);
+    }
   }
   const updateRequired = packagePlans.some((item) => item.versionChange === "bump");
   const leanReviewRequired = leanPlans.some((item) => item.changed);
@@ -100,7 +113,9 @@ export function applyPlanToManifest(manifest, plan) {
   for (const change of plan.packagePlans.filter((item) => item.versionChange === "bump")) {
     const entry = next.packages.find((item) => item.id === change.id);
     if (!entry) throw new Error(`Cannot update manifest: no entry for ${change.id}`);
-    entry.upstreamVersion = change.latestVersion; entry.upstreamGitHead = change.upstreamGitHead;
+    entry.upstreamVersion = change.latestVersion;
+    if (entry.upstreamSource === "npm") entry.upstreamRef = change.upstreamRef;
+    else entry.upstreamGitHead = change.upstreamGitHead;
   }
   for (const change of (plan.forkPlans ?? []).filter((item) => item.changed && item.decision === "port")) {
     const entry = next.packages.find((item) => item.id === change.id);

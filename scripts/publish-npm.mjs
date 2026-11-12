@@ -20,8 +20,11 @@ const PUBLISHED_FILES = ["LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN
 // These npm packs have a small, explicit set of short regular paths. Reject links, extra files and
 // nonstandard headers instead of extracting an untrusted archive on the host.
 export function validateNpmArchive({ repoRoot, asset, entry, version, repository }) {
-  const publishedFiles = entry.id === "amox-pi-sync" && ["manual-fork", "selective-fork"].includes(entry.maintenanceMode)
-    ? [...PUBLISHED_FILES, "core.ts"] : PUBLISHED_FILES;
+  const publishedFiles = [...new Set([
+    ...PUBLISHED_FILES,
+    ...(entry.id === "amox-pi-sync" && ["manual-fork", "selective-fork"].includes(entry.maintenanceMode) ? ["core.ts"] : []),
+    ...(entry.maintenanceMode === "original-facade" ? entry.sourceFiles ?? [] : []),
+  ])];
   const tar = gunzipSync(readFileSync(asset.path), { maxOutputLength: 20_000_000 });
   const files = new Map();
   const text = (header, start, size) => header.subarray(start, start + size).toString("utf8").split("\0", 1)[0];

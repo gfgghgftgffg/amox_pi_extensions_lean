@@ -303,3 +303,51 @@ test("publication gitHead is distinct from live repository HEAD; missing publica
     return { ok: true, json: async () => ({ "dist-tags": { latest: "1.0.0" }, versions: { "1.0.0": { name, version: "1.0.0" } } }) };
   } }), /publication gitHead/);
 });
+
+function originalFacadeFixture(latestVersion = "0.34.1") {
+  const entry = { id: "pi-goal-x-lean", path: "packages/pi-goal-x-lean", packageName: "@gfgghgftgffg/pi-goal-x-lean",
+    maintenanceMode: "original-facade", upstreamPackage: "pi-goal-x", upstreamVersion: "0.34.1",
+    upstreamRepository: "https://github.com/tmonk/pi-goal-x.git", upstreamSource: "npm", upstreamRef: "npm:pi-goal-x@0.34.1" };
+  return { manifest: { packages: [entry] }, workspaces: [{ id: entry.id, path: entry.path, packageJsonPath: `${entry.path}/package.json`,
+    pkg: { name: entry.packageName, version: "0.1.0", dependencies: { "pi-goal-x": "0.34.1" } } }],
+    metadata: { npm: { "pi-goal-x": { latestStable: latestVersion } }, git: { [entry.upstreamRepository]: { head: HEAD } } } };
+}
+
+test("original facade monitors only upstream and stages exact npm refs without inventing publication commits", () => {
+  const current = originalFacadeFixture();
+  assert.equal(buildUpdatePlan(current).status, "no-update");
+  const f = originalFacadeFixture("0.35.0"), plan = buildUpdatePlan(f);
+  assert.equal(plan.status, "update"); assert.deepEqual(plan.leanPlans, []);
+  assert.equal(plan.leanReviewRequired, false); assert.deepEqual(plan.changedPackageIds, [f.manifest.packages[0].id]);
+  assert.deepEqual(plan.packagePlans[0].dependencyChanges, [{ name: "pi-goal-x", from: "0.34.1", to: "0.35.0", kind: "primary" }]);
+  assert.equal(plan.packagePlans[0].upstreamRef, "npm:pi-goal-x@0.35.0");
+  assert.equal(Object.hasOwn(plan.packagePlans[0], "upstreamGitHead"), false, "live HEAD is not a publication commit");
+  const next = applyPlanToManifest(f.manifest, plan);
+  assert.deepEqual(next.packages[0], { ...f.manifest.packages[0], upstreamVersion: "0.35.0", upstreamRef: "npm:pi-goal-x@0.35.0" });
+});
+
+test("npm provenance is explicit and exact; omitting a lean repository alone does not opt into original-facade", () => {
+  const invalid = [entry => { delete entry.upstreamSource; }, entry => { entry.upstreamRef = "npm:pi-goal-x@latest"; },
+    entry => { entry.upstreamVersion = "0.34.0"; }, entry => { entry.upstreamSource = "npn"; },
+    entry => { delete entry.maintenanceMode; }, entry => { entry.leanRepository = "https://github.com/example/self.git"; },
+    entry => { entry.leanCommit = HEAD; }];
+  for (const alter of invalid) {
+    const f = originalFacadeFixture("0.35.0"); alter(f.manifest.packages[0]);
+    assert.equal(buildUpdatePlan(f).status, "error");
+  }
+  for (const version of ["0.34.0", "0.35.0-rc.1"]) assert.equal(buildUpdatePlan(originalFacadeFixture(version)).status, "error");
+});
+
+test("metadata collection exempts only explicitly selected npm primaries, never shared Git consumers or malformed gitHead", async () => {
+  const f = originalFacadeFixture(), entry = f.manifest.packages[0], urls = [];
+  const options = { ...f, gitHeadResolver: url => { urls.push(url); return HEAD; }, fetchImpl: async () => ({ ok: true,
+    json: async () => ({ "dist-tags": { latest: "0.35.0" }, versions: { "0.35.0": { name: "pi-goal-x", version: "0.35.0" } } }) }) };
+  const metadata = await fetchUpstreamMetadata(options);
+  assert.deepEqual(metadata.npm, { "pi-goal-x": { latestStable: "0.35.0" } });
+  assert.deepEqual(urls, [entry.upstreamRepository]);
+  assert.equal(buildUpdatePlan({ ...f, metadata }).status, "update");
+  await assert.rejects(fetchUpstreamMetadata({ ...options, fetchImpl: async () => ({ ok: true, json: async () => ({
+    "dist-tags": { latest: "0.35.0" }, versions: { "0.35.0": { name: "pi-goal-x", version: "0.35.0", gitHead: HEAD + "\n" } } }) }) }), /publication gitHead/);
+  const workspaces = [...f.workspaces, { id: "git-consumer", pkg: { dependencies: { "pi-goal-x": "0.34.1" } } }];
+  await assert.rejects(fetchUpstreamMetadata({ ...options, workspaces }), /publication gitHead/);
+});

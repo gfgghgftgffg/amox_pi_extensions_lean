@@ -1,0 +1,63 @@
+{
+  "name": "@gfgghgftgffg/pi-goal-x-lean",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Lean tool metadata over the complete pi-goal-x runtime; preserves goal tools, commands, scheduling and auditing.",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "author": "gfgghgftgffg",
+  "contributors": [
+    {
+      "name": "pi-goal-x contributors",
+      "url": "https://github.com/tmonk/pi-goal-x"
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git",
+    "directory": "packages/pi-goal-x-lean"
+  },
+  "homepage": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/tree/main/packages/pi-goal-x-lean#readme",
+  "bugs": {
+    "url": "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "goal",
+    "token-efficient"
+  ],
+  "files": [
+    "index.ts",
+    "integration.ts",
+    "delegation.ts",
+    "README.md",
+    "README.zh-CN.md",
+    "MAINTENANCE.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "pi-goal-x": "0.34.1"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=1.4.0 <2.0.0",
+    "@earendil-works/pi-coding-agent": ">=1.4.0 <2.0.0",
+    "@earendil-works/pi-tui": ">=1.4.0 <2.0.0",
+    "typebox": "^1.3.11"
+  },
+  "pi": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}

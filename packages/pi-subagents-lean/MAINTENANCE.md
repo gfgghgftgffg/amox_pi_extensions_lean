@@ -50,6 +50,40 @@
   未拦截该调用；因 facade 工具名不同，不会影响 `subagent`。
 - 上游 0.20.0 的 typebox v1 `Value.Errors` 使用 `instancePath`（旧版为 `path`）。
 
+## 只读 child-context 桥接
+
+### 行为影响与兼容范围
+
+- 单独使用时不改变 Agent/workflow 的派发、通知、模型、权限和角色配置；新增本地模块导入及 checker 登记／查询，不增加模型工具、提示词、模型调用，也不自动启用 Task Router。
+- `isChildSession()` 只查询当前异步执行上下文，不接受会话 ID、不报告任务忙碌状态。契约面向本引擎同进程内的 SDK 子会话，不是跨进程／worker 或其它引擎的通用协议，也不是权限隔离边界。
+- 配套 goal 门面读取接口后，子会话不安装独立 goal 引擎，目标归父会话；即使子角色原本允许 goal，也不能通过该组合独立创建或续跑目标。无需逐角色配置 `exclude_extensions`。原版 goal-x 不读取此接口，单独升级 subagents 不会给原版 goal 增加这些行为。
+- 新增的 `dist/child-context.js` 内部入口依赖也作用于独立使用 subagents 的情况。上游移除入口可导致门面加载失败，改变其含义可导致识别错误；精确依赖与父子并发、跨目录、reload 回归用于约束该风险。
+- 后台等待门禁由 `pi-goal-x-lean` 实现，不属于本接口；其并发、通知、会话恢复和预算边界见该包的 `MAINTENANCE.md`。
+
+### 实现契约与验证
+
+- facade 直接从 `@tintinweb/pi-subagents/dist/child-context.js` 导入 `inChildSessionContext`，
+  每次 activation 都将当前真实 dist 模块图的 checker 注册到
+  `globalThis[Symbol.for('@gfgghgftgffg/pi-subagents-lean.context.v1')]` 的冻结 v1 服务。
+  对外仍为 `{ version: 1, isChildSession() }`；内部注册方法按函数同一性去重，以 `WeakRef` 保存
+  checker，并在注册和查询时清理失效项。任一仍存活的 checker 返回 true，服务即返回 true；
+  升级旧的单 checker v1 服务时也保留其 checker。服务不强引用旧模块图；宿主仍保留的 runner
+  持有对应模块绑定。这是 dist runner 已有 AsyncLocalStorage 的只读查询，不复制存储、不加载
+  src、不临时修改 `PI_SUBAGENT_*`，也不提供 busy／队列／调度 API。
+- `pi-goal-x-lean` 通过可选服务查询 child；仅安装 goal 时没有 subagents manager，正常返回 false。
+  manager（`Symbol.for('pi-subagents:manager')`）已登记却没有有效 v1 服务时明确报兼容性错误，
+  避免旧 wrapper 静默漏隔离。联用这项 child gate 时须同时升级 subagents-lean 至 **0.1.19 或更高版本**；
+  goal 先加载且尚无 manager 时可继续，后续 child 加载会重新查询服务。
+- `tests/child-context.test.mjs` 使用真实 Pi `DefaultResourceLoader`／SDK 与
+  `dist/agent-runner.js` 资源加载路径，验证同 cwd 缓存复用、跨 cwd 新模块图、真实 loader
+  清缓存 reload 后新旧 runner 的 child gate（在模型解析前停止，不调用 provider）。各模块图
+  都验证并发 parent=false／child=true、异常后的 parent 上下文恢复及环境标记不变；另验证
+  缺服务兼容性错误、旧单 checker 服务迁移、去重和查询／注册时清理失效弱引用。
+  测试不把另一个原生 ESM 模块图的 ALS 当成 Pi loader 实际使用的实例；升级 upstream／Pi loader 时须重跑。
+- child-context 导入仅增加测试目录下的本地类型声明；声明不参与运行时解析。
+- 此前已复现的跨 cwd 失败保留为回归：旧 runner 的 child 上下文中加载另一 cwd，probe 必须
+  仍返回 true；仅禁止覆盖服务也不足以通过 reload 后的新 runner 回归，两者都依赖多 checker 聚合。
+
 ## 本次审查：0.20.0 → 0.21.0
 
 - 审查 npm 发布源码：`13106ab6f608b3acc54185da5299ee7fbaabb6b9` →

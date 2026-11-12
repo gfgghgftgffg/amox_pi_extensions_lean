@@ -25,8 +25,8 @@ function metadata(version = fork.upstreamVersion) {
   for (const entry of state.manifest.packages) {
     if (entry.maintenanceMode === "selective-fork") { npm[entry.upstreamPackage] = { latestStable: version }; continue; }
     for (const [name, version] of Object.entries(state.workspaces.find(w => w.id === entry.id).pkg.dependencies)) npm[name] = { latestStable: version, gitHead: entry.upstreamGitHead };
-    git[entry.upstreamRepository] = { head: entry.upstreamGitHead };
-    git[entry.leanRepository] = { head: entry.leanCommit };
+    git[entry.upstreamRepository] = { head: entry.upstreamGitHead ?? "a".repeat(40) };
+    if (entry.leanRepository) git[entry.leanRepository] = { head: entry.leanCommit };
   }
   return { npm, git };
 }

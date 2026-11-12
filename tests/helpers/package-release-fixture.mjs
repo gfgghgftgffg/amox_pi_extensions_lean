@@ -16,7 +16,7 @@ export function releaseFixture({ batchVersion, versions = {}, packageIds } = {})
   const lock = { name: pkg.name, version: pkg.version, lockfileVersion: 3, packages: { "": { name: pkg.name, version: pkg.version } } };
   for (const entry of manifest.packages) {
     const directory = join(source, entry.path);
-    for (const file of ["index.ts", "core.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md"]) {
+    for (const file of new Set(["index.ts", "core.ts", "package.json", "LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN.md", ...(entry.sourceFiles ?? [])])) {
       if (file === "core.ts" && !existsSync(join(directory, file))) continue;
       write(`${entry.path}/${file}`, readFileSync(join(directory, file), "utf8"));
     }

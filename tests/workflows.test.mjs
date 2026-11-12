@@ -101,7 +101,10 @@ test("public docs describe local Pi, reviewed npm publication and independent in
   assert.match(scheduler, /同一.*候选/); assert.match(scheduler, /固定主机自动合并/);
   assert.match(english, /head-SHA condition/); assert.match(readme, /以 head SHA 为条件单次合并/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
-    for (const doc of [english, readme]) assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
+    for (const doc of [english, readme]) {
+      assert.ok(doc.includes(`pi install npm:${entry.packageName}`));
+      assert.doesNotMatch(doc, /source[- ]preview|源码预览/);
+    }
     assert.ok(english.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`node scripts/install-extension.mjs ${entry.id}`));
     assert.ok(readme.includes(`${entry.path}/README.zh-CN.md`));
@@ -109,18 +112,33 @@ test("public docs describe local Pi, reviewed npm publication and independent in
       const doc = read(`${entry.path}/${file}`); assert.doesNotMatch(doc, /pi install git:|phase 1/);
       assert.ok(doc.includes(`node scripts/install-extension.mjs ${entry.id}`));
       assert.ok(doc.includes(`pi install npm:${entry.packageName}`)); assert.ok(doc.includes("pi update --extensions"));
+      assert.doesNotMatch(doc, /source[- ]preview|源码预览/);
       assert.doesNotMatch(doc, /^#{1,6} .*?(?:reviewed upgrade|previous upgrade|lean-author review|upgrade history|change ?log|release notes|本次审查|历史审查|作者审查|已审核升级|升级历史|更新日志)/im);
       assert.match(doc, /\[MAINTENANCE\.md\]\(MAINTENANCE\.md\)/);
     }
   }
 });
-test("publication docs reflect completed bootstrap without changing recovery or installation boundaries", () => {
+test("publication docs describe availability checks and first-publication setup without release snapshots", () => {
   const english = read("README.md"), chinese = read("README.zh-CN.md");
   const npmEnglish = read("docs/npm-publishing.md"), npmChinese = read("docs/npm-publishing.zh-CN.md");
-  assert.match(npmEnglish, /The three existing lean packages are public on npm/);
-  assert.match(npmEnglish, /amox-pi-sync` package is not published yet/);
-  assert.match(npmChinese, /三个现有 lean 包已在 npm 公开发布/);
-  assert.match(npmChinese, /amox-pi-sync` 尚未发布/);
+  assert.match(npmEnglish, /five independent extension packages/);
+  assert.match(npmEnglish, /corresponding Release's npm job and public npm metadata for package availability/);
+  assert.match(npmEnglish, /each new package needs a separate connection after its first publication/);
+  assert.match(npmEnglish, /OIDC publisher rejects a missing npm package identity before any uploads/);
+  assert.match(npmEnglish, /skip does not exercise OIDC trust/);
+  assert.match(npmChinese, /五个独立扩展包/);
+  assert.match(npmChinese, /实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准/);
+  assert.match(npmChinese, /每个新包按下节完成首发后，单独配置自己的连接/);
+  assert.match(npmChinese, /OIDC 发布脚本在任何上传前都会拒绝 registry 中不存在的包/);
+  assert.match(npmChinese, /跳过不代表已验证 OIDC 信任/);
+  for (const doc of [npmEnglish, npmChinese]) {
+    for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) assert.ok(doc.includes(entry.packageName));
+    assert.match(doc, /npm publish "\$ARCHIVE" --access public --tag latest --ignore-scripts --fetch-retries=0 --registry=https:\/\/registry\.npmjs\.org\//);
+    assert.match(doc, /dist\.integrity/);
+    const intro = doc.split("\n## ")[0];
+    assert.doesNotMatch(intro, /\b\d+\.\d+\.\d+\b|not yet on npm|尚未上架/);
+    assert.doesNotMatch(doc, /amox-pi-sync` (?:package is not published yet|尚未发布)/);
+  }
   for (const doc of [english, chinese, npmEnglish, npmChinese]) {
     assert.match(doc, /OIDC/);
     assert.doesNotMatch(doc, /before npm delivery is available|sources once available|npm 才可用于安装|三个包可用后|initial release or a retry|首次或重试发布/);
@@ -132,8 +150,13 @@ test("publication docs reflect completed bootstrap without changing recovery or 
   assert.doesNotMatch(workflow("release.yml"), /Initial\/retry manual release/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
     const doc = read(`${entry.path}/MAINTENANCE.md`);
-    assert.match(doc, /不代表当前 CI\/发布结果或现行审批要求/);
-    assert.match(doc, /对比 manifest 中当前固定版本\/revision 与目标源码/);
+    if (entry.id === "pi-goal-x-lean") {
+      assert.match(doc, /does not copy the engine/);
+      assert.match(doc, /exact npm tarballs with SHA-512 integrity/);
+    } else {
+      assert.match(doc, /不代表当前 CI\/发布结果或现行审批要求/);
+      assert.match(doc, /对比 manifest 中当前固定版本\/revision 与目标源码/);
+    }
     assert.doesNotMatch(doc, /当前候选开发\/测试依赖|当前暂存候选/);
   }
 });

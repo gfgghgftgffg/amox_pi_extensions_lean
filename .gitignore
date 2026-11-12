@@ -5,6 +5,10 @@ coverage/
 dist/
 .tmp/
 .cache/
+
+# Local persistent goals are session data, not extension source.
+.pi/goals/
+.pi/.goals-pool-snapshot.json
 .DS_Store
 Thumbs.db
 .venv/

@@ -137,7 +137,7 @@ export async function maintain({ repository = DEFAULT_REPO, stateRoot = join(hom
     }
     status({ status: "collecting-source", baseCommit });
     const baseline = protectedBaseline(work, state.manifest, state.plan);
-    collectSources({ repoRoot: work, outDir: runDir, plan: state.plan, manifest: state.manifest });
+    await collectSources({ repoRoot: work, outDir: runDir, plan: state.plan, manifest: state.manifest });
     const { manifest, generated, version, packageIds } = await stageVersions({ work, state, scratch, baseCommit });
     validateLocalChanges(work, manifest, baseline, generated, state.plan);
     checkpoint(work);

@@ -7,7 +7,71 @@ import { Type } from "typebox";
 import { Value } from "typebox/value";
 // Use the upstream-published build; do not load its TypeScript source at startup.
 import subagents from "@tintinweb/pi-subagents/dist/index.js";
+import { inChildSessionContext } from "@tintinweb/pi-subagents/dist/child-context.js";
 import { Text } from "@earendil-works/pi-tui";
+
+const CHILD_CONTEXT_SERVICE = Symbol.for(
+  "@gfgghgftgffg/pi-subagents-lean.context.v1",
+);
+const REGISTER_CHILD_CONTEXT = Symbol.for(
+  "@gfgghgftgffg/pi-subagents-lean.context.register.v1",
+);
+
+type ChildContextChecker = () => boolean;
+type ChildContextService = {
+  readonly version: 1;
+  isChildSession(): boolean;
+  [REGISTER_CHILD_CONTEXT](checker: ChildContextChecker): void;
+};
+
+function createChildContextService(): ChildContextService {
+  // Each real dist module graph owns its ALS. Keep only weak references so
+  // reloading does not retain graphs whose runners the host has released.
+  const checkers = new Set<WeakRef<ChildContextChecker>>();
+  return Object.freeze({
+    version: 1,
+    isChildSession(): boolean {
+      let child = false;
+      for (const ref of checkers) {
+        const checker = ref.deref();
+        if (!checker) checkers.delete(ref);
+        else if (checker()) child = true;
+      }
+      return child;
+    },
+    [REGISTER_CHILD_CONTEXT](checker: ChildContextChecker): void {
+      let registered = false;
+      for (const ref of checkers) {
+        const current = ref.deref();
+        if (!current) checkers.delete(ref);
+        else if (current === checker) registered = true;
+      }
+      if (!registered) checkers.add(new WeakRef(checker));
+    },
+  });
+}
+
+function registerChildContextChecker(): void {
+  const services = globalThis as unknown as Record<symbol, unknown>;
+  const candidate = services[CHILD_CONTEXT_SERVICE];
+  const previous = candidate && typeof candidate === "object"
+    ? candidate as Partial<ChildContextService> : undefined;
+  let service: ChildContextService;
+  if (previous?.version === 1 && typeof previous.isChildSession === "function") {
+    if (typeof previous[REGISTER_CHILD_CONTEXT] === "function") {
+      previous[REGISTER_CHILD_CONTEXT](inChildSessionContext);
+      return;
+    }
+    // Upgrade the former direct-checker v1 service without losing its runner.
+    service = createChildContextService();
+    service[REGISTER_CHILD_CONTEXT](previous.isChildSession);
+  } else {
+    service = createChildContextService();
+  }
+  service[REGISTER_CHILD_CONTEXT](inChildSessionContext);
+  services[CHILD_CONTEXT_SERVICE] = service;
+}
+
 const COLLAPSED_DISPLAY_SERVICE = Symbol.for(
   "@local/pi-collapsed-tools.display-service.v1",
 );
@@ -86,6 +150,8 @@ export function createSubagentsFacade(
   upstream: UpstreamExtension = subagents,
 ): (pi: ExtensionAPI) => void {
   return (pi: ExtensionAPI): void => {
+    // Cached factories are activated again; always register this dist graph.
+    registerChildContextChecker();
     const tools = new Map<string, CapturedTool>();
     upstream(capturePi(pi, tools));
 

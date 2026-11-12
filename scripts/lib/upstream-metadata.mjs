@@ -28,7 +28,7 @@ export function requiredGitUrls(manifest) {
   const urls = new Set();
   for (const entry of manifest.packages) {
     if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) continue;
-    urls.add(entry.leanRepository);
+    if (entry.maintenanceMode !== "original-facade") urls.add(entry.leanRepository);
     urls.add(entry.upstreamRepository);
   }
   return [...urls].filter((url) => typeof url === "string" && url.length > 0).sort();
@@ -101,8 +101,9 @@ async function fetchNpmLatest({ name, fetchImpl, registry, requireGitHead = true
     throw new Error(`npm registry latest ${latest} 缺少 version-specific metadata (${name})`);
   }
   const gitHead = body.versions[latest].gitHead;
-  if (requireGitHead && !HEX40.test(gitHead ?? "")) throw new Error(`npm publication gitHead 缺失/非法 (${name}@${latest})；需人工审查`);
-  return { latestStable: latest, ...(HEX40.test(gitHead ?? "") ? { gitHead } : {}) };
+  if (gitHead !== undefined && !HEX40.test(gitHead)) throw new Error(`npm publication gitHead 非法 (${name}@${latest})；需人工审查`);
+  if (requireGitHead && gitHead === undefined) throw new Error(`npm publication gitHead 缺失/非法 (${name}@${latest})；需人工审查`);
+  return { latestStable: latest, ...(gitHead === undefined ? {} : { gitHead }) };
 }
 
 /** Default git HEAD resolver: `git ls-remote <url> HEAD`. */
@@ -139,9 +140,14 @@ export async function fetchUpstreamMetadata({
     throw new Error("当前 Node 运行时没有可用的 fetch；请使用 --metadata <file> 注入元数据");
   }
   const npm = {};
-  for (const name of trackedDependencies(workspaces.filter((workspace) =>
-    !["manual-fork", "selective-fork"].includes(manifest.packages.find((entry) => entry.id === workspace.id)?.maintenanceMode)))) {
-    npm[name] = await fetchNpmLatest({ name, fetchImpl, registry });
+  const automaticWorkspaces = workspaces.filter((workspace) =>
+    !["manual-fork", "selective-fork"].includes(manifest.packages.find((entry) => entry.id === workspace.id)?.maintenanceMode));
+  // Only explicitly selected npm sources may omit publication gitHead. A shared
+  // dependency still needs it if any workspace reviews that dependency via Git.
+  for (const name of trackedDependencies(automaticWorkspaces)) {
+    const requireGitHead = automaticWorkspaces.some((workspace) => Object.hasOwn(workspace.pkg.dependencies ?? {}, name)
+      && !manifest.packages.some((entry) => entry.id === workspace.id && entry.upstreamPackage === name && entry.upstreamSource === "npm"));
+    npm[name] = await fetchNpmLatest({ name, fetchImpl, registry, requireGitHead });
   }
   for (const entry of manifest.packages.filter((entry) => entry.maintenanceMode === "selective-fork")) {
     npm[entry.upstreamPackage] = await fetchNpmLatest({ name: entry.upstreamPackage, fetchImpl, registry, requireGitHead: false });

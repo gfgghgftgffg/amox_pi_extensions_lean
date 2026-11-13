@@ -248,9 +248,8 @@ test("fork release gate requires source and regression changes without a Git sub
   const f = fixture(t), baseline = new Map();
   mkdirSync(join(f.repo, fork.path, "tests"));
   writeFileSync(join(f.repo, fork.path, "index.ts"), "// existing entrypoint\n");
-  writeFileSync(join(f.repo, fork.path, "ssh-proxy.mjs"), "// existing CONNECT helper\n");
   writeFileSync(join(f.repo, fork.path, "tests/existing.test.mjs"), "// preserved assertion\n");
-  for (const path of ["index.ts", "core.ts", "ssh-proxy.mjs", "tests/existing.test.mjs"]) {
+  for (const path of ["index.ts", "core.ts", "tests/existing.test.mjs"]) {
     const name = `${fork.path}/${path}`; baseline.set(name, { text: readFileSync(join(f.repo, name), "utf8") });
   }
   assert.equal(existsSync(join(f.repo, ".git")), false, "regression discovery must not require a Git checkout or Linux PATH");

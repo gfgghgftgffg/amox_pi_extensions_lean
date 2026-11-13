@@ -85,7 +85,7 @@
       "id": "amox-pi-sync",
       "path": "packages/amox-pi-sync",
       "packageName": "@gfgghgftgffg/amox-pi-sync",
-      "version": "0.1.13",
+      "version": "0.1.14",
       "entry": "index.ts",
       "upstreamPackage": "pi-sync-suite",
       "upstreamVersion": "0.1.1",
@@ -94,8 +94,7 @@
       "maintenanceMode": "selective-fork",
       "sourceFiles": [
         "index.ts",
-        "core.ts",
-        "ssh-proxy.mjs"
+        "core.ts"
       ],
       "releaseVersioning": "independent",
       "toolContract": false,
@@ -103,8 +102,8 @@
     }
   ],
   "release": {
-    "version": "0.1.33",
-    "baseCommit": "277732a1286beb1d9cce45f804853c6fbeab2d28",
+    "version": "0.1.34",
+    "baseCommit": "6e5b5f11b92d1292fd124619d779d175043cb07a",
     "packageIds": [
       "amox-pi-sync"
     ]

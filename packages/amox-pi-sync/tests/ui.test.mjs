@@ -556,14 +556,13 @@ for (const starline of [true, false]) for (const initial of [undefined, true, fa
   });
 }
 
-test("setup preserves deletion preference and proxy when replacing a repository", async t => {
+test("setup preserves deletion preference when replacing a repository", async t => {
   const f = await fixture(t, true, false);
-  await saveConfig({ ...f.config, confirmSessionDelete: false, proxy: "http://localhost:8080" }, defaultPaths(f.root));
+  await saveConfig({ ...f.config, confirmSessionDelete: false }, defaultPaths(f.root));
   await f.events.get("session_start")({}, f.ctx);
   await f.commands.get("sync-setup").handler("git@github.com:example/replacement.git", f.ctx);
   const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
   assert.equal(saved.confirmSessionDelete, false);
-  assert.equal(saved.proxy, "http://localhost:8080");
   assert.equal(saved.repoUrl, "git@github.com:example/replacement.git");
   assert.deepEqual(f.gitCalls, []);
 });

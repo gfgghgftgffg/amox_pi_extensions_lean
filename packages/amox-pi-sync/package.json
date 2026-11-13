@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/amox-pi-sync",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "type": "module",
   "description": "Sync Pi sessions through a private Git repository, with selectable paths and synced deletion of orphan child sessions.",
   "license": "MIT",
@@ -32,7 +32,6 @@
   "files": [
     "index.ts",
     "core.ts",
-    "ssh-proxy.mjs",
     "README.md",
     "README.zh-CN.md",
     "MAINTENANCE.md",

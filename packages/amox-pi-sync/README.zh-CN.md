@@ -26,6 +26,8 @@
 /sync-setup git@host:owner/private-repo.git
 ```
 
+GitHub 使用 `git@github.com:OWNER/REPO.git`。网络连通性由插件外的系统、Git 和 SSH 配置负责。
+
 把本地 session 发出去，再把远端 session 拉回来：
 
 ```text
@@ -67,16 +69,6 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-## 代理配置
-
-Windows 原生 SSH 通过随包 Node 启动器运行；启动器只从 SSH 子进程环境移除 OpenSSH 内部的文件描述符继承状态，避免 Git/Node 重建管道后发生 I/O 等待，不修改父进程环境。
-
-SSH Git 需要走 HTTP 代理时，在现有 agent 数据目录的 `amox-pi-sync.json` 中添加 `"proxy": "http://127.0.0.1:7897"`，然后 reload Pi。移除该字段恢复直连。扩展通过 HTTP CONNECT 转发 SSH，不修改全局 Git、SSH 或系统代理设置，SSH 认证和主机密钥校验保持开启。仅支持 `http://` 代理地址，不接受用户名密码、额外 URL 路径、查询参数或 fragment；代理必须允许 CONNECT 到你的 SSH 服务器及其端口。
-
-GitHub 的 SSH 22 端口被代理线路阻断时，在同一文件中将 `repoUrl` 改为 `ssh://git@ssh.github.com:443/OWNER/REPO.git`。这仍然是 SSH，不是 HTTPS；SSH 要求信任备用端点时，先核对 GitHub 公布的主机密钥指纹。已有快照仓库还需将 `origin` 改成同一 URL：`git -C "<repoDir>" remote set-url origin "ssh://git@ssh.github.com:443/OWNER/REPO.git"`，其中 `<repoDir>` 替换为配置中的快照路径；若设置过独立的 push URL，也要同步修改。仅改 `repoUrl` 而保留旧 origin 会被扩展拒绝，这些配置修改本身不传输数据。两处改完再 reload Pi。CONNECT 返回 200 并不代表 SSH 线路可用。空隧道现在会报出目标地址，对 `github.com:22` 也提示上述备用 URL；扩展不会静默更换目标或重试直连。
-
-删除确认偏好也保存在此文件中：`"confirmSessionDelete": false` 表示不弹确认框，省略则默认开启。在菜单切换此项只保存本地配置，不触发同步。
-
 ## 细节
 
 - 每台设备用 `syncedPaths` 基线记录上次成功 Push 或 Pull 时的路径。Push 会从快照移除基线中本地已消失的路径。Pull 在备份后应用远端删除，并把本地缺失的基线路径保留为待 Push 删除，所以先 Pull 也不会把它们复活。从未同步的本地文件，以及还没 Pull 的远端文件，不会被删除。首次基线是本地路径和快照路径的交集；基线建立前的删除不会自动推断。
@@ -88,7 +80,7 @@ GitHub 的 SSH 22 端口被代理线路阻断时，在同一文件中将 `repoUr
 
 ## 设置与界面
 
-- 设置菜单包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Prune before push**（默认 Off）、**Confirm session deletion**（默认 On）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。
+- 设置菜单包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Prune before push**（默认 Off）、**Confirm session deletion**（默认 On，保存在 `amox-pi-sync.json` 的 `confirmSessionDelete` 字段）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。
 - manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。
 - 安装 [Starline](https://github.com/Andy8647/pi-starline) 时，可点击状态胶囊打开详情和操作。状态 key 保留为 `pi-sync`，兼容原 placement；pill bridge 优先于旧 `extensionStatuses.commands`。没有三行 widget。
 - 点击胶囊时，气泡像 Model 一样锚定对应的 Starline cell；设置、子菜单及确认框沿用该锚点。`/sync-status` 使用最近点击的锚点，首次点击前回退居中。文本输入仍使用 Pi 输入框。

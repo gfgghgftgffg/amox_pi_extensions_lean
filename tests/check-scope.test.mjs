@@ -149,23 +149,6 @@ test("unselected core.ts cannot be changed, removed or newly added", () => {
   } finally { f.cleanup(); }
 });
 
-test("unselected sync SSH helper stays protected after removal from package files", () => {
-  const f = releaseFixture();
-  try {
-    const base = f.commit(); bumpWeb(f, base);
-    const path = "packages/amox-pi-sync/ssh-proxy.mjs", original = readFileSync(join(f.root, path), "utf8");
-    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
-    f.write(path, original + "\n// unselected proxy change\n");
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/ssh-proxy\.mjs/);
-    const pkg = f.read("packages/amox-pi-sync/package.json");
-    pkg.files = pkg.files.filter(file => file !== "ssh-proxy.mjs");
-    f.write("packages/amox-pi-sync/package.json", pkg);
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/ssh-proxy\.mjs/);
-    f.git(["rm", "-f", path]);
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/ssh-proxy\.mjs/);
-  } finally { f.cleanup(); }
-});
-
 for (const helper of ["integration.ts", "delegation.ts"]) test(`unselected goal ${helper} is protected even after removal from package files`, () => {
   const f = releaseFixture(), goal = "pi-goal-x-lean";
   try {

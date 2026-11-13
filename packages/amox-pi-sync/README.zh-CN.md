@@ -9,7 +9,7 @@
 ## 功能
 
 - 默认路径是 `sessions` 和 `missions`，也可以增减其它 agent 数据路径。文件原样传输，不导出 Markdown，不做 JSONL 合并。双方改了同一文件就停止。
-- `/delete-session` 预览当前会话及其后代树，切换到新会话后删除选中的文件及快照副本。包括最近修改、改过名的后代和手动 fork，不处理无关孤儿。
+- `/delete-session` 默认预览当前会话及其后代树，切换到新会话后删除选中的文件及快照副本。包括最近修改、改过名的后代和手动 fork，不处理无关孤儿。
 - `/sync-prune` 找出父会话已经不在的子代理会话及其后代，先预览，再把这次删除同步出去。除非打开开关，否则不会在 Push 前自动执行。
 - Pull 只备份即将被替换或删除的文件。
 - 装了 [Starline](https://github.com/Andy8647/pi-starline) 可从状态胶囊操作；没装时同样的动作留在 `/sync-*`。
@@ -33,13 +33,13 @@
 /sync-pull
 ```
 
-确认后删除当前会话及其全部后代。需要先配置同步，并将 `sessions` 纳入同步路径：
+删除当前会话及其全部后代。默认弹出确认框；在 `/sync-settings` 关闭 **Confirm session deletion** 后可直接删除。需要先配置同步，并将 `sessions` 纳入同步路径：
 
 ```text
 /delete-session
 ```
 
-命令先切换到新会话再删除。确认前请关闭其它正在使用清单中会话的 Pi 进程。快照删除先提交到本地仓库；manual/off 模式下用 `/sync-push` 发布，auto 模式沿用自动同步。Git 历史、备份和 `/tmp` 文件不清理。执行前发现新增后代时停止删除，不扩展到未经确认的会话。
+命令先切换到新会话再删除。执行前请关闭其它正在使用这些会话的 Pi 进程。快照删除先提交到本地仓库；manual/off 模式下用 `/sync-push` 发布，auto 模式沿用自动同步。Git 历史、备份和 `/tmp` 文件不清理。执行前发现新增后代时停止删除，不扩展本次扫描选定的删除范围。
 
 先预览孤儿子代理会话，确认后再删除并同步这次删除：
 
@@ -67,6 +67,12 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
+## 代理配置
+
+SSH Git 需要走 HTTP 代理时，在现有 agent 数据目录的 `amox-pi-sync.json` 中添加 `"proxy": "http://127.0.0.1:7897"`，然后 reload Pi。移除该字段恢复直连。扩展通过 HTTP CONNECT 转发 SSH，不修改全局 Git、SSH 或系统代理设置，SSH 认证和主机密钥校验保持开启。仅支持 `http://` 代理地址，不接受用户名密码、额外 URL 路径、查询参数或 fragment；代理必须允许 CONNECT 到你的 SSH 服务器及其端口。
+
+删除确认偏好也保存在此文件中：`"confirmSessionDelete": false` 表示不弹确认框，省略则默认开启。在菜单切换此项只保存本地配置，不触发同步。
+
 ## 细节
 
 - 每台设备用 `syncedPaths` 基线记录上次成功 Push 或 Pull 时的路径。Push 会从快照移除基线中本地已消失的路径。Pull 在备份后应用远端删除，并把本地缺失的基线路径保留为待 Push 删除，所以先 Pull 也不会把它们复活。从未同步的本地文件，以及还没 Pull 的远端文件，不会被删除。首次基线是本地路径和快照路径的交集；基线建立前的删除不会自动推断。
@@ -78,12 +84,12 @@ pi update --extensions
 
 ## 设置与界面
 
-- 设置菜单包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Prune before push**（默认 Off）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。
+- 设置菜单包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Prune before push**（默认 Off）、**Confirm session deletion**（默认 On）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。
 - manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。
 - 安装 [Starline](https://github.com/Andy8647/pi-starline) 时，可点击状态胶囊打开详情和操作。状态 key 保留为 `pi-sync`，兼容原 placement；pill bridge 优先于旧 `extensionStatuses.commands`。没有三行 widget。
 - 点击胶囊时，气泡像 Model 一样锚定对应的 Starline cell；设置、子菜单及确认框沿用该锚点。`/sync-status` 使用最近点击的锚点，首次点击前回退居中。文本输入仍使用 Pi 输入框。
 - **Bubble colour** 默认 **Follow pill**（跟随胶囊），也可选择当前主题的 accent、success、warning 或 error 作为边框和选中项颜色；首次点击前使用主题 accent。可选配置 `bubbleColor` 保存为 `pill`、`accent`、`success`、`warning` 或 `error`，修改配色不触发传输。未安装 Starline 时隐藏此选项，由 Pi 渲染原生弹框。
-- 标签与值统一用冒号分隔（如 `Paths: 2 configured`，表示配置了 2 个同步路径），Starline 中的可选操作统一以 `•` 开头。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。State 直接显示 Manual、Auto 或 Off；执行中显示 Push／Pull，另列当前模式，不追加 idle。RPC 和未安装 Starline 时保留纯文本。
+- 标签与值统一用冒号分隔（如 `Paths: 2 configured`，表示配置了 2 个同步路径），Starline 中的可选操作统一以 `•` 开头。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。删除完成后 State 恢复 Manual、Auto 或 Off，不残留 Delete session；已完成动作只显示在 Last action。传输执行中显示 Push／Pull，另列当前模式，不追加 idle。RPC 和未安装 Starline 时保留纯文本。
 
 ## 数据与安全
 

@@ -9,7 +9,7 @@ Sync Pi sessions through a private Git repository, with paths you choose. Delete
 ## Features
 
 - Default paths are `sessions` and `missions`. You can include or exclude other agent-data paths. Files move as-is: no Markdown export and no JSONL merge. If both sides changed the same file, sync stops.
-- `/delete-session` previews the current session and its descendant tree, switches to a fresh session, then deletes the selected files and their snapshot copies. Recent and renamed descendants, including manual forks, are included; unrelated orphans are untouched.
+- `/delete-session` previews the current session and its descendant tree by default, switches to a fresh session, then deletes the selected files and their snapshot copies. Recent and renamed descendants, including manual forks, are included; unrelated orphans are untouched.
 - `/sync-prune` finds subagent sessions whose parent is gone, including descendants, previews them, and syncs that deletion. It does not run before push unless you turn that on.
 - A pull backs up only the files it is about to replace or delete.
 - With [Starline](https://github.com/Andy8647/pi-starline), a status capsule opens the actions. Without it, the same actions stay on `/sync-*`.
@@ -33,13 +33,13 @@ Send local sessions, then bring remote sessions back:
 /sync-pull
 ```
 
-Delete the current session and all its descendants after confirmation. Requires sync setup and `sessions` in managed paths:
+Delete the current session and all its descendants. Confirmation is on by default; disable **Confirm session deletion** in `/sync-settings` to delete without a dialog. Requires sync setup and `sessions` in managed paths:
 
 ```text
 /delete-session
 ```
 
-The command switches to a fresh session before deleting. Close other Pi processes using the listed sessions first. Snapshot removals are committed locally; manual/off mode needs `/sync-push` to publish them, while auto mode uses its normal sync loop. Git history, backups and `/tmp` files remain. If the tree gains new descendants before execution, deletion stops rather than deleting unconfirmed sessions.
+The command switches to a fresh session before deleting. Close other Pi processes using these sessions first. Snapshot removals are committed locally; manual/off mode needs `/sync-push` to publish them, while auto mode uses its normal sync loop. Git history, backups and `/tmp` files remain. If the tree gains new descendants before execution, deletion stops rather than widening the scanned selection.
 
 Preview orphan subagent sessions, then delete them and sync that deletion:
 
@@ -67,6 +67,12 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
+## Proxy configuration
+
+For SSH Git through an HTTP proxy, add `"proxy": "http://127.0.0.1:7897"` to your existing agent-data `amox-pi-sync.json`, then reload Pi. Remove the field to connect directly. This uses HTTP CONNECT for SSH; it does not change global Git, SSH or system proxy settings. SSH authentication and host-key verification remain enabled. Only `http://` proxy endpoints are supported, without credentials, extra URL paths, query strings or fragments. The proxy must allow CONNECT to your SSH server and port.
+
+The confirmation preference is also stored here as `"confirmSessionDelete": false`; omitting it keeps confirmation on. Changing that preference in the menu saves locally without starting a sync.
+
 ## Details
 
 - A per-device `syncedPaths` baseline records paths present at the last successful push or pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a backup and keeps local missing baseline paths as pending deletions, so a pull before push does not resurrect them. Files that were never synced, and remote-only files not yet pulled, are not deleted. The first baseline is the intersection of local and snapshot paths; deletions from before that baseline are not inferred.
@@ -78,12 +84,12 @@ pi update --extensions
 
 ## Settings and UI
 
-- The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
+- The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Confirm session deletion** (default On), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
 - Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled.
 - With [Starline](https://github.com/Andy8647/pi-starline), the clickable status capsule opens details and actions. The status key remains `pi-sync` for existing placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`. There is no three-line widget.
 - Pill clicks anchor bubbles to the corresponding Starline cell, like Model; settings, submenus and confirmations retain that anchor. `/sync-status` uses the last clicked anchor, or a centered fallback before the first click. Text entry still uses Pi input dialogs.
 - **Bubble colour** defaults to **Follow pill**; alternatively choose the current theme’s accent, success, warning or error colour for borders and selection. Before a pill click, Follow pill uses theme accent. The optional `bubbleColor` setting stores `pill`, `accent`, `success`, `warning` or `error`; changing it performs no transfer. Without Starline this option is hidden and Pi renders its native dialogs.
-- Labels and values are separated by a colon (for example, `Paths: 2 configured`); Starline action rows start with `•`. Labels and values use Pi theme colours, while bold action rows keep Starline’s selection contrast. State shows Manual, Auto or Off directly; active operations use Push/Pull, with the configured mode shown separately. RPC and no-Starline output stay plain text.
+- Labels and values are separated by a colon (for example, `Paths: 2 configured`); Starline action rows start with `•`. Labels and values use Pi theme colours, while bold action rows keep Starline’s selection contrast. After deletion, State returns to Manual, Auto or Off instead of retaining Delete session; completed operations belong in Last action. Active transfers use Push/Pull, with the configured mode shown separately. RPC and no-Starline output stay plain text.
 
 ## Data and safety
 

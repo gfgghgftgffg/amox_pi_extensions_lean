@@ -106,7 +106,7 @@ export function validateReleaseChanges(repoRoot, baseRef) {
       // Check both published source lists before metadata so removing a files
       // entry cannot hide a changed or deleted source from the comparison base.
       const sources = [...new Set([...(previous.files ?? []), ...(current.files ?? [])])]
-        .filter((file) => typeof file === "string" && file.endsWith(".ts")
+        .filter((file) => typeof file === "string" && /\.(?:ts|mjs)$/.test(file)
           && (previousFiles.has(`${entry.path}/${file}`) || existsSync(join(repoRoot, entry.path, file))));
       const files = new Set([...sources, "package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"]);
       if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.add("core.ts");

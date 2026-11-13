@@ -20,8 +20,8 @@ type PillAPI = {
   showBubble(ctx: ExtensionContext, source: () => BubbleContent, pill?: BubbleAnchor): BubbleHandle | undefined;
 };
 const STATUS_KEY = "pi-sync";
-// Session replacement creates a new extension instance. Transfer only plain
-// deletion intent; never retain the outgoing pi, ctx or SyncService.
+// Session replacement may reload or reuse the extension instance. Transfer only
+// plain deletion intent; never retain the outgoing pi, ctx or SyncService.
 const DELETE_KEY = Symbol.for("amox-pi-sync.pending-session-delete.v1");
 type PendingDelete = { agentDir: string; root: string; expectedPaths: string[]; handled: boolean };
 const shared = globalThis as unknown as Record<symbol, PendingDelete | undefined>;
@@ -167,7 +167,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
 
   async function deleteCurrentSession(args: string, context: ExtensionCommandContext): Promise<void> {
     if (args.trim()) { context.ui.notify("Usage: /delete-session", "warning"); return; }
-    if (!context.hasUI) { context.ui.notify("/delete-session requires interactive confirmation.", "warning"); return; }
+    if (!context.hasUI) { context.ui.notify("/delete-session requires an interactive UI.", "warning"); return; }
     if (busy || shared[DELETE_KEY]) { context.ui.notify(`Sync is busy: ${busy ?? "Delete session"}.`, "warning"); return; }
     if (!service || !config) { context.ui.notify("Run /sync-setup first.", "warning"); return; }
     const root = context.sessionManager.getSessionFile();
@@ -182,7 +182,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
       await context.waitForIdle();
       const plan = await active.planDeleteSessionTree(root);
       const preview = plan.candidates.map(candidate => `• ${terminalText(candidate.name)} (${formatBytes(candidate.bytes)})\n  ${candidate.path}`).join("\n");
-      if (!await confirm(context, "Delete current session and descendants?",
+      if (config.confirmSessionDelete !== false && !await confirm(context, "Delete current session and descendants?",
         `${plan.candidates.length} session(s), including manual forks and renamed descendants.\n${preview}\n\nSwitch to a fresh session first, then permanently delete these local files and commit their snapshot removal. Other orphans and /tmp data stay untouched. Recent descendants are included. Close other Pi processes using these sessions before confirming. Push publishes the deletion; Git history and backups remain.`)) return;
       pending = { agentDir: paths.agentDir, root: resolve(root), expectedPaths: plan.candidates.map(candidate => candidate.path), handled: false };
       shared[DELETE_KEY] = pending;
@@ -391,13 +391,20 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
         { value: "mode", label: `Mode: ${config ? modeLabel(config.mode) : "Not configured"}` },
         { value: "paths", label: `Paths: ${config?.paths.length ?? 0} configured` },
         { value: "prune", label: `Prune before push: ${config?.pruneOrphanSessionsBeforePush ? "On" : "Off"}` },
+        { value: "confirmDelete", label: `Confirm session deletion: ${config?.confirmSessionDelete !== false ? "On" : "Off"}` },
         ...(bubbleAPI(context)?.version === 1 ? [{ value: "color", label: `Bubble colour: ${colorChoices.find(choice => choice.value === (config?.bubbleColor ?? "pill"))!.label}` }] : []),
         "Backups", "Cleanup", "Diagnostics", "Back",
       ], { rows: overviewRows });
       if (!choice || choice === "Back") return;
       if (choice === "status") { showStatus(context); return; }
       if (!config || !service) { context.ui.notify("Run /sync-setup first.", "warning"); continue; }
-      if (choice === "prune") {
+      if (choice === "confirmDelete") {
+        // UI preference only: retain the service and timers; never start a Pull.
+        const next = { ...config, confirmSessionDelete: config.confirmSessionDelete === false };
+        await saveConfig(next, paths);
+        config.confirmSessionDelete = next.confirmSessionDelete;
+        publish();
+      } else if (choice === "prune") {
         const next = { ...config, pruneOrphanSessionsBeforePush: !config.pruneOrphanSessionsBeforePush };
         await persist(next);
       } else if (choice === "color") {
@@ -549,6 +556,9 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     bubble?.close();
     bubble = undefined;
     await inFlight;
+    // Delete's handoff deliberately is not inFlight. Its outgoing busy marker
+    // must not block run() when the host reuses this instance for session_start.
+    busy = undefined;
     ctx?.ui.setStatus(STATUS_KEY, undefined);
     ctx = undefined;
   });
@@ -599,6 +609,8 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
           next.mode = config.mode;
           next.bubbleColor = config.bubbleColor;
           next.pruneOrphanSessionsBeforePush = config.pruneOrphanSessionsBeforePush;
+          next.confirmSessionDelete = config.confirmSessionDelete ?? true;
+          next.proxy = config.proxy;
         }
         if (busy) throw new Error(`Sync is busy: ${busy}; retry setup after it finishes.`);
         stopTimers();

@@ -42,13 +42,13 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.19",
+      "version": "0.1.20",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
-      "upstreamVersion": "0.23.2",
+      "upstreamVersion": "0.24.0",
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
-      "upstreamGitHead": "a35acfb3b699e49f579f494473c38c87592f6c8e",
+      "upstreamGitHead": "f0b5304bbfcf4598007a85773a2eac8539536fdd",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
       "leanCommit": "e4892d465a15467214ed390ed380bdfc3f179887"
     },
@@ -70,7 +70,16 @@
       "upstreamRepository": "https://github.com/tmonk/pi-goal-x.git",
       "upstreamSource": "npm",
       "upstreamRef": "npm:pi-goal-x@0.34.1",
-      "registeredTools": ["get_goal", "create_goal", "update_goal", "set_goal_tasks", "update_goal_task", "goal_question", "goal_questionnaire", "propose_goal_draft"]
+      "registeredTools": [
+        "get_goal",
+        "create_goal",
+        "update_goal",
+        "set_goal_tasks",
+        "update_goal_task",
+        "goal_question",
+        "goal_questionnaire",
+        "propose_goal_draft"
+      ]
     },
     {
       "id": "amox-pi-sync",
@@ -93,10 +102,10 @@
     }
   ],
   "release": {
-    "version": "0.1.29",
-    "baseCommit": "0d1ba7cd9aa438225239ba90081b083c1ce1ddeb",
+    "version": "0.1.30",
+    "baseCommit": "5b4c3283cdd60053d7710fcf413bf0084af835cc",
     "packageIds": [
-      "pi-goal-x-lean"
+      "pi-subagents-lean"
     ]
   }
 }

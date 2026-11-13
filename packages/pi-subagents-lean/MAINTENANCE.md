@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.23.2`（精确固定；`dependencies`；此前为 0.23.1）。
+- `@tintinweb/pi-subagents@0.24.0`（精确固定；`dependencies`；此前为 0.23.2）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -344,3 +344,34 @@
   不复用作者入口、锁文件、包装版本或测量；本仓继续用 npm `dist/index.js`。先前不复用的 op 推断／对象 input 决定不变。
 - 无门面源码变化，不新增回归、不改既有断言。中英文 README 只在现有行为段说明观察器跳转键跟随宿主绑定。
   check 实际执行类型／既有回归、source/dist 契约、独立生产安装、字符代理与两类审计；结果以输出为准。
+
+## 本次审查：0.23.2 → 0.24.0
+
+- sources.json 精确 before/after 为 `a35acfb3b699e49f579f494473c38c87592f6c8e` →
+  `f0b5304bbfcf4598007a85773a2eac8539536fdd`；不采用未发布远端
+  `5532be42e97cd31b0193a12f762aa91d4b8235b6`。lean 作者仍为
+  `e4892d465a15467214ed390ed380bdfc3f179887`，无作者更新快照或新实现可复用。
+- 阅读新旧 CHANGELOG、package.json、完整 invocation-config.ts 和 child-context.ts，对比 index.ts 的
+  Agent/schema/execute/render、usage 包装、workflow/schema/result/steer、turn_end 通知边界；审查 manager
+  的新 nested 计数与 spawn 拒绝分支，以及新增 agent-tree.ts、FleetView 接口与 Running agents 树接线。
+  这是门面兼容审查，不声称逐文件审计整个上游。
+- 四个上游工具不增删，参数／类型／required／约束不变：run 必填 prompt/description/subagent_type，
+  可选 name/model/thinking/max_turns/run_in_background/resume/isolated/inherit_context，按设置加入
+  isolation/schedule；result 为 agent_id/wait/verbose，steer 为 agent_id/message；workflow 为
+  script/scriptPath/name/args/resumeFromRunId/title/description。顶层后台默认 true、inherit_context=false、
+  isolated=false、isolation 默认 off、wait/verbose=false 与 frontmatter 优先级不变。
+- 新设置 maxConcurrentNested 默认 10、0 不限；manager 在分配 ID／插入记录前，按当前 running 且具有
+  parentAgentId、没有 workflowId 的记录计数，超限 nested spawn 抛错而不排队。顶层／workflow 不计数，
+  也不被拒绝；不是每个父 Agent 各有 10 个。设置通过上游加载、快照保存与菜单承接，不是工具参数，
+  不加入 facade schema 或 input/help 的参数手册。双语 README 在现有限制段说明这一行为。
+- FleetView 与 Running agents 通过 agentTree 显示嵌套树；workflow children 仍在 workflow inspector。
+  新 AgentRecord.ownUsage 分开记录自身支出，FleetView 显示自身 token，原结果／通知继续使用 lifetimeUsage
+  汇总值。光标改为 ❯，● 表示前台视图；fullscreen 支持悬停／点击打开。showModel 也作用于 fleet 行，
+  widget/fleet 思考级别不再带 thinking: 前缀，工具结果／viewer 仍保留带标签形式。UI 由依赖承接。
+- 继续使用 npm dist/index.js 与 dist/child-context.js；child ALS 查询完全相同。typebox v1／instancePath、
+  启动名单正则、直接字段优先、五参数 execute、捕获 withUsageReporting 后的工具、render 委派、workflow
+  条件注册和 result 缺 sessionManager 的空 branch fallback 继续成立。Pi >=1.1.0/typebox * peers、
+  croner/nanoid 运行依赖范围不变。无需改 index.ts 或增加常驻提示。
+- 无本次门面源码变化，不添加上游内部单元测试，保留全部既有断言。check 负责重新捕获字符代理、联合
+  goal/subagents 类型与功能／原版 dist ABI／global v1 child gate、源码/dist 契约、独立生产安装和两类审计。
+  当前结果以 check 输出为准；未运行真实 provider／MCP 或交互鼠标／键盘端到端测试。其它包不升版或发布。

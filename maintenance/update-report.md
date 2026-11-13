@@ -1,11 +1,13 @@
-# Goal introduction update
+# Local upstream maintenance
 
-Base: 0d1ba7cd9aa438225239ba90081b083c1ce1ddeb
-Release after verified merge: v0.1.29
+Base: 5b4c3283cdd60053d7710fcf413bf0084af835cc
+Release after verified merge: v0.1.30
 
-<!-- amox-release-summary:v0.1.29:start -->
-- 精简 goal 中英文 README 开头：明确是 pi-goal-x 的轻量包装、不复制上游引擎，并通过 pi-subagents-lean 兼容 @tintinweb/pi-subagents 及其 workflow。
-- 仅发布 pi-goal-x-lean@0.1.1；运行时、工具和上游依赖均不变，其它扩展不升版、不重新发布。
-<!-- amox-release-summary:v0.1.29:end -->
+<!-- amox-release-summary:v0.1.30:start -->
+- 升级 @tintinweb/pi-subagents 至 0.24.0，保留单一 subagent 门面、只读子会话 v1 接口及 goal/workflow 联动；goal 包不升版。
+- 沿用上游 FleetView 嵌套树与自身用量显示，说明嵌套并发默认最多 10 个、超限拒绝不排队的设置边界（0 为不限）。
+<!-- amox-release-summary:v0.1.30:end -->
 
 Source review: [agent-review.md](agent-review.md).
+
+The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.

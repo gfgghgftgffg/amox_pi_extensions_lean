@@ -610,7 +610,6 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
           next.bubbleColor = config.bubbleColor;
           next.pruneOrphanSessionsBeforePush = config.pruneOrphanSessionsBeforePush;
           next.confirmSessionDelete = config.confirmSessionDelete ?? true;
-          next.proxy = config.proxy;
         }
         if (busy) throw new Error(`Sync is busy: ${busy}; retry setup after it finishes.`);
         stopTimers();

@@ -26,6 +26,8 @@ Point it at a private SSH Git repository. This does not transfer files yet:
 /sync-setup git@host:owner/private-repo.git
 ```
 
+For GitHub, use `git@github.com:OWNER/REPO.git`. Configure network access through your system, Git and SSH outside this extension.
+
 Send local sessions, then bring remote sessions back:
 
 ```text
@@ -67,16 +69,6 @@ pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-## Proxy configuration
-
-Native Windows SSH runs through the packaged Node launcher, which removes OpenSSH’s internal descriptor-inheritance state only from the SSH child environment. This prevents I/O waits when Git/Node replace the pipes, without changing the parent environment.
-
-For SSH Git through an HTTP proxy, add `"proxy": "http://127.0.0.1:7897"` to your existing agent-data `amox-pi-sync.json`, then reload Pi. Remove the field to connect directly. This uses HTTP CONNECT for SSH; it does not change global Git, SSH or system proxy settings. SSH authentication and host-key verification remain enabled. Only `http://` proxy endpoints are supported, without credentials, extra URL paths, query strings or fragments. The proxy must allow CONNECT to your SSH server and port.
-
-For GitHub through a proxy that blocks SSH port 22, set `repoUrl` to `ssh://git@ssh.github.com:443/OWNER/REPO.git` in the same file. This is still SSH, not HTTPS; verify GitHub’s published host-key fingerprint if SSH asks to trust the alternate endpoint. For an existing snapshot repository, also update its `origin` to the same URL: `git -C "<repoDir>" remote set-url origin "ssh://git@ssh.github.com:443/OWNER/REPO.git"`, replacing `<repoDir>` with the configured snapshot path. Any explicit push URLs must match too. Changing only `repoUrl` is rejected when the existing origin differs; these configuration changes do not transfer data. Reload Pi after updating both values. A CONNECT 200 response alone does not prove the SSH route works. An empty tunnel now reports the destination and, for `github.com:22`, this alternate URL; the extension never silently changes destinations or retries directly.
-
-The confirmation preference is also stored here as `"confirmSessionDelete": false`; omitting it keeps confirmation on. Changing that preference in the menu saves locally without starting a sync.
-
 ## Details
 
 - A per-device `syncedPaths` baseline records paths present at the last successful push or pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a backup and keeps local missing baseline paths as pending deletions, so a pull before push does not resurrect them. Files that were never synced, and remote-only files not yet pulled, are not deleted. The first baseline is the intersection of local and snapshot paths; deletions from before that baseline are not inferred.
@@ -88,7 +80,7 @@ The confirmation preference is also stored here as `"confirmSessionDelete": fals
 
 ## Settings and UI
 
-- The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Confirm session deletion** (default On), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
+- The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Confirm session deletion** (default On; stored as `confirmSessionDelete` in `amox-pi-sync.json`), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
 - Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled.
 - With [Starline](https://github.com/Andy8647/pi-starline), the clickable status capsule opens details and actions. The status key remains `pi-sync` for existing placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`. There is no three-line widget.
 - Pill clicks anchor bubbles to the corresponding Starline cell, like Model; settings, submenus and confirmations retain that anchor. `/sync-status` uses the last clicked anchor, or a centered fallback before the first click. Text entry still uses Pi input dialogs.

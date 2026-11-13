@@ -184,6 +184,7 @@ for (const host of ["example.org", "github.com"]) test(`CONNECT 200 followed by 
   assert.match(messages.join(" "), /proxy tunnel closed before receiving SSH data/);
   assert.ok(messages[0].includes(`${host}:22`));
   assert.equal(messages[0].includes("ssh://git@ssh.github.com:443/OWNER/REPO.git"), host === "github.com");
+  assert.equal(messages[0].includes("update the existing snapshot origin to match"), host === "github.com");
   assert.equal(Buffer.concat(chunks).length, 0);
 });
 

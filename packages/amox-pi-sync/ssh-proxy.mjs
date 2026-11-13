@@ -34,7 +34,7 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
   socket.on("error", error => finish(`proxy connection failed${error.code ? ` (${error.code})` : ""}`));
   socket.on("close", () => {
     if (!connected) return finish("proxy disconnected during CONNECT");
-    if (!receivedSshData) return finish(`proxy tunnel closed before receiving SSH data from ${authority}; check proxy routing and SSH port${bareHost.toLowerCase() === "github.com" && +port === 22 ? "; for GitHub try repoUrl ssh://git@ssh.github.com:443/OWNER/REPO.git" : ""}`);
+    if (!receivedSshData) return finish(`proxy tunnel closed before receiving SSH data from ${authority}; check proxy routing and SSH port${bareHost.toLowerCase() === "github.com" && +port === 22 ? "; for GitHub try repoUrl ssh://git@ssh.github.com:443/OWNER/REPO.git and update the existing snapshot origin to match" : ""}`);
     finish(undefined, 0);
   });
   socket.on("connect", () => socket.write(`CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n\r\n`));

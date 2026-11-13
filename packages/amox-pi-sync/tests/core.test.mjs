@@ -778,3 +778,51 @@ test("tree preview skips unrelated malformed files, falls back to path and toler
   await fs.access(path.join(f.paths.agentDir, "sessions/broken.jsonl"));
   await assert.rejects(next.planDeleteSessionTree(path.join(f.paths.agentDir, "sessions/broken.jsonl")), /no readable header/);
 });
+
+test("proxy and deletion confirmation configuration validate, persist and retain legacy absence", async t => {
+  const f = await fixture(t);
+  assert.equal(f.config.confirmSessionDelete, true);
+  assert.equal(f.config.proxy, undefined);
+  for (const confirmSessionDelete of [false, true]) {
+    const config = { ...f.config, proxy: "http://127.0.0.1:7897", confirmSessionDelete };
+    await saveConfig(config, f.paths);
+    assert.deepEqual(await loadConfig(f.paths), config);
+  }
+  await assert.rejects(saveConfig({ ...f.config, confirmSessionDelete: "false" }, f.paths), /confirmSessionDelete must be boolean/);
+  await assert.rejects(saveConfig({ ...f.config, proxy: "http://secret:password@localhost:80" }, f.paths), error => /Invalid proxy/.test(error.message) && !/secret|password/.test(error.message));
+  const old = { ...f.config };
+  delete old.confirmSessionDelete;
+  await saveConfig(old, f.paths);
+  assert.equal((await loadConfig(f.paths)).confirmSessionDelete, undefined);
+});
+test("proxy is per-instance and recomputed after config changes; all git safety options stay intact", async t => {
+  const direct = await fixture(t);
+  const proxied = await fixture(t);
+  proxied.config.proxy = "http://localhost:7897";
+  await direct.service.check();
+  await proxied.service.check();
+  for (const { raw } of direct.calls) assert.ok(!raw.some(arg => arg.includes("ProxyCommand=")));
+  for (const { raw } of proxied.calls) {
+    const ssh = raw.find(arg => arg.startsWith("core.sshCommand="));
+    assert.match(ssh, / -oBatchMode=yes -oConnectTimeout=10 -o 'ProxyCommand=/);
+    assert.match(ssh, /ssh-proxy\.mjs/);
+    assert.doesNotMatch(ssh, /http:\/\//);
+    assert.ok(raw.includes("core.hooksPath="));
+    assert.ok(raw.includes("core.autocrlf=false"));
+    assert.ok(raw.includes("core.eol=lf"));
+    assert.ok(raw.includes("credential.interactive=false"));
+    assert.ok(!raw.some(arg => arg.includes("http.proxy") || arg === "--global"));
+  }
+  proxied.calls.length = 0;
+  delete proxied.config.proxy;
+  await proxied.service.check();
+  assert.ok(proxied.calls.every(({ raw }) => !raw.some(arg => arg.includes("ProxyCommand="))));
+});
+test("proxy network failures do not fall back to direct SSH or record success", async t => {
+  const f = await fixture(t, args => args[0] === "fetch" ? { code: 128, stdout: "", stderr: "amox-pi-sync proxy: CONNECT rejected (HTTP 407)" } : undefined);
+  f.config.proxy = "http://localhost:7897";
+  await assert.rejects(f.service.check(), /HTTP 407/);
+  assert.equal(f.calls.filter(call => call.args[0] === "fetch").length, 1);
+  assert.ok(f.calls.every(({ raw }) => raw.some(arg => arg.includes("ProxyCommand="))));
+  assert.equal(f.service.status.checkedAt, undefined);
+});

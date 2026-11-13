@@ -22,9 +22,8 @@ async function until(predicate, description) {
   assert.ok(predicate(), description);
 }
 
-// Unlike a same-instance session_start fixture, newSession retires all outgoing
-// APIs and registers a separate extension before delivering the fresh context.
-async function fixture(t, { mode = "manual", configured = true } = {}) {
+// Exercise both reloaded extensions and hosts that reuse the lifecycle handlers.
+async function fixture(t, { mode = "manual", configured = true, reuse = false, confirmSessionDelete } = {}) {
   const root = await mkdtemp(join(tmpdir(), "amox-sync-delete-"));
   const previousDir = process.env.PI_CODING_AGENT_DIR;
   const previousBridge = globalThis[bridgeKey];
@@ -34,13 +33,15 @@ async function fixture(t, { mode = "manual", configured = true } = {}) {
   delete globalThis[deleteKey];
   const config = createConfig("git@github.com:example/private.git", defaultPaths(root));
   Object.assign(config, { mode, watchIntervalMs: 10, pushDebounceMs: 5 });
+  if (confirmSessionDelete !== undefined) config.confirmSessionDelete = confirmSessionDelete;
+  else delete config.confirmSessionDelete; // existing configs default to confirmation on
   if (configured) await saveConfig(config, defaultPaths(root));
   const instances = [], trace = [], staleCalls = [], executions = [];
   const candidates = [
     { path: "sessions/current.jsonl", name: "Current session", bytes: 1024 },
     { path: "sessions/manual-fork.jsonl", name: "Renamed manual fork", bytes: 2048 },
   ];
-  const state = { confirm: true, veto: false, snapshot: "before", plans: [], deletions: [], pulls: [], pushes: [], fingerprints: [], withSessionCalls: 0 };
+  const state = { statuses: new Map(), confirm: true, veto: false, snapshot: "before", plans: [], deletions: [], pulls: [], pushes: [], fingerprints: [], withSessionCalls: 0 };
   const originals = new Map();
   function stub(name, implementation) {
     if (!originals.has(name)) originals.set(name, Object.getOwnPropertyDescriptor(SyncService.prototype, name));
@@ -71,8 +72,8 @@ async function fixture(t, { mode = "manual", configured = true } = {}) {
   });
   stub("pull", async function () { state.pulls.push(owner(this).name); trace.push(`${owner(this).name}:pull`); return "Pulled"; });
   stub("push", async function () { state.pushes.push(owner(this).name); trace.push(`${owner(this).name}:push`); return "Pushed"; });
-  function instantiate(name) {
-    const instance = { name, file: join(root, "sessions", `${name === "old" ? "current" : "fresh"}.jsonl`), retired: false, events: new Map(), commands: new Map(), notifications: [], statuses: [], confirmations: [] };
+  function instantiate(name, previous) {
+    const instance = { name, file: join(root, "sessions", `${name === "old" ? "current" : "fresh"}.jsonl`), retired: false, events: previous?.events ?? new Map(), commands: previous?.commands ?? new Map(), notifications: [], statuses: [], confirmations: [] };
     instances.push(instance);
     const guard = (method, action) => (...args) => {
       if (instance.retired) {
@@ -85,7 +86,10 @@ async function fixture(t, { mode = "manual", configured = true } = {}) {
       hasUI: true,
       sessionManager: { getSessionFile: guard("getSessionFile", () => instance.file) },
       ui: {
-        setStatus: guard("setStatus", (...args) => instance.statuses.push(args)),
+        setStatus: guard("setStatus", (key, text) => {
+          instance.statuses.push([key, text]);
+          if (text === undefined) state.statuses.delete(key); else state.statuses.set(key, text);
+        }),
         setWidget: guard("setWidget", () => {}),
         notify: guard("notify", (...args) => instance.notifications.push(args)),
         confirm: guard("confirm", async (...args) => { instance.confirmations.push(args); return state.confirm; }),
@@ -97,7 +101,7 @@ async function fixture(t, { mode = "manual", configured = true } = {}) {
         await instance.events.get("session_shutdown")({}, instance.ctx);
         trace.push(`${name}:shutdown`);
         instance.retired = true;
-        const fresh = instantiate("fresh");
+        const fresh = instantiate("fresh", reuse ? instance : undefined);
         await fresh.events.get("session_start")({ reason: "new", previousSessionFile: instance.file }, fresh.ctx);
         trace.push("fresh:started");
         await withSession(fresh.ctx);
@@ -105,15 +109,16 @@ async function fixture(t, { mode = "manual", configured = true } = {}) {
         return { cancelled: false };
       }),
     };
-    extension({
+    if (!previous) extension({
       on: (name, handler) => instance.events.set(name, handler),
       registerCommand: (name, command) => instance.commands.set(name, command),
-      exec: guard("pi.exec", async (command, args) => {
+      exec: async (command, args) => {
+        if (!reuse && instance.retired) { staleCalls.push(`${name}:pi.exec`); throw new Error("Retired executor"); }
         assert.equal(command, "git");
         assert.deepEqual(args, ["test-delete-executor"], "no real network/git operations in lifecycle fixture");
         executions.push(name);
         return { stdout: "", stderr: "", code: 0, killed: false };
-      }),
+      },
     });
     return instance;
   }
@@ -163,9 +168,9 @@ for (const cancellation of ["confirmation", "newSession veto"]) {
   });
 }
 
-for (const mode of ["manual", "auto"]) {
-  test(`/delete-session rebuilds the extension before deleting in ${mode} mode`, async t => {
-    const f = await fixture(t, { mode });
+for (const reuse of [false, true]) for (const mode of ["manual", "auto", "off"]) {
+  test(`/delete-session ${reuse ? "reuses" : "rebuilds"} the extension before deleting in ${mode} mode`, async t => {
+    const f = await fixture(t, { mode, reuse });
     const entered = deferred(), release = deferred();
     f.state.deleteHook = async () => { entered.resolve(); await release.promise; };
     const deleting = f.delete();
@@ -179,7 +184,7 @@ for (const mode of ["manual", "auto"]) {
       await sleep(35);
       assert.equal(f.state.pulls.includes("fresh"), false, "automatic timers must not start during deletion");
       assert.equal(f.state.pushes.includes("fresh"), false);
-      assert.deepEqual(f.executions, ["fresh"], "deletion uses only the new instance's pi executor");
+      assert.deepEqual(f.executions, [reuse ? "old" : "fresh"], "executor follows host extension lifecycle");
       assert.deepEqual(f.staleCalls, []);
     } finally { release.resolve(); await deleting; }
     const fresh = f.instances[1], deletion = f.state.deletions[0];
@@ -204,6 +209,11 @@ for (const mode of ["manual", "auto"]) {
       assert.deepEqual(f.state.pulls, []);
       assert.deepEqual(f.state.pushes, []);
     }
+    await until(() => f.state.statuses.get("pi-sync") === `Sync: ${{ manual: "Manual", auto: "Auto", off: "Off" }[mode]}`, "global final state must not retain Delete session");
+    await fresh.commands.get("sync-status").handler("", fresh.ctx);
+    const details = fresh.notifications.at(-1)[0];
+    assert.match(details, /Last action: (Delete session|Push|Pull) completed/);
+    assert.doesNotMatch(details, /State: Delete session/);
     assert.deepEqual(f.staleCalls, []);
   });
 }
@@ -267,4 +277,26 @@ test("/delete-session rejects a busy sync without previewing or switching", asyn
     await pulling;
     SyncService.prototype.pull = originalPull;
   }
+});
+
+for (const confirmSessionDelete of [undefined, true, false]) {
+  test(`/delete-session confirmation preference: ${confirmSessionDelete}`, async t => {
+    const f = await fixture(t, { confirmSessionDelete });
+    await f.delete();
+    assert.equal(f.old.confirmations.length, confirmSessionDelete === false ? 0 : 1);
+    assert.equal(f.state.plans.length, 1, "always scan even without confirmation");
+    assert.deepEqual(f.state.deletions[0].expectedPaths, f.candidates.map(candidate => candidate.path));
+    assert.equal(f.state.statuses.get("pi-sync"), "Sync: Manual");
+  });
+}
+
+test("/delete-session without confirmation still requires UI and rejects force", async t => {
+  const f = await fixture(t, { confirmSessionDelete: false });
+  await f.delete("--force");
+  assert.match(f.old.notifications.at(-1)[0], /Usage/);
+  f.old.ctx.hasUI = false;
+  await f.delete();
+  assert.match(f.old.notifications.at(-1)[0], /interactive UI/);
+  assert.deepEqual(f.state.plans, []);
+  assert.deepEqual(f.state.deletions, []);
 });

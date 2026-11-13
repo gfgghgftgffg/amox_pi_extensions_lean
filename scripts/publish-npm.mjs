@@ -22,7 +22,7 @@ const PUBLISHED_FILES = ["LICENSE", "MAINTENANCE.md", "README.md", "README.zh-CN
 export function validateNpmArchive({ repoRoot, asset, entry, version, repository }) {
   const publishedFiles = [...new Set([
     ...PUBLISHED_FILES,
-    ...(entry.id === "amox-pi-sync" && ["manual-fork", "selective-fork"].includes(entry.maintenanceMode) ? ["core.ts"] : []),
+    ...(entry.id === "amox-pi-sync" && ["manual-fork", "selective-fork"].includes(entry.maintenanceMode) ? ["core.ts", ...(entry.sourceFiles ?? [])] : []),
     ...(entry.maintenanceMode === "original-facade" ? entry.sourceFiles ?? [] : []),
   ])];
   const tar = gunzipSync(readFileSync(asset.path), { maxOutputLength: 20_000_000 });

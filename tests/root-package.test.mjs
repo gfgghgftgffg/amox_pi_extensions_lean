@@ -74,7 +74,8 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
       assert.deepEqual(pkg.dependencies, {});
       assert.ok(pkg.files.includes("core.ts"));
       assert.equal(entry.maintenanceMode, "selective-fork");
-      assert.deepEqual(entry.sourceFiles, ["index.ts", "core.ts"]);
+      assert.deepEqual(entry.sourceFiles, ["index.ts", "core.ts", "ssh-proxy.mjs"]);
+      assert.ok(pkg.files.includes("ssh-proxy.mjs"), "sync tarball must include its SSH CONNECT helper");
       assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
     } else {
       if (entry.maintenanceMode === "original-facade") {

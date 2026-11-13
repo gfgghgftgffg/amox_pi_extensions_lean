@@ -1,14 +1,15 @@
-# Session-tree deletion release
+# Sync preferences, status and SSH proxy release
 
-Base: 8d5d050ec65959c188feb64eb1d364179933af57
-Release after verified merge: v0.1.31
+Base: 508f4413e0fc984efbe2a676510b362adce0d370
+Release after verified merge: v0.1.32
 
-<!-- amox-release-summary:v0.1.31:start -->
-- amox-pi-sync 新增 `/delete-session`：预览当前会话及递归后代，确认后先切换新会话、等待旧 runtime 关闭，再删除本地记录并提交快照删除。
-- 定向删除包含最近修改、改名和手动 fork 的后代，不受十分钟限制，不清理无关孤儿或 `/tmp`；保留 `/sync-prune` 原有保守规则。
-- 协调会话切换与自动同步，防止新实例在删除前 Pull；沿用既有自动模式发布删除，manual/off 仍需手动 Push。每日维护规则保留本地删除语义和回归。
-<!-- amox-release-summary:v0.1.31:end -->
+<!-- amox-release-summary:v0.1.32:start -->
+- amox-pi-sync 增加 Confirm session deletion 设置，默认开启，可关闭 `/delete-session` 确认框；切换偏好只保存配置，不触发同步。
+- 修复复用扩展实例时 Delete session 忙状态残留，删除后恢复 Manual/Auto/Off，保留真正进行中的 Push/Pull 状态。
+- 配置文件新增 `proxy`，支持通过 `http://127.0.0.1:7897` 这类 HTTP CONNECT 代理传输 SSH Git；不改全局设置，不依赖 nc/curl，也不在代理失败时静默直连。
+- 打包、发布及每日维护纳入 SSH 代理 helper；更换仓库配置时保留代理和删除确认偏好。
+<!-- amox-release-summary:v0.1.32:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-Only `amox-pi-sync@0.1.11` is selected for npm publication. Three-platform PR CI and independent Release verification remain required; this report is not an attestation that those checks have completed.
+Only `amox-pi-sync@0.1.12` is selected for npm publication. Three-platform PR CI and independent Release verification remain required; this report is not an attestation that those checks have completed.

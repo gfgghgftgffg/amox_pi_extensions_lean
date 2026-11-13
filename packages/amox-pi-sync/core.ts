@@ -20,6 +20,8 @@
  */
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
+import { fileURLToPath } from "node:url";
+import { isIP } from "node:net";
 import { homedir } from "node:os";
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, existsSync, realpathSync } from "node:fs";
@@ -28,6 +30,8 @@ import { createInterface } from "node:readline";
 export type BubbleColor = "pill" | "accent" | "success" | "warning" | "error";
 export type Config = {
   bubbleColor?: BubbleColor;
+  proxy?: string;
+  confirmSessionDelete?: boolean;
   pruneOrphanSessionsBeforePush?: boolean;
   /** Managed paths present in the last successful push/pull; used to propagate deletions safely. */
   syncedPaths?: string[];
@@ -153,8 +157,26 @@ function remote(url: string): void {
   } catch { /* reject below */ }
   throw new Error("Use an SSH git URL: git@host:path or ssh://user@host/path");
 }
+/** Only an HTTP authority is accepted; never include rejected input in diagnostics. */
+export function parseProxy(input: string): { host: string; port: number } {
+  const invalid = () => new Error("Invalid proxy: use http://host:port without credentials, path, query or fragment");
+  if (typeof input !== "string" || /[\s\x00-\x1f\x7f]/.test(input)) throw invalid();
+  const match = /^http:\/\/([a-zA-Z0-9.-]+|\[[a-fA-F0-9:]+\])(?::([0-9]+))?$/.exec(input);
+  if (!match) throw invalid();
+  const host = match[1]!.replace(/^\[|\]$/g, "");
+  if (match[1]!.startsWith("[") ? isIP(host) !== 6 : !host.split(".").every(label => /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/.test(label))) throw invalid();
+  const port = match[2] === undefined ? 80 : Number(match[2]);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw invalid();
+  return { host, port };
+}
 function validate(config: Config, paths: Paths): void {
   remote(config.repoUrl);
+  if (config.proxy !== undefined) {
+    parseProxy(config.proxy);
+    const host = config.repoUrl.startsWith("ssh://") ? new URL(config.repoUrl).hostname : config.repoUrl.split("@")[1]!.split(":")[0]!;
+    if (!/^[a-zA-Z0-9.:[\]-]+$/.test(host)) throw new Error("Unsupported SSH hostname for proxy");
+  }
+  if (config.confirmSessionDelete !== undefined && typeof config.confirmSessionDelete !== "boolean") throw new Error("confirmSessionDelete must be boolean");
   if (config.version !== 1 || !["manual", "auto", "off"].includes(config.mode)) throw new Error("Unsupported sync version or mode");
   if (!path.isAbsolute(config.repoDir)) throw new Error("repoDir must be absolute");
   if (!Array.isArray(config.paths)) throw new Error("paths must be an array");
@@ -177,7 +199,7 @@ function validate(config: Config, paths: Paths): void {
   for (const key of ["pullIntervalMinutes", "watchIntervalMs", "pushDebounceMs"] as const) if (!Number.isFinite(config[key]) || config[key] <= 0) throw new Error(`${key} must be positive`);
 }
 export function createConfig(repoUrl: string, paths = defaultPaths()): Config {
-  const config: Config = { version: 1, repoUrl, repoDir: path.join(paths.agentDir, "amox-pi-sync-repo"), mode: "manual", paths: ["sessions", "missions"], pruneOrphanSessionsBeforePush: false, retention: { keepBackups: 20, maxAgeDays: 180 }, pullIntervalMinutes: 1440, watchIntervalMs: 10000, pushDebounceMs: 2500 };
+  const config: Config = { version: 1, repoUrl, repoDir: path.join(paths.agentDir, "amox-pi-sync-repo"), mode: "manual", paths: ["sessions", "missions"], pruneOrphanSessionsBeforePush: false, confirmSessionDelete: true, retention: { keepBackups: 20, maxAgeDays: 180 }, pullIntervalMinutes: 1440, watchIntervalMs: 10000, pushDebounceMs: 2500 };
   validate(config, paths); return config;
 }
 async function stat(file: string) { try { return await fs.lstat(file); } catch (e) { if ((e as NodeJS.ErrnoException).code === "ENOENT") return null; throw e; } }
@@ -223,13 +245,27 @@ const NETWORK_TIMEOUT_MS = 10 * 60_000;
 const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
 const sshCommand = process.platform === "win32" && existsSync(nativeSsh)
   ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";
-const gitOptions = [
+/** Git always parses core.sshCommand with sh, including Git for Windows. */
+export function quoteSh(value: string): string { return "'" + value.replaceAll("'", "'\"'\"'") + "'"; }
+/** Native Windows OpenSSH launches ProxyCommand with Windows argv quoting, not sh. */
+export function proxyCommand(proxy: string, node = process.execPath, helper = fileURLToPath(new URL("./ssh-proxy.mjs", import.meta.url)), platform = process.platform): string {
+  const endpoint = Buffer.from(JSON.stringify(parseProxy(proxy))).toString("base64");
+  const quote = (value: string) => {
+    if (/[\x00-\x1f\x7f]/.test(value)) throw new Error("Unsupported control character in proxy executable path");
+    value = value.replaceAll("%", "%%"); // OpenSSH expands tokens even within quotes.
+    if (platform !== "win32") return quoteSh(value);
+    if (value.includes('"')) throw new Error("Unsupported quote in proxy executable path");
+    return '"' + value.replace(/(\\+)$/g, "$1$1") + '"';
+  };
+  return [quote(node), quote(helper), quote(endpoint), platform === "win32" ? '"%h" "%p"' : "'%h' '%p'"].join(" ");
+}
+function gitOptions(config: Config): string[] { return [
   "-c", "core.hooksPath=",
   "-c", "core.autocrlf=false",
   "-c", "core.eol=lf",
   "-c", "credential.interactive=false",
-  "-c", `core.sshCommand=${sshCommand} -oBatchMode=yes -oConnectTimeout=10`,
-];
+  "-c", `core.sshCommand=${sshCommand} -oBatchMode=yes -oConnectTimeout=10${config.proxy === undefined ? "" : " -o " + quoteSh("ProxyCommand=" + proxyCommand(config.proxy))}`,
+]; }
 type Files = Map<string, Buffer>;
 export class SyncService {
   public status: Status = {};
@@ -251,7 +287,7 @@ export class SyncService {
     finally { try { if (lock) { await lock.close(); await fs.unlink(lockFile); } } finally { this.status.busy = undefined; } }
   }
   private async gitResult(args: string[], cwd = this.config.repoDir, timeoutMs = LOCAL_TIMEOUT_MS) {
-    const result = await this.exec([...gitOptions, ...args], cwd, timeoutMs);
+    const result = await this.exec([...gitOptions(this.config), ...args], cwd, timeoutMs);
     // pi.exec can report code 0 for a process killed by its timeout; the killed
     // flag is the only reliable failure signal for that path.
     if (result.killed) throw new Error(`git ${args[0]} was terminated before completion (timeout or cancellation); no success was recorded. Verify the repository state before retrying.`);

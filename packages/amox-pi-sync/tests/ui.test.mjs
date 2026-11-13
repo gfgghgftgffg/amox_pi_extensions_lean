@@ -200,7 +200,7 @@ test("settings only offers retained functionality", async t => {
   const f = await fixture(t);
   await f.commands.get("sync-settings").handler("", f.ctx);
   assert.equal(f.dialogs[0].starline, true);
-  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode: Manual", "Paths: 2 configured", "Prune before push: Off", "Bubble colour: Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
+  assert.deepEqual(f.dialogs[0].options, ["Status", "Mode: Manual", "Paths: 2 configured", "Prune before push: Off", "Confirm session deletion: On", "Bubble colour: Follow pill", "Backups", "Cleanup", "Diagnostics", "Back"]);
 });
 
 test("pill Settings and its submenus share the Starline renderer and selection survives close-before-callback", async t => {
@@ -525,4 +525,45 @@ test("long status values are truncated so bubble actions remain visible", async 
   assert.ok(row);
   assert.ok(plain(row).length <= 180, plain(row));
   assert.ok(f.content().body.some(line => typeof line !== "string" && plain(line.text) === "Settings"));
+});
+
+for (const starline of [true, false]) for (const initial of [undefined, true, false]) {
+  test(`confirmation preference is local-only in Auto (${starline ? "Starline" : "native"}, ${initial})`, async t => {
+    const f = await fixture(t, true, starline);
+    const stored = { ...f.config, mode: "auto" };
+    if (initial === undefined) delete stored.confirmSessionDelete;
+    else stored.confirmSessionDelete = initial;
+    await saveConfig(stored, defaultPaths(f.root));
+    const original = { fingerprint: SyncService.prototype.fingerprint, pull: SyncService.prototype.pull };
+    let fingerprints = 0, pulls = 0;
+    SyncService.prototype.fingerprint = async () => { fingerprints++; return "unchanged"; };
+    SyncService.prototype.pull = async () => { pulls++; };
+    t.after(() => Object.assign(SyncService.prototype, original));
+    await f.events.get("session_start")({}, f.ctx);
+    await new Promise(resolve => setImmediate(resolve));
+    fingerprints = pulls = 0;
+    f.choices.push(`Confirm session deletion: ${initial === false ? "Off" : "On"}`, "Back");
+    await f.commands.get("sync-settings").handler("", f.ctx);
+    const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
+    assert.equal(saved.confirmSessionDelete, initial === false);
+    assert.equal(saved.mode, "auto");
+    assert.ok(f.dialogs.at(-1).options.includes(`Confirm session deletion: ${initial === false ? "On" : "Off"}`));
+    assert.equal(fingerprints, 0, "preference must not restart timers/fingerprinting");
+    assert.equal(pulls, 0, "preference must not trigger startup Pull");
+    assert.deepEqual(f.gitCalls, []);
+    assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Auto"]);
+    await f.events.get("session_shutdown")({}, f.ctx);
+  });
+}
+
+test("setup preserves deletion preference and proxy when replacing a repository", async t => {
+  const f = await fixture(t, true, false);
+  await saveConfig({ ...f.config, confirmSessionDelete: false, proxy: "http://localhost:8080" }, defaultPaths(f.root));
+  await f.events.get("session_start")({}, f.ctx);
+  await f.commands.get("sync-setup").handler("git@github.com:example/replacement.git", f.ctx);
+  const saved = JSON.parse(await readFile(join(f.root, "amox-pi-sync.json"), "utf8"));
+  assert.equal(saved.confirmSessionDelete, false);
+  assert.equal(saved.proxy, "http://localhost:8080");
+  assert.equal(saved.repoUrl, "git@github.com:example/replacement.git");
+  assert.deepEqual(f.gitCalls, []);
 });

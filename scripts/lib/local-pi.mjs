@@ -98,9 +98,9 @@ export function createLocalTools({ repo, context, manifest, baseline, gate, plan
           }
           const engine = plan.packagePlans.find((item) => item.id === entry.id);
           const lean = plan.leanPlans.find((item) => item.id === entry.id);
-          if (engine.versionChange !== "bump" && !lean.changed) continue;
+          if (engine.versionChange !== "bump" && !lean?.changed) continue;
           if (!reads.has(`repo:${entry.path}/MAINTENANCE.md`)) throw new Error(`Read ${entry.id} maintenance notes first`);
-          for (const family of [engine.versionChange === "bump" ? "upstream" : null, lean.changed ? "lean" : null].filter(Boolean)) {
+          for (const family of [engine.versionChange === "bump" ? "upstream" : null, lean?.changed ? "lean" : null].filter(Boolean)) {
             for (const revision of ["before", "after"]) if (![...reads].some((path) => path.startsWith(`upstream:${entry.id}/${family}-${revision}/`) && /\.(ts|js|mjs)$/.test(path))) throw new Error(`Read ${entry.id} ${family}-${revision} source first`);
           }
         }

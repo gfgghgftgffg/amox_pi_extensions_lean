@@ -4,11 +4,12 @@
 
 ## Advantage
 
-Sync Pi sessions through a private Git repository, with paths you choose. Deleting a session also removes the child sessions it produced (orphan sessions), and that deletion is synced.
+Sync Pi sessions through a private Git repository, with paths you choose. Delete the current session and its descendants with `/delete-session`, or clean up orphan subagent sessions with `/sync-prune`, and propagate the deletion.
 
 ## Features
 
 - Default paths are `sessions` and `missions`. You can include or exclude other agent-data paths. Files move as-is: no Markdown export and no JSONL merge. If both sides changed the same file, sync stops.
+- `/delete-session` previews the current session and its descendant tree, switches to a fresh session, then deletes the selected files and their snapshot copies. Recent and renamed descendants, including manual forks, are included; unrelated orphans are untouched.
 - `/sync-prune` finds subagent sessions whose parent is gone, including descendants, previews them, and syncs that deletion. It does not run before push unless you turn that on.
 - A pull backs up only the files it is about to replace or delete.
 - With [Starline](https://github.com/Andy8647/pi-starline), a status capsule opens the actions. Without it, the same actions stay on `/sync-*`.
@@ -31,6 +32,14 @@ Send local sessions, then bring remote sessions back:
 /sync-push
 /sync-pull
 ```
+
+Delete the current session and all its descendants after confirmation. Requires sync setup and `sessions` in managed paths:
+
+```text
+/delete-session
+```
+
+The command switches to a fresh session before deleting. Close other Pi processes using the listed sessions first. Snapshot removals are committed locally; manual/off mode needs `/sync-push` to publish them, while auto mode uses its normal sync loop. Git history, backups and `/tmp` files remain. If the tree gains new descendants before execution, deletion stops rather than deleting unconfirmed sessions.
 
 Preview orphan subagent sessions, then delete them and sync that deletion:
 
@@ -61,6 +70,7 @@ pi update --extensions
 ## Details
 
 - A per-device `syncedPaths` baseline records paths present at the last successful push or pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a backup and keeps local missing baseline paths as pending deletions, so a pull before push does not resurrect them. Files that were never synced, and remote-only files not yet pulled, are not deleted. The first baseline is the intersection of local and snapshot paths; deletions from before that baseline are not inferred.
+- Targeted deletion follows parent links recursively without a name filter or a ten-minute age limit. It shares the portable basename lookup and duplicate-name ambiguity protection with orphan prune. The outgoing runtime must finish shutdown before deletion, and the replacement instance processes deletion before its automatic Pull. A deletion failure pauses automatic sync until the error is resolved and sync is restarted or the extension reloaded.
 - Orphan prune compares parent basenames without case sensitivity, accepts names matching `type#8hex`, and cascades to descendants. It skips files modified in the last 10 minutes and the active session, previews count, size and names, writes the snapshot deletion before deleting locally, and refuses a dirty repository. Prune before push is off by default. A prune failure warns and does not block the push.
 - Network Git operations time out after 10 minutes. Local Git operations time out after 60 seconds. A process ended by timeout or cancellation is a failure, even if Pi reports exit code 0. Pull fast-forwards when it can; otherwise it does a clean three-way merge. A rejected non-fast-forward push fetches, integrates without rebase or force, and retries once.
 - Pull and restore back up only the local files being replaced or deleted. A pull that only adds files creates no backup. Manual create-backup is still a full snapshot of managed data.

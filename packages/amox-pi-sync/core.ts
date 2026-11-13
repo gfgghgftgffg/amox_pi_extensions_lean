@@ -339,7 +339,7 @@ export class SyncService {
       throw error;
     } finally { stream?.destroy(); }
   }
-  private async scanSessionEntries(): Promise<SessionEntry[]> {
+  private async scanSessionEntries(forTreeDeletion = false): Promise<SessionEntry[]> {
     if (!this.managedPaths().includes("sessions")) throw new Error("Prune requires \"sessions\" in managed paths");
     const root = path.join(this.paths.agentDir, "sessions");
     await noLinks(root);
@@ -358,7 +358,7 @@ export class SyncService {
       if (!info.isFile() || !relative.toLowerCase().endsWith(".jsonl")) return;
       const header = await this.readSessionHeader(absolute);
       if (!header) return;
-      const name = header.parentSession ? await this.readLastSessionName(absolute) : undefined;
+      const name = forTreeDeletion || header.parentSession ? await this.readLastSessionName(absolute) : undefined;
       entries.push({ path: validatePath(`sessions/${relative}`), parentSession: header.parentSession, name, bytes: info.size, mtimeMs: info.mtimeMs });
     };
     for (const child of (await fs.readdir(root)).sort()) await visit(path.join(root, child), child);
@@ -513,6 +513,101 @@ export class SyncService {
     this.config.lastResult = message;
     return { changed: changes.size > 0 || removed.length > 0, message, files: [...changes.keys()], backupId: backup?.id };
   }
+  private deleteTreeRoot(rootSessionFile: string): string {
+    if (!path.isAbsolute(rootSessionFile)) throw new Error("Session tree root must be an absolute path");
+    const relative = path.relative(this.paths.agentDir, rootSessionFile).split(path.sep).join("/");
+    if (!relative.startsWith("sessions/") || !relative.toLowerCase().endsWith(".jsonl")) throw new Error("Session tree root must be a managed sessions JSONL file");
+    return validatePath(relative);
+  }
+  private async scanDeleteSessionTree(root: string, rejectActive = false): Promise<{ candidates: PruneCandidate[] }> {
+    const file = path.join(this.paths.agentDir, root);
+    await noLinks(file);
+    const info = await stat(file);
+    if (!info?.isFile()) throw new Error(`Session tree root is missing or not a regular file: ${root}; preview again`);
+    const entries = await this.scanSessionEntries(true);
+    const byBase = new Map<string, SessionEntry[]>();
+    for (const entry of entries) {
+      const base = baseName(entry.path);
+      byBase.set(base, [...(byBase.get(base) ?? []), entry]);
+    }
+    const rootEntry = entries.find(entry => entry.path === root);
+    if (!rootEntry) throw new Error(`Session tree root has no readable header: ${root}`);
+    const selected = new Set([rootEntry]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const entry of entries) {
+        if (selected.has(entry) || !entry.parentSession) continue;
+        const parents = byBase.get(baseName(entry.parentSession)) ?? [];
+        if (parents.some(parent => selected.has(parent))) {
+          if (parents.length !== 1) throw new Error(`Ambiguous session basename: ${baseName(entry.parentSession)}`);
+          selected.add(entry); changed = true;
+        }
+      }
+    }
+    const active = this.activeSessionRelative()?.toLowerCase();
+    for (const entry of selected) {
+      if (byBase.get(baseName(entry.path))!.length !== 1) throw new Error(`Ambiguous session basename: ${baseName(entry.path)}`);
+      if (rejectActive && entry.path.toLowerCase() === active) throw new Error(`Active session cannot be deleted: ${entry.path}; switch to a new session first`);
+    }
+    const sorted = [...selected].sort((a, b) => a.path.localeCompare(b.path));
+    return {
+      candidates: sorted.map(entry => ({ path: entry.path, name: entry.name || entry.path, bytes: Math.max(0, entry.bytes ?? 0) })),
+    };
+  }
+  /** Read-only preview; active files may be previewed. Paths are agent-relative, as in prune. */
+  async planDeleteSessionTree(rootSessionFile: string): Promise<{ candidates: PruneCandidate[] }> {
+    return this.scanDeleteSessionTree(this.deleteTreeRoot(rootSessionFile));
+  }
+  /** The caller must first switch sessions and wait for the old runtime to shut down.
+   * activeSessionFile protects this instance only, not other processes' writers.
+   */
+  async deleteSessionTree(rootSessionFile: string, expectedPaths: string[]): Promise<PruneResult> { return this.run("deleteSessionTree", async () => {
+    const root = this.deleteTreeRoot(rootSessionFile);
+    if (!Array.isArray(expectedPaths)) throw new Error("Expected session paths must be an array");
+    const expected = new Set(expectedPaths.map(validatePath));
+    const recheck = async () => {
+      const current = await this.scanDeleteSessionTree(root, true);
+      if (expected.size !== expectedPaths.length || current.candidates.length !== expected.size || current.candidates.some(item => !expected.has(item.path))) {
+        throw new Error("Session tree changed or selection differs from preview; preview again and retry");
+      }
+      return current.candidates;
+    };
+    const candidates = await recheck();
+    await this.ensureRepo();
+    if ((await this.git(["diff", "--cached", "--name-only"])).trim()) throw new Error("Repository has staged changes; run Push or resolve them before deleting");
+    if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; run Push or resolve them before deleting");
+    await recheck();
+    // Validate every snapshot target before removing any of them.
+    const repoRemoved: string[] = [];
+    for (const candidate of candidates) {
+      const file = path.join(this.config.repoDir, candidate.path);
+      await noLinks(file);
+      const info = await stat(file);
+      if (!info) continue;
+      if (!info.isFile()) throw new Error(`Not a regular file in snapshot: ${candidate.path}`);
+      repoRemoved.push(candidate.path);
+    }
+    for (const relative of repoRemoved) await fs.rm(path.join(this.config.repoDir, relative));
+    if (repoRemoved.length) {
+      await this.stageDeletions(repoRemoved);
+      await this.git(["commit", "-m", `amox-pi-sync: delete session tree (${repoRemoved.length} session(s))`]);
+    }
+    // Git may take time; reject new descendants or an active session before local deletion.
+    await recheck();
+    const removed: string[] = [];
+    for (const candidate of candidates) {
+      const file = path.join(this.paths.agentDir, candidate.path);
+      await noLinks(file);
+      if (!(await stat(file))?.isFile()) throw new Error(`Session disappeared or is not a regular file: ${candidate.path}; preview again and retry`);
+      await fs.rm(file);
+      removed.push(candidate.path);
+    }
+    const deleted = new Set(removed);
+    this.config.syncedPaths = this.config.syncedPaths?.filter(item => !deleted.has(item));
+    await saveConfig(this.config, this.paths);
+    return { removed, repoRemoved: repoRemoved.length, skipped: 0 };
+  }); }
   async planPruneSessions(): Promise<PrunePlan> {
     return selectOrphanSessions(await this.scanSessionEntries(), { activePath: this.activeSessionRelative() });
   }

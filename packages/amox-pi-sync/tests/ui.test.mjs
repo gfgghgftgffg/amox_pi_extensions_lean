@@ -94,7 +94,7 @@ async function fixture(t, configured = true, starline = true) {
 
 test("manual startup is local-only and never creates an upstream widget", async t => {
   const f = await fixture(t);
-  assert.deepEqual([...f.commands.keys()].sort(), ["sync-prune", "sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
+  assert.deepEqual([...f.commands.keys()].sort(), ["delete-session", "sync-prune", "sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   assert.ok(f.widgets.every(([, value]) => value === undefined));
   assert.equal(f.gitCalls.length, 0);

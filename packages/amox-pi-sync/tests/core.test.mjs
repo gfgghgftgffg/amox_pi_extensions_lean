@@ -668,3 +668,113 @@ test("pull result summarizes large replaced file lists instead of listing every 
   assert.match(result, /replaced: sessions\/f0\.jsonl, sessions\/f1\.jsonl, sessions\/f2\.jsonl \(\+7 more\)/);
   assert.ok(!result.includes("sessions/f3.jsonl"));
 });
+
+test("targeted tree deletion includes recent renamed/manual forks, never unrelated orphans", async t => {
+  const f = await fixture(t, async args => {
+    if (args[0] === "commit") {
+      await fs.access(path.join(f.paths.agentDir, "sessions/root.jsonl"));
+      await assert.rejects(fs.access(path.join(f.config.repoDir, "sessions/root.jsonl")));
+    }
+  });
+  const root = await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, ["old", "renamed root"]);
+  await writeSession(f, f.paths.agentDir, "sessions/sub/child.jsonl", "C:\\other\\ROOT.jsonl", ["manual fork"]);
+  await writeSession(f, f.paths.agentDir, "sessions/grand.jsonl", "/other/child.jsonl", ["renamed"]);
+  await writeSession(f, f.paths.agentDir, "sessions/orphan.jsonl", "/other/missing.jsonl", ["tr_coding#abcd1234"]);
+  for (const relative of ["sessions/root.jsonl", "sessions/sub/child.jsonl", "sessions/grand.jsonl"]) {
+    await fs.utimes(path.join(f.paths.agentDir, relative), new Date(), new Date());
+  }
+  await f.write(f.config.repoDir, ".git/HEAD", "mock");
+  await f.write(f.config.repoDir, "sessions/root.jsonl", "snapshot");
+  f.config.syncedPaths = ["sessions/root.jsonl", "sessions/grand.jsonl", "sessions/sub/child.jsonl", "sessions/orphan.jsonl"];
+  f.service.activeSessionFile = root;
+  const plan = await f.service.planDeleteSessionTree(root);
+  const paths = plan.candidates.map(c => c.path);
+  assert.deepEqual(paths, ["sessions/grand.jsonl", "sessions/root.jsonl", "sessions/sub/child.jsonl"]);
+  assert.equal(plan.candidates[1].name, "renamed root");
+  assert.ok(plan.candidates.every(c => c.bytes > 0));
+  assert.equal(f.calls.length, 0);
+  const next = new SyncService(f.config, f.paths, f.exec);
+  next.activeSessionFile = "sessions/new-active.jsonl";
+  assert.deepEqual(await next.deleteSessionTree(root, paths), { removed: paths, repoRemoved: 1, skipped: 0 });
+  await fs.access(path.join(f.paths.agentDir, "sessions/orphan.jsonl"));
+  assert.deepEqual(f.config.syncedPaths, ["sessions/orphan.jsonl"]);
+  await assert.rejects(f.service.planDeleteSessionTree(root), /missing/);
+});
+
+test("tree deletion rejects new descendants, missing members and mismatched selections", async t => {
+  for (const change of ["new", "missing", "selection"]) {
+    const f = await fixture(t);
+    const root = await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, []);
+    const child = await writeSession(f, f.paths.agentDir, "sessions/child.jsonl", "/x/root.jsonl", []);
+    await writeSession(f, f.paths.agentDir, "sessions/grand.jsonl", "/x/child.jsonl", []);
+    const paths = (await f.service.planDeleteSessionTree(root)).candidates.map(c => c.path);
+    if (change === "new") await writeSession(f, f.paths.agentDir, "sessions/new.jsonl", "/x/root.jsonl", []);
+    if (change === "missing") await fs.rm(child);
+    if (change === "selection") paths.pop();
+    await assert.rejects(f.service.deleteSessionTree(root, paths), /changed|preview/);
+    await fs.access(root);
+    assert.equal(f.calls.length, 0);
+  }
+});
+
+test("tree deletion rejects unsafe roots, active descendants, duplicates and held locks", async t => {
+  const f = await fixture(t);
+  const root = await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, []);
+  const child = await writeSession(f, f.paths.agentDir, "sessions/child.jsonl", "/x/root.jsonl", []);
+  for (const bad of ["sessions/root.jsonl", path.join(f.root, "root.jsonl"), path.join(f.paths.agentDir, "missions/root.jsonl")]) {
+    await assert.rejects(f.service.planDeleteSessionTree(bad), /absolute|managed/);
+  }
+  f.service.activeSessionFile = child;
+  assert.equal((await f.service.planDeleteSessionTree(root)).candidates.length, 2);
+  f.service.activeSessionFile = undefined;
+  const duplicate = await writeSession(f, f.paths.agentDir, "sessions/sub/ROOT.jsonl", undefined, []);
+  await assert.rejects(f.service.planDeleteSessionTree(root), /Ambiguous/);
+  await fs.rm(duplicate);
+  const paths = (await f.service.planDeleteSessionTree(root)).candidates.map(c => c.path);
+  f.service.activeSessionFile = root;
+  await assert.rejects(f.service.deleteSessionTree(root, paths), /Active session/);
+  f.service.activeSessionFile = undefined;
+  await fs.writeFile(`${f.paths.configFile}.lock`, "held");
+  await assert.rejects(f.service.deleteSessionTree(root, paths), /locked by another process/);
+  await fs.rm(`${f.paths.configFile}.lock`);
+  await fs.rm(child);
+  await fs.symlink(root, child);
+  await assert.rejects(f.service.planDeleteSessionTree(root), /symlink/);
+  await fs.rm(child);
+  await fs.mkdir(child);
+  await assert.rejects(f.service.planDeleteSessionTree(child), /not a regular file/);
+  f.config.paths = ["missions"];
+  await assert.rejects(f.service.planDeleteSessionTree(root), /managed paths/);
+});
+
+test("tree deletion preserves local files on dirty repo and commit failures", async t => {
+  for (const failure of ["diff", "status", "commit"]) {
+    const f = await fixture(t, args => args[0] === failure
+      ? { stdout: failure === "commit" ? "" : "dirty", stderr: "commit denied", code: failure === "commit" ? 1 : 0 } : undefined);
+    const root = await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, []);
+    await f.write(f.config.repoDir, ".git/HEAD", "mock");
+    await f.write(f.config.repoDir, "sessions/root.jsonl", "snapshot");
+    const paths = (await f.service.planDeleteSessionTree(root)).candidates.map(c => c.path);
+    await assert.rejects(f.service.deleteSessionTree(root, paths), /staged changes|uncommitted changes|commit denied/);
+    await fs.access(root);
+    assert.equal(f.config.syncedPaths, undefined);
+    assert.equal(f.service.status.busy, undefined);
+    await assert.rejects(fs.access(`${f.paths.configFile}.lock`));
+  }
+});
+
+test("tree preview skips unrelated malformed files, falls back to path and tolerates internal edge changes", async t => {
+  const f = await fixture(t);
+  const root = await writeSession(f, f.paths.agentDir, "sessions/root.jsonl", undefined, []);
+  await writeSession(f, f.paths.agentDir, "sessions/child.jsonl", "/x/root.jsonl", []);
+  await writeSession(f, f.paths.agentDir, "sessions/grand.jsonl", "/x/child.jsonl", []);
+  await f.write(f.paths.agentDir, "sessions/broken.jsonl", '{"unfinished":');
+  const plan = await f.service.planDeleteSessionTree(root);
+  assert.equal(plan.candidates.find(c => c.path === "sessions/root.jsonl").name, "sessions/root.jsonl");
+  await writeSession(f, f.paths.agentDir, "sessions/grand.jsonl", "/x/root.jsonl", []);
+  const next = new SyncService(f.config, f.paths, f.exec);
+  const paths = plan.candidates.map(c => c.path);
+  assert.deepEqual((await next.deleteSessionTree(root, paths)).removed, paths);
+  await fs.access(path.join(f.paths.agentDir, "sessions/broken.jsonl"));
+  await assert.rejects(next.planDeleteSessionTree(path.join(f.paths.agentDir, "sessions/broken.jsonl")), /no readable header/);
+});

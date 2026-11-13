@@ -1,6 +1,24 @@
 import { createConnection, isIP } from "node:net";
+import { spawn } from "node:child_process";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+
+// Win32 OpenSSH's descriptor metadata is valid only for its immediate child.
+// Git/Node replace the stdio pipes, so inheriting it can deadlock fileio_write()
+// waiting for async completion on a synchronous pipe. Do not alter the parent.
+export function sshEnvironment(env = process.env) {
+  const internal = "c28fc6f98a2c44abbbd89d6a3037d0d9_posix_fd_state";
+  return Object.fromEntries(Object.entries(env).filter(([key]) => key.toLowerCase() !== internal));
+}
+
+function launchSsh(command, args) {
+  const child = spawn(command, args, { env: sshEnvironment(), stdio: "inherit" });
+  child.once("error", error => {
+    process.stderr.write(`amox-pi-sync SSH: could not start SSH${error.code ? ` (${error.code})` : ""}\n`);
+    process.exitCode = 1;
+  });
+  child.once("exit", code => { process.exitCode = code ?? 1; });
+}
 
 // No HTTP client or external executable: stdin/stdout are the raw SSH transport.
 export function connectTunnel(endpoint, host, port, { input = process.stdin, output = process.stdout, diagnostic = message => process.stderr.write(`amox-pi-sync proxy: ${message}\n`), timeoutMs = 10_000, done = code => { process.exitCode = code; } } = {}) {
@@ -65,7 +83,9 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
 // Node canonicalizes an ESM entrypoint, while argv[1] may retain a directory
 // alias (notably macOS /var -> /private/var) or a symlinked installation.
 if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
-  try {
+  if (process.argv[2] === "--ssh" && process.argv[3]) {
+    launchSsh(process.argv[3], process.argv.slice(4));
+  } else try {
     if (process.argv.length !== 5) throw new Error();
     const endpoint = JSON.parse(Buffer.from(process.argv[2], "base64").toString("utf8"));
     connectTunnel(endpoint, process.argv[3], process.argv[4]);

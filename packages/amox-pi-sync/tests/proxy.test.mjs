@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { createJiti } from "jiti";
-import { connectTunnel } from "../ssh-proxy.mjs";
+import { connectTunnel, sshEnvironment } from "../ssh-proxy.mjs";
 const { parseProxy, proxyCommand, quoteSh } = await createJiti(import.meta.url).import("../core.ts");
 async function server(t, handler) {
   const sockets = new Set();
@@ -25,6 +25,25 @@ function tunnel(endpoint, options = {}) {
   const socket = connectTunnel(endpoint, "example.org", "22", { input, output, timeoutMs: 500, diagnostic: message => messages.push(message), done: code => resolve(code), ...options });
   return { input, output, chunks, messages, done, socket };
 }
+test("SSH child environment drops only stale Win32 descriptor metadata without mutating its parent", () => {
+  const key = "c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE";
+  const env = { [key]: "AAAAAAICAgA=", [key.toUpperCase()]: "stale", PATH: "keep", SSH_AUTH_SOCK: "keep-agent", OTHER_POSIX_FD_STATE: "keep-other" };
+  assert.deepEqual(sshEnvironment(env), { PATH: "keep", SSH_AUTH_SOCK: "keep-agent", OTHER_POSIX_FD_STATE: "keep-other" });
+  assert.equal(env[key], "AAAAAAICAgA=");
+});
+
+test("SSH launcher preserves arguments, stdio and child exit status", { timeout: 5000 }, async () => {
+  const helper = fileURLToPath(new URL("../ssh-proxy.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, [helper, "--ssh", process.execPath, "-e",
+    'process.stdout.write(JSON.stringify({ args: process.argv.slice(1), state: Object.keys(process.env).filter(k => /c28fc6f98a2c44abbbd89d6a3037d0d9_posix_fd_state/i.test(k)) })); process.stderr.write("child stderr"); process.exitCode = 7;', "a b", "100%", "it's"], {
+    encoding: "utf8", timeout: 3000,
+    env: { ...process.env, c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE: "AAAAAAICAgA=" },
+  });
+  assert.equal(result.status, 7, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), { args: ["a b", "100%", "it's"], state: [] });
+  assert.equal(result.stderr, "child stderr");
+});
+
 test("proxy validation is strict and diagnostics do not reflect URLs or credentials", () => {
   assert.deepEqual(parseProxy("http://localhost:7897"), { host: "localhost", port: 7897 });
   assert.deepEqual(parseProxy("http://[::1]:80"), { host: "::1", port: 80 });
@@ -129,7 +148,7 @@ test("helper entrypoint executes through a directory alias", { timeout: 15000 },
   assert.match(stderr, /CONNECT rejected \(HTTP 407\)/);
 });
 
-test("native Windows OpenSSH executes the packaged Node helper", { skip: process.platform !== "win32", timeout: 20000 }, async t => {
+test("native Windows OpenSSH executes the packaged helper despite stale inherited descriptor state", { skip: process.platform !== "win32", timeout: 20000 }, async t => {
   const root = await fs.mkdtemp(path.join(tmpdir(), "sync proxy's 100%-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const helper = path.join(root, "ssh proxy.mjs"), sshConfig = path.join(root, "empty config");
@@ -142,7 +161,9 @@ test("native Windows OpenSSH executes the packaged Node helper", { skip: process
   }));
   const command = proxyCommand(`http://${endpoint.host}:${endpoint.port}`, process.execPath, helper);
   const ssh = path.join(process.env.SystemRoot ?? "C:\\Windows", "System32", "OpenSSH", "ssh.exe");
-  const child = spawn(ssh, ["-F", sshConfig, "-oBatchMode=yes", "-oConnectTimeout=5", "-o", "ProxyCommand=" + command, "example.org"]);
+  const child = spawn(process.execPath, [helper, "--ssh", ssh, "-F", sshConfig, "-oBatchMode=yes", "-oConnectTimeout=5", "-o", "ProxyCommand=" + command, "example.org"], {
+    env: { ...process.env, c28fc6f98a2c44abbbd89d6a3037d0d9_POSIX_FD_STATE: "AAAAAAICAgA=" },
+  });
   const exited = new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
   let stderr = ""; child.stderr.on("data", chunk => { stderr += chunk; });
   const timeout = setTimeout(() => child.kill(), 15000);

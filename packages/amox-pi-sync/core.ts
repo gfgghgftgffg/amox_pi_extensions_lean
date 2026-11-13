@@ -243,8 +243,10 @@ const LOCAL_TIMEOUT_MS = 60_000;
 const NETWORK_TIMEOUT_MS = 10 * 60_000;
 // Git for Windows SSH can misdecode non-ASCII home paths; prefer native OpenSSH.
 const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
+// Keep native OpenSSH for non-ASCII home paths, but launch it with fresh Win32
+// descriptor state: Git/Node's replacement pipes must not inherit SSH's metadata.
 const sshCommand = process.platform === "win32" && existsSync(nativeSsh)
-  ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";
+  ? [quoteSh(process.execPath), quoteSh(fileURLToPath(new URL("./ssh-proxy.mjs", import.meta.url))), "--ssh", quoteSh(nativeSsh.replace(/\\/g, "/"))].join(" ") : "ssh";
 /** Git always parses core.sshCommand with sh, including Git for Windows. */
 export function quoteSh(value: string): string { return "'" + value.replaceAll("'", "'\"'\"'") + "'"; }
 /** Native Windows OpenSSH launches ProxyCommand with Windows argv quoting, not sh. */

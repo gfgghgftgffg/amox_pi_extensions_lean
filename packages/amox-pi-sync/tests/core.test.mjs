@@ -420,9 +420,12 @@ test("check publishes checkedAt only after successful remote checks", async t =>
     assert.ok(raw.includes("credential.interactive=false"));
     assert.ok(raw.includes("core.eol=lf"));
     const nativeSsh = path.join(process.env.SystemRoot ?? "C:/Windows", "System32", "OpenSSH", "ssh.exe");
-    const expectedSsh = process.platform === "win32" && existsSync(nativeSsh)
-      ? `"${nativeSsh.replace(/\\/g, "/")}"` : "ssh";
-    assert.ok(raw.includes(`core.sshCommand=${expectedSsh} -oBatchMode=yes -oConnectTimeout=10`));
+    const actualSsh = raw.find(arg => arg.startsWith("core.sshCommand="));
+    if (process.platform === "win32" && existsSync(nativeSsh)) {
+      assert.match(actualSsh, /ssh-proxy\.mjs' --ssh /);
+      assert.ok(actualSsh.includes(`'${nativeSsh.replace(/\\/g, "/")}'`));
+      assert.ok(actualSsh.endsWith(" -oBatchMode=yes -oConnectTimeout=10"));
+    } else assert.equal(actualSsh, "core.sshCommand=ssh -oBatchMode=yes -oConnectTimeout=10");
   }
 });
 

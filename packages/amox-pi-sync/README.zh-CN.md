@@ -69,6 +69,8 @@ pi update --extensions
 
 ## 代理配置
 
+Windows 原生 SSH 通过随包 Node 启动器运行；启动器只从 SSH 子进程环境移除 OpenSSH 内部的文件描述符继承状态，避免 Git/Node 重建管道后发生 I/O 等待，不修改父进程环境。
+
 SSH Git 需要走 HTTP 代理时，在现有 agent 数据目录的 `amox-pi-sync.json` 中添加 `"proxy": "http://127.0.0.1:7897"`，然后 reload Pi。移除该字段恢复直连。扩展通过 HTTP CONNECT 转发 SSH，不修改全局 Git、SSH 或系统代理设置，SSH 认证和主机密钥校验保持开启。仅支持 `http://` 代理地址，不接受用户名密码、额外 URL 路径、查询参数或 fragment；代理必须允许 CONNECT 到你的 SSH 服务器及其端口。
 
 GitHub 的 SSH 22 端口被代理线路阻断时，在同一文件中将 `repoUrl` 改为 `ssh://git@ssh.github.com:443/OWNER/REPO.git`。这仍然是 SSH，不是 HTTPS；SSH 要求信任备用端点时，先核对 GitHub 公布的主机密钥指纹。已有快照仓库还需将 `origin` 改成同一 URL：`git -C "<repoDir>" remote set-url origin "ssh://git@ssh.github.com:443/OWNER/REPO.git"`，其中 `<repoDir>` 替换为配置中的快照路径；若设置过独立的 push URL，也要同步修改。仅改 `repoUrl` 而保留旧 origin 会被扩展拒绝，这些配置修改本身不传输数据。两处改完再 reload Pi。CONNECT 返回 200 并不代表 SSH 线路可用。空隧道现在会报出目标地址，对 `github.com:22` 也提示上述备用 URL；扩展不会静默更换目标或重试直连。

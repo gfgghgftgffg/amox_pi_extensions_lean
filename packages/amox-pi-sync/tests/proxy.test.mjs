@@ -33,7 +33,7 @@ test("proxy validation is strict and diagnostics do not reflect URLs or credenti
     assert.throws(() => parseProxy(proxy), error => error.message.startsWith("Invalid proxy:") && !error.message.includes("secret") && !error.message.includes("password"));
   }
 });
-test("an unavailable proxy reports the socket error code", async () => {
+test("an unavailable proxy reports the socket error code", { timeout: 5000 }, async () => {
   const listener = createServer();
   await new Promise(resolve => listener.listen(0, "127.0.0.1", resolve));
   const endpoint = { host: "127.0.0.1", port: listener.address().port };
@@ -43,7 +43,7 @@ test("an unavailable proxy reports the socket error code", async () => {
   assert.match(client.messages.join(" "), /proxy connection failed \(ECONNREFUSED\)/);
 });
 
-test("CONNECT preserves same-chunk banner and binary echo; EOF closes cleanly", async t => {
+test("CONNECT preserves same-chunk banner and binary echo; EOF closes cleanly", { timeout: 5000 }, async t => {
   const banner = Buffer.from([83, 83, 72, 45, 0, 255, 128, 13, 10]);
   const bytes = Buffer.from(Array.from({ length: 65536 }, (_, i) => i % 256));
   const endpoint = await server(t, socket => socket.once("data", request => {
@@ -65,7 +65,7 @@ for (const [name, response, message] of [
   ["oversize", "HTTP/1.1 200 OK\r\nX: " + "x".repeat(16384), /too large/],
   ["disconnect", null, /disconnected/],
   ["timeout", "", /timed out/],
-]) test(`CONNECT ${name} fails without leaking response details`, async t => {
+]) test(`CONNECT ${name} fails without leaking response details`, { timeout: 5000 }, async t => {
   const endpoint = await server(t, socket => socket.once("data", () => { if (response === null) socket.end(); else if (response) socket.write(response); }));
   const client = tunnel(endpoint, { timeoutMs: 40 });
   assert.equal(await client.done, 1);
@@ -74,7 +74,7 @@ for (const [name, response, message] of [
   assert.equal(Buffer.concat(client.chunks).length, 0);
   assert.ok(client.socket.destroyed);
 });
-test("fragmented headers at the size boundary and remote close are accepted; handshake timer clears", async t => {
+test("fragmented headers at the size boundary and remote close are accepted; handshake timer clears", { timeout: 5000 }, async t => {
   const head = "HTTP/1.1 200 OK\r\nX: ";
   const header = head + "x".repeat(16384 - head.length - 4) + "\r\n\r\n";
   const endpoint = await server(t, socket => socket.once("data", () => { socket.write(header.slice(0, 20)); setTimeout(() => socket.write(header.slice(20)), 5); setTimeout(() => socket.end(Buffer.from([255])), 80); }));
@@ -85,14 +85,14 @@ test("fragmented headers at the size boundary and remote close are accepted; han
 });
 test("Git sh quoting and real ssh -G preserve a spaced ProxyCommand", { skip: process.platform === "win32" }, () => {
   const command = proxyCommand("http://localhost:7897", "/node path/node", "/helper's path/100%/ssh-proxy.mjs");
-  const result = spawnSync("sh", ["-c", `ssh -G -F /dev/null -o ${quoteSh("ProxyCommand=" + command)} example.org`], { encoding: "utf8" });
+  const result = spawnSync("sh", ["-c", `ssh -G -F /dev/null -o ${quoteSh("ProxyCommand=" + command)} example.org`], { encoding: "utf8", timeout: 10000 });
   assert.equal(result.status, 0, result.stderr);
   assert.ok(result.stdout.includes("proxycommand " + command));
   assert.ok(command.includes("100%%"));
   const windows = proxyCommand("http://localhost:7897", "C:\\Program Files\\node.exe", "C:\\helper path\\100%\\ssh-proxy.mjs", "win32");
   assert.ok(windows.startsWith('"C:\\Program Files\\node.exe" "C:\\helper path\\100%%\\ssh-proxy.mjs"'));
 });
-test("actual ssh executes helper from a spaced, quoted, percent-containing path", { skip: process.platform === "win32" }, async t => {
+test("actual ssh executes helper from a spaced, quoted, percent-containing path", { skip: process.platform === "win32", timeout: 15000 }, async t => {
   const root = await fs.mkdtemp(path.join(tmpdir(), "sync helper's 100%-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const helper = path.join(root, "ssh proxy.mjs");
@@ -102,13 +102,34 @@ test("actual ssh executes helper from a spaced, quoted, percent-containing path"
   const endpoint = await server(t, socket => socket.once("data", chunk => { resolve(chunk.toString()); socket.end("HTTP/1.1 407 Nope\r\n\r\n"); }));
   const command = proxyCommand(`http://${endpoint.host}:${endpoint.port}`, process.execPath, helper);
   const child = spawn("sh", ["-c", `ssh -F /dev/null -oBatchMode=yes -oConnectTimeout=2 -o ${quoteSh("ProxyCommand=" + command)} example.org`]);
+  t.after(() => child.kill());
   let stderr = ""; child.stderr.on("data", chunk => { stderr += chunk; });
   const code = await new Promise(resolve => child.on("close", resolve));
   assert.notEqual(code, 0);
   assert.match(await request, /^CONNECT example.org:22 HTTP\/1.1/);
   assert.match(stderr, /CONNECT rejected \(HTTP 407\)/);
 });
-test("native Windows OpenSSH executes the packaged Node helper", { skip: process.platform !== "win32" }, async t => {
+test("helper entrypoint executes through a directory alias", { timeout: 15000 }, async t => {
+  const root = await fs.mkdtemp(path.join(tmpdir(), "sync-proxy-alias-"));
+  t.after(() => fs.rm(root, { recursive: true, force: true }));
+  const real = path.join(root, "real"), alias = path.join(root, "alias");
+  await fs.mkdir(real);
+  await fs.copyFile(fileURLToPath(new URL("../ssh-proxy.mjs", import.meta.url)), path.join(real, "proxy.mjs"));
+  await fs.symlink(real, alias, process.platform === "win32" ? "junction" : "dir");
+  let request;
+  const endpoint = await server(t, socket => socket.once("data", chunk => {
+    request = chunk.toString(); socket.end("HTTP/1.1 407 Nope\r\n\r\n");
+  }));
+  const child = spawn(process.execPath, [path.join(alias, "proxy.mjs"), Buffer.from(JSON.stringify(endpoint)).toString("base64"), "example.org", "22"]);
+  t.after(() => child.kill());
+  let stderr = ""; child.stderr.on("data", chunk => { stderr += chunk; });
+  const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
+  assert.equal(code, 1);
+  assert.match(request ?? "", /^CONNECT example.org:22 HTTP\/1.1/);
+  assert.match(stderr, /CONNECT rejected \(HTTP 407\)/);
+});
+
+test("native Windows OpenSSH executes the packaged Node helper", { skip: process.platform !== "win32", timeout: 20000 }, async t => {
   const root = await fs.mkdtemp(path.join(tmpdir(), "sync proxy's 100%-"));
   t.after(() => fs.rm(root, { recursive: true, force: true }));
   const helper = path.join(root, "ssh proxy.mjs"), sshConfig = path.join(root, "empty config");
@@ -132,13 +153,14 @@ test("native Windows OpenSSH executes the packaged Node helper", { skip: process
   } finally { clearTimeout(timeout); }
 });
 
-test("helper cancellation releases the socket and exits", { skip: process.platform === "win32" }, async t => {
+test("helper cancellation releases the socket and exits", { skip: process.platform === "win32", timeout: 15000 }, async t => {
   let ready;
   const connected = new Promise(r => { ready = r; });
   let closed;
   const disconnected = new Promise(r => { closed = r; });
   const endpoint = await server(t, socket => { socket.on("close", closed); socket.once("data", ready); });
   const child = spawn(process.execPath, [fileURLToPath(new URL("../ssh-proxy.mjs", import.meta.url)), Buffer.from(JSON.stringify(endpoint)).toString("base64"), "example.org", "22"], { stdio: ["pipe", "pipe", "pipe"] });
+  t.after(() => child.kill());
   await connected;
   const exited = new Promise(resolve => child.on("close", resolve));
   child.kill("SIGTERM");

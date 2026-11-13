@@ -1,5 +1,6 @@
 import { createConnection, isIP } from "node:net";
-import { pathToFileURL } from "node:url";
+import { realpathSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 // No HTTP client or external executable: stdin/stdout are the raw SSH transport.
 export function connectTunnel(endpoint, host, port, { input = process.stdin, output = process.stdout, diagnostic = message => process.stderr.write(`amox-pi-sync proxy: ${message}\n`), timeoutMs = 10_000, done = code => { process.exitCode = code; } } = {}) {
@@ -55,7 +56,9 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
   return socket;
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Node canonicalizes an ESM entrypoint, while argv[1] may retain a directory
+// alias (notably macOS /var -> /private/var) or a symlinked installation.
+if (process.argv[1] && realpathSync(fileURLToPath(import.meta.url)) === realpathSync(process.argv[1])) {
   try {
     if (process.argv.length !== 5) throw new Error();
     const endpoint = JSON.parse(Buffer.from(process.argv[2], "base64").toString("utf8"));

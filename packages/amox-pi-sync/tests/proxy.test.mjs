@@ -167,3 +167,34 @@ test("helper cancellation releases the socket and exits", { skip: process.platfo
   assert.equal(await exited, 1);
   await disconnected;
 });
+
+for (const host of ["example.org", "github.com"]) test(`CONNECT 200 followed by an empty tunnel is a failure (${host})`, { timeout: 5000 }, async t => {
+  const endpoint = await server(t, socket => socket.once("data", request => {
+    assert.match(request.toString(), new RegExp(`^CONNECT ${host.replaceAll(".", "\\.")}:22 HTTP/1.1`));
+    socket.end("HTTP/1.1 200 Connection established\r\n\r\n");
+  }));
+  const messages = [];
+  const output = new PassThrough();
+  const chunks = [];
+  output.on("data", chunk => chunks.push(chunk));
+  const code = await new Promise(resolve => connectTunnel(endpoint, host, "22", {
+    input: new PassThrough(), output, diagnostic: message => messages.push(message), done: resolve,
+  }));
+  assert.equal(code, 1);
+  assert.match(messages.join(" "), /proxy tunnel closed before receiving SSH data/);
+  assert.ok(messages[0].includes(`${host}:22`));
+  assert.equal(messages[0].includes("ssh://git@ssh.github.com:443/OWNER/REPO.git"), host === "github.com");
+  assert.equal(Buffer.concat(chunks).length, 0);
+});
+
+test("CLI reports a proxy closing after CONNECT 200 as a nonzero failure", { timeout: 15000 }, async t => {
+  const endpoint = await server(t, socket => socket.once("data", () => socket.end("HTTP/1.1 200 OK\r\n\r\n")));
+  const child = spawn(process.execPath, [fileURLToPath(new URL("../ssh-proxy.mjs", import.meta.url)), Buffer.from(JSON.stringify(endpoint)).toString("base64"), "github.com", "22"]);
+  t.after(() => child.kill());
+  let stderr = "";
+  child.stderr.on("data", chunk => { stderr += chunk; });
+  const code = await new Promise((resolve, reject) => { child.once("error", reject); child.once("close", resolve); });
+  assert.equal(code, 1);
+  assert.match(stderr, /amox-pi-sync proxy: proxy tunnel closed before receiving SSH data from github\.com:22/);
+  assert.match(stderr, /ssh:\/\/git@ssh\.github\.com:443\/OWNER\/REPO\.git/);
+});

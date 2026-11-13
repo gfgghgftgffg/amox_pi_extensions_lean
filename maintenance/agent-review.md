@@ -1,5 +1,12 @@
 # Source review
 
+## amox-pi-sync empty CONNECT tunnel
+
+- Base `277732a1286beb1d9cce45f804853c6fbeab2d28`; batch `0.1.33` selects only `amox-pi-sync@0.1.13`. No dependencies, upstream baseline or sibling package versions change.
+- The configured HTTP proxy accepts CONNECT to `github.com:22` then closes without SSH bytes. The same behavior occurs with a raw TCP client, independently of the packaged helper. A read-only Git probe through this proxy to `ssh.github.com:443` succeeds using the existing trusted github.com host key via a temporary HostKeyAlias; no host-key verification was disabled. Personal settings, snapshot repository and SSH configuration were not changed.
+- The helper previously reported exit 0 after CONNECT 200 even if no SSH byte arrived. It now returns 1 with destination/routing diagnostics and an explicit GitHub port-443 URL hint. It does not rewrite destinations, retry transfers or fall back to direct SSH. Existing same-chunk banner and binary EOF behavior remains covered.
+- Local verification: sync typecheck, 104 core/UI/lifecycle/real-Git tests, 14 selected proxy/CLI tests, 19 integration/publication/release tests, scoped contracts and standalone production install pass. Both dependency audits complete with existing warnings (8 affected packages, 2 high, no critical). The existing native Windows OpenSSH integration test times out on this host before invoking the helper, also on unmodified code; native ssh -G independently hangs. That test is not claimed passed. Exact-head three-platform CI remains required before merge/publication.
+
 ## amox-pi-sync deletion preferences, status and HTTP CONNECT proxy
 
 - Local changes based on `508f4413e0fc984efbe2a676510b362adce0d370`. Release batch `0.1.32` selects only `amox-pi-sync@0.1.12`; upstream remains `pi-sync-suite@0.1.1`, sibling versions and dependencies are unchanged.

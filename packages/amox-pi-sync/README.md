@@ -71,6 +71,8 @@ pi update --extensions
 
 For SSH Git through an HTTP proxy, add `"proxy": "http://127.0.0.1:7897"` to your existing agent-data `amox-pi-sync.json`, then reload Pi. Remove the field to connect directly. This uses HTTP CONNECT for SSH; it does not change global Git, SSH or system proxy settings. SSH authentication and host-key verification remain enabled. Only `http://` proxy endpoints are supported, without credentials, extra URL paths, query strings or fragments. The proxy must allow CONNECT to your SSH server and port.
 
+For GitHub through a proxy that blocks SSH port 22, set `repoUrl` to `ssh://git@ssh.github.com:443/OWNER/REPO.git` in the same file and reload Pi. This is still SSH, not HTTPS; verify GitHub’s published host-key fingerprint if SSH asks to trust the alternate endpoint. A CONNECT 200 response alone does not prove the SSH route works. An empty tunnel now reports the destination and, for `github.com:22`, this alternate URL; the extension never silently changes destinations or retries directly.
+
 The confirmation preference is also stored here as `"confirmSessionDelete": false`; omitting it keeps confirmation on. Changing that preference in the menu saves locally without starting a sync.
 
 ## Details

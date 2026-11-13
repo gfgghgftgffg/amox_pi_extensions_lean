@@ -1,15 +1,14 @@
-# Sync preferences, status and SSH proxy release
+# SSH proxy empty-tunnel diagnostics
 
-Base: 508f4413e0fc984efbe2a676510b362adce0d370
-Release after verified merge: v0.1.32
+Base: 277732a1286beb1d9cce45f804853c6fbeab2d28
+Release after verified merge: v0.1.33
 
-<!-- amox-release-summary:v0.1.32:start -->
-- amox-pi-sync 增加 Confirm session deletion 设置，默认开启，可关闭 `/delete-session` 确认框；切换偏好只保存配置，不触发同步。
-- 修复复用扩展实例时 Delete session 忙状态残留，删除后恢复 Manual/Auto/Off，保留真正进行中的 Push/Pull 状态。
-- 配置文件新增 `proxy`，支持通过 `http://127.0.0.1:7897` 这类 HTTP CONNECT 代理传输 SSH Git；不改全局设置，不依赖 nc/curl，也不在代理失败时静默直连。
-- 打包、发布及每日维护纳入 SSH 代理 helper；更换仓库配置时保留代理和删除确认偏好。
-<!-- amox-release-summary:v0.1.32:end -->
+<!-- amox-release-summary:v0.1.33:start -->
+- 修复 HTTP CONNECT 返回 200 后未收到任何 SSH 数据便断开时，代理 helper 错误返回成功的问题；现在返回失败并明确报出目标地址及路由检查提示。
+- 对 github.com:22 的空隧道提示显式使用 ssh://git@ssh.github.com:443/OWNER/REPO.git；中英文文档补充配置与主机密钥核对要求，不自动改目标、不静默直连。
+- 新增空隧道、GitHub 专用提示及真实 helper 进程退出码回归，保留已有二进制传输和合并 SSH banner 的测试。
+<!-- amox-release-summary:v0.1.33:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-Only `amox-pi-sync@0.1.12` is selected for npm publication. Three-platform PR CI and independent Release verification remain required; this report is not an attestation that those checks have completed.
+Only `amox-pi-sync@0.1.13` is selected for npm publication. Three-platform PR CI and independent Release verification remain required; this report is not an attestation that those checks have completed.

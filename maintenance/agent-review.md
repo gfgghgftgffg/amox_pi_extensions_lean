@@ -1,5 +1,13 @@
 # Source review
 
+## amox-pi-sync empty CONNECT tunnel
+
+- Base `277732a1286beb1d9cce45f804853c6fbeab2d28`; batch `0.1.33` selects only `amox-pi-sync@0.1.13`. No dependencies, upstream baseline or sibling package versions change.
+- The originating Windows investigation reports that its configured HTTP proxy accepts CONNECT to `github.com:22` then closes without SSH bytes, including with a raw TCP client independently of the helper. Its read-only Git probe to `ssh.github.com:443` succeeded using the existing trusted github.com host key via a temporary HostKeyAlias; host-key verification was not disabled. This publishing host did not repeat that external-route probe. Personal settings, snapshot repository and SSH configuration were not changed.
+- The helper previously reported exit 0 after CONNECT 200 even if no SSH byte arrived. It now returns 1 with destination/routing diagnostics and an explicit GitHub port-443 URL hint. It does not rewrite destinations, retry transfers or fall back to direct SSH. Existing same-chunk banner and binary EOF behavior remains covered.
+- Existing snapshot origin/push URL checks remain strict. The alternate endpoint instructions and diagnostic now require updating both configured repoUrl and the existing snapshot origin (and explicit push URLs if present) before reload. No origin rewrite or configuration mutation is automatic.
+- Publishing-host verification: sync typecheck, 121 package tests and 27 integration/publication/release tests passed; the Windows-native test is skipped on Linux. Scoped contracts, standalone production install and both audits passed, with existing warnings (8 affected packages, 2 high, no critical). The originating Windows host reported a native OpenSSH test timeout also present on unmodified code; that host result is not claimed fixed. Exact-head three-platform CI remains required before merge/publication.
+
 ## amox-pi-sync deletion preferences, status and HTTP CONNECT proxy
 
 - Local changes based on `508f4413e0fc984efbe2a676510b362adce0d370`. Release batch `0.1.32` selects only `amox-pi-sync@0.1.12`; upstream remains `pi-sync-suite@0.1.1`, sibling versions and dependencies are unchanged.

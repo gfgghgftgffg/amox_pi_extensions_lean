@@ -12,6 +12,7 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
   const socket = createConnection({ host: endpoint.host, port: endpoint.port });
   let headers = Buffer.alloc(0);
   let connected = false;
+  let receivedSshData = false;
   let finished = false;
   const finish = (message, code = 1) => {
     if (finished) return;
@@ -31,7 +32,11 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
   input.on("error", inputError); output.on("error", outputError);
   process.on("SIGTERM", cancel); process.on("SIGINT", cancel);
   socket.on("error", error => finish(`proxy connection failed${error.code ? ` (${error.code})` : ""}`));
-  socket.on("close", () => finish(connected ? undefined : "proxy disconnected during CONNECT", connected ? 0 : 1));
+  socket.on("close", () => {
+    if (!connected) return finish("proxy disconnected during CONNECT");
+    if (!receivedSshData) return finish(`proxy tunnel closed before receiving SSH data from ${authority}; check proxy routing and SSH port${bareHost.toLowerCase() === "github.com" && +port === 22 ? "; for GitHub try repoUrl ssh://git@ssh.github.com:443/OWNER/REPO.git and update the existing snapshot origin to match" : ""}`);
+    finish(undefined, 0);
+  });
   socket.on("connect", () => socket.write(`CONNECT ${authority} HTTP/1.1\r\nHost: ${authority}\r\n\r\n`));
   const handshake = chunk => {
     headers = Buffer.concat([headers, chunk]);
@@ -43,6 +48,7 @@ export function connectTunnel(endpoint, host, port, { input = process.stdin, out
     connected = true;
     clearTimeout(timer);
     socket.off("data", handshake);
+    socket.on("data", () => { receivedSshData = true; });
     // Reinsert bytes after the header so pipe handles backpressure and binary data.
     socket.pause();
     const remainder = headers.subarray(end + 4);

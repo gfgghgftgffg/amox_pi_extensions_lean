@@ -8,7 +8,7 @@
 
 每个 npm 包独立维护版本。根 private 包版本和 GitHub `vX.Y.Z` tag 仅标识发布批次，不是五个 npm 包的统一版本。受保护的 `maintenance/manifest.json` release 选择记录批次版本、精确 base 和包 ID；只给选中的包升版、打包和发布，未变化的包保持版本，不查询 registry 或重新上传。`assets.json` 分别记录每个归档的包版本。
 
-本地检查、精确提交三平台 CI 和独立 Release 验收共用受影响范围；共享代码或依赖变化扩大验收，不会自动扩大 npm 发布选择。
+本地检查、精确 PR head 三平台 CI 和独立 Release 验收共用受影响范围。发布批次由 Release 唯一验证合并 SHA，普通 main-push CI 不再重复跑同一矩阵；非发布 main 更新仍运行 CI。共享代码或依赖变化扩大验收，不会自动扩大 npm 发布选择。
 
 ## 发布配置
 

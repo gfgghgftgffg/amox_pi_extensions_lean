@@ -8,7 +8,7 @@ The repository contains five independent extension packages. [Release](../.githu
 
 Each npm package has its own version. The private root version and GitHub `vX.Y.Z` tag identify a release batch, not a shared npm version. The protected `maintenance/manifest.json` release selection records the batch version, exact base commit and selected package IDs. Only selected packages are version-bumped, packed and published; unchanged packages keep their versions and are not queried or uploaded. `assets.json` records each archive’s own package version.
 
-Local checks, exact-head three-platform CI and independent Release verification use the same affected-package scope. Shared code/dependency changes expand verification without automatically publishing unaffected packages.
+Local checks, exact-head three-platform PR CI and independent Release verification use the same affected-package scope. For a release batch, Release is the only three-platform verifier of the merged SHA; ordinary main-push CI delegates that SHA instead of repeating the matrix. Non-release main pushes retain CI. Shared code/dependency changes expand verification without automatically publishing unaffected packages.
 
 ## Publishing configuration
 

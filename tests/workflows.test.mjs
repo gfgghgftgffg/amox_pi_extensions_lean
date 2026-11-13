@@ -16,7 +16,7 @@ function job(text, name, next) {
 test("every action is SHA-pinned and checkouts never persist credentials", () => {
   for (const file of readdirSync(workflowsDir).filter((name) => name.endsWith(".yml"))) {
     const text = workflow(file);
-    assert.doesNotMatch(text, /pull_request_target|workflow_run/);
+    assert.doesNotMatch(text, /pull_request_target|workflow_run|workflow_call|uses: .*\/\.github\/workflows\//);
     for (const line of text.split("\n").filter((line) => /^\s*(?:-\s+)?uses:/.test(line))) {
       assert.match(line, /^\s*(?:-\s+)?uses: [\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+\s*$/, `${file}: ${line}`);
     }
@@ -33,14 +33,57 @@ test("hidden release uploads stay scoped to validated archives", () => {
 test("CI remains read-only, secret-free and verifies the exact candidate on all platforms", () => {
   const text = workflow("test.yml");
   for (const event of ["push", "pull_request", "workflow_dispatch"]) assert.match(text, new RegExp(`\\n {2}${event}:\\n`));
-  assert.match(text, /permissions:\n {2}contents: read/); assert.doesNotMatch(text, /secrets\./);
+  assert.match(text, /permissions:\n {2}contents: read/); assert.doesNotMatch(text, /secrets\.|contents: write|id-token:/);
+  assert.equal((text.match(/permissions:/g) || []).length, 1);
   assert.match(text, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
   assert.match(text, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
-  assert.match(text, /name: all-platforms-pass/); assert.match(text, /needs: check\n\s+if: always\(\)/);
-  for (const command of ["npm ci --ignore-scripts", "node scripts/check-changes.mjs check", "node scripts/check-changes.mjs contracts", "node scripts/check-changes.mjs production", "node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json", "node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json"]) assert.ok(text.includes(command));
+  assert.match(text, /name: all-platforms-pass/);
+  for (const command of ["npm ci --ignore-scripts --no-audit --no-fund", "node scripts/check-changes.mjs check", "node scripts/check-changes.mjs contracts", "node scripts/check-changes.mjs production", "node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json", "node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json"]) assert.ok(text.includes(command));
   assert.match(text, /AMOX_CHECK_BASE: \$\{\{ github\.event\.pull_request\.base\.sha \|\| github\.event\.before \}\}/);
   assert.match(text, /fetch-depth: 0/);
   assert.doesNotMatch(text, /maintenance-pipeline|maintenance-candidate|adapted\.json|verified\.json/);
+});
+test("CI plans only pushes at the exact SHA, without dependencies or softened failures", () => {
+  const plan = job(workflow("test.yml"), "plan", "check");
+  assert.match(plan, /\n {4}if: github\.event_name == 'push'\n/);
+  assert.match(plan, /runs-on: ubuntu-latest/);
+  assert.match(plan, /should_release: \$\{\{ steps\.plan\.outputs\.should_release \}\}/);
+  assert.match(plan, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(plan, /fetch-depth: 0/);
+  assert.match(plan, /uses: actions\/setup-node@/);
+  assert.match(plan, /node-version: "22\.22\.1"/);
+  assert.match(plan, /- id: plan\n {8}env:\n {10}RELEASE_BEFORE_SHA: \$\{\{ github\.event\.before \}\}\n {8}run: node scripts\/release-plan\.mjs --run\n/);
+  assert.doesNotMatch(plan, /npm (ci|install)|check-changes|continue-on-error|\|\| true|secrets\./);
+});
+test("CI runs PR/manual and ordinary push matrices, delegating only successful release plans", () => {
+  const text = workflow("test.yml"), check = job(text, "check", "all-platforms"), aggregate = job(text, "all-platforms");
+  const condition = (block) => {
+    const match = block.match(/\n {4}if: >-\n([\s\S]*?)(?=\n {4}\S)/);
+    assert.ok(match, "missing explicit job condition");
+    return match[1].trim().replace(/\s+/g, " ");
+  };
+  // These full conditions protect skipped-plan PRs from needs' default success()
+  // and reject failed/cancelled/missing push plans rather than returning green.
+  const ready = "(github.event_name != 'push' && needs.plan.result == 'skipped') || (github.event_name == 'push' && needs.plan.result == 'success' && needs.plan.outputs.should_release == 'false')";
+  assert.match(check, /\n {4}needs: plan\n/);
+  assert.equal(condition(check), `\${{ always() && !cancelled() && (${ready}) }}`);
+  assert.match(aggregate, /\n {4}needs: \[plan, check\]\n/);
+  assert.equal(condition(aggregate), "${{ always() && !(github.event_name == 'push' && needs.plan.result == 'success' && needs.plan.outputs.should_release == 'true') }}");
+  assert.ok(aggregate.includes(`test "\${{ ${ready} }}" = "true"`));
+  assert.ok(aggregate.includes('test "${{ needs.check.result }}" = "success"'));
+  assert.doesNotMatch(check + aggregate, /continue-on-error|\|\| true/);
+});
+test("both verification matrices suppress implicit audits and audit the lockfile only on Ubuntu", () => {
+  for (const [file, name, next] of [["test.yml", "check", "all-platforms"], ["release.yml", "verify", "release"]]) {
+    const matrix = job(workflow(file), name, next);
+    assert.match(matrix, /npm ci --ignore-scripts --no-audit --no-fund/);
+    const audits = matrix.split(/\n {6}- /).filter((step) => step.includes("node scripts/audit-dependencies.mjs"));
+    assert.equal(audits.length, 2, `${file}: retain all and production reports`);
+    for (const step of audits) assert.match(step, /\n {8}if: matrix\.os == 'ubuntu-latest'(?:\n|$)/);
+    assert.match(audits[0], /--output diagnostics\/audit-all\.json/);
+    assert.match(audits[1], /--omit=dev --output diagnostics\/audit-production\.json/);
+  }
+  assert.match(workflow("test.yml"), /if: always\(\)[\s\S]*name: ci-diagnostics-\$\{\{ matrix\.os \}\}[\s\S]*path: diagnostics\//);
 });
 test("reviewed version bumps auto-release with isolated GitHub-write and npm-OIDC jobs", () => {
   const text = workflow("release.yml");
@@ -53,7 +96,15 @@ test("reviewed version bumps auto-release with isolated GitHub-write and npm-OID
   assert.doesNotMatch(text, /\n {2}(?:pull_request|schedule):\n/);
   assert.match(text, /concurrency:\n {2}group: release\n {2}cancel-in-progress: false/);
   const plan = job(text, "plan", "verify"), verify = job(text, "verify", "release"), release = job(text, "release", "npm"), npm = job(text, "npm");
+  assert.match(text, /^name: Release\n/); // npm trusted publisher is bound to release.yml.
+  assert.match(text, /permissions:\n {2}contents: read/);
+  assert.equal((text.match(/contents: write/g) || []).length, 1);
+  assert.equal((text.match(/permissions:/g) || []).length, 3);
   assert.match(plan, /release-plan\.mjs --run/); assert.match(plan, /fetch-depth: 0/);
+  assert.match(plan, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(plan, /RELEASE_BEFORE_SHA: \$\{\{ github\.event\.before \}\}/);
+  assert.match(verify, /ref: \$\{\{ github\.sha \}\}/);
+  assert.match(verify, /AMOX_CHECK_BASE: \$\{\{ needs\.plan\.outputs\.base_sha \}\}/);
   assert.match(verify, /needs\.plan\.outputs\.should_release == 'true'/);
   assert.match(verify, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
   assert.match(verify, /create-release\.mjs --verify-only/); assert.match(verify, /release-assets\.mjs --build/);

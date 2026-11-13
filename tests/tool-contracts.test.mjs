@@ -1,13 +1,10 @@
-// Tool-contract snapshot checks: the recorded upstream vs lean description /
-// schema / snippet / guideline char counts must stay arithmetic-consistent and
-// stay in sync with what the pinned packages register today.
+// Tool-contract snapshot checks: recorded upstream vs lean character counts,
+// tool sets, and compression ratios. Fresh capture runs in its own CLI stage.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
-import { createIsolatedEnvironment, isolatedEnvironmentVariables } from "../scripts/lib/isolated-pi-session.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const snapshot = JSON.parse(readFileSync(join(repoRoot, "maintenance", "tool-contracts.json"), "utf8"));
@@ -64,25 +61,4 @@ test("lean facades are smaller than their pinned upstream engines", () => {
       `${id} is not smaller than the active ${record.upstreamPackage} surface`,
     );
   }
-});
-
-test("the tracked snapshot matches a fresh isolated capture", { timeout: 300_000 }, () => {
-  const isolated = createIsolatedEnvironment({ prefix: "amox-goal-contract-check-" });
-  try {
-    const env = { ...process.env, ...isolatedEnvironmentVariables(isolated) };
-    for (const key of Object.keys(env)) {
-      if (key.startsWith("PI_GOAL_") || key.startsWith("PI_SUBAGENT_")) delete env[key];
-    }
-    Object.assign(env, {
-      PI_GOAL_ROOT: join(isolated.root, "goal-pool"),
-      PI_GOAL_SETTINGS_FILE: join(isolated.root, "goal-settings.json"),
-      PI_GOAL_GLOBAL_SETTINGS_FILE: join(isolated.root, "global-goal-settings.json"),
-    });
-    const check = spawnSync(process.execPath, [join(repoRoot, "scripts/capture-contracts.mjs"), "--check"], {
-      cwd: isolated.cwd, env, encoding: "utf8", timeout: 290_000,
-    });
-    assert.equal(check.error, undefined, check.error?.message);
-    assert.equal(check.status, 0, `${check.stdout}\n${check.stderr}`);
-    assert.match(check.stdout, /snapshot is current/);
-  } finally { isolated.cleanup(); }
 });

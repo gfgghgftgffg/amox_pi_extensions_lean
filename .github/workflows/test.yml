@@ -16,8 +16,34 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  plan:
+    name: Decide whether Release owns this push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.plan.outputs.should_release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22.22.1"
+      - id: plan
+        env:
+          RELEASE_BEFORE_SHA: ${{ github.event.before }}
+        run: node scripts/release-plan.mjs --run
+
   check:
     name: check + contracts + production + audit (${{ matrix.os }})
+    needs: plan
+    # PR/manual runs have no plan; only a successful push plan can delegate.
+    if: >-
+      ${{ always() && !cancelled() &&
+          ((github.event_name != 'push' && needs.plan.result == 'skipped') ||
+           (github.event_name == 'push' && needs.plan.result == 'success' && needs.plan.outputs.should_release == 'false')) }}
     env:
       AMOX_CHECK_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
     strategy:
@@ -45,7 +71,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p diagnostics
-          npm ci --ignore-scripts 2>&1 | tee diagnostics/install.log
+          npm ci --ignore-scripts --no-audit --no-fund 2>&1 | tee diagnostics/install.log
 
       - name: Typecheck and test (packages + root)
         shell: bash
@@ -66,9 +92,11 @@ jobs:
           node scripts/check-changes.mjs production 2>&1 | tee diagnostics/production-install.log
 
       - name: Dependency audit (all; upstream findings warn)
+        if: matrix.os == 'ubuntu-latest'
         run: node scripts/audit-dependencies.mjs --output diagnostics/audit-all.json
 
       - name: Dependency audit (production; upstream findings warn)
+        if: matrix.os == 'ubuntu-latest'
         run: node scripts/audit-dependencies.mjs --omit=dev --output diagnostics/audit-production.json
 
       - name: Upload diagnostics (no node_modules, no credentials)
@@ -82,9 +110,14 @@ jobs:
 
   all-platforms:
     name: all-platforms-pass
-    needs: check
-    if: always()
+    needs: [plan, check]
+    # Skip only when a successful push plan delegates this exact SHA to Release.
+    # Otherwise run even after failure/cancellation, and reject incomplete checks.
+    if: >-
+      ${{ always() && !(github.event_name == 'push' && needs.plan.result == 'success' && needs.plan.outputs.should_release == 'true') }}
     runs-on: ubuntu-latest
     steps:
-      - name: Fail unless every platform passed
-        run: test "${{ needs.check.result }}" = "success"
+      - name: Fail unless the plan and every platform passed
+        run: |
+          test "${{ (github.event_name != 'push' && needs.plan.result == 'skipped') || (github.event_name == 'push' && needs.plan.result == 'success' && needs.plan.outputs.should_release == 'false') }}" = "true"
+          test "${{ needs.check.result }}" = "success"

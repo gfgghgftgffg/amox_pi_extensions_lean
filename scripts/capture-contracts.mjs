@@ -128,9 +128,21 @@ function captureTarget(target) {
     resultPath,
     hostModulePath,
   }, null, 2)}\n`);
+  // The worker already isolates HOME/cwd/Pi state. Goal and subagent overrides
+  // must also be reset here, including when capture is invoked directly in CI.
+  const env = { ...process.env };
+  for (const key of Object.keys(env)) {
+    if (key.startsWith("PI_GOAL_") || key.startsWith("PI_SUBAGENT_")) delete env[key];
+  }
+  Object.assign(env, {
+    PI_GOAL_ROOT: join(workDir, "goal-pool"),
+    PI_GOAL_SETTINGS_FILE: join(workDir, "goal-settings.json"),
+    PI_GOAL_GLOBAL_SETTINGS_FILE: join(workDir, "global-goal-settings.json"),
+  });
   const child = spawnSync(process.execPath, [workerPath, inputPath], {
     cwd: repoRoot,
     encoding: "utf8",
+    env,
   });
   if (child.status !== 0) {
     rmSync(workDir, { recursive: true, force: true });

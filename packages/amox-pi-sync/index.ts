@@ -1,7 +1,8 @@
 // Derived from pi-sync-suite 0.1.1, Copyright (c) 2026 Murat (MIT).
 // Upstream: https://github.com/MuratAitov/pi-sync
 import { stripVTControlCharacters } from "node:util";
-import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { resolve } from "node:path";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { SyncService, createConfig, defaultPaths, loadConfig, saveConfig, validatePath, type Config, type PruneResult } from "./core.ts";
 
 type BubbleLine = string | { text: string; onSelect: () => void; current?: boolean };
@@ -19,6 +20,11 @@ type PillAPI = {
   showBubble(ctx: ExtensionContext, source: () => BubbleContent, pill?: BubbleAnchor): BubbleHandle | undefined;
 };
 const STATUS_KEY = "pi-sync";
+// Session replacement creates a new extension instance. Transfer only plain
+// deletion intent; never retain the outgoing pi, ctx or SyncService.
+const DELETE_KEY = Symbol.for("amox-pi-sync.pending-session-delete.v1");
+type PendingDelete = { agentDir: string; root: string; expectedPaths: string[]; handled: boolean };
+const shared = globalThis as unknown as Record<symbol, PendingDelete | undefined>;
 const pillAPI = () => (globalThis as Record<symbol, unknown>)[Symbol.for("pi-starline.pill-api.v1")] as PillAPI | undefined;
 const bubbleAPI = (context: ExtensionContext) => context.mode === "rpc" ? undefined : pillAPI();
 const message = (error: unknown) => terminalText(error instanceof Error ? error.message : String(error));
@@ -157,6 +163,50 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     if (assumeYes) context.ui.notify(`Pruning ${count} orphan session(s), ${formatBytes(bytes)}.${skipped}`, "info");
     else if (!await confirm(context, "Prune orphan sessions?", description)) return;
     await run("Prune", async sync => formatPruneResult(await sync.pruneOrphanSessions(plan.candidates.map(candidate => candidate.path))));
+  }
+
+  async function deleteCurrentSession(args: string, context: ExtensionCommandContext): Promise<void> {
+    if (args.trim()) { context.ui.notify("Usage: /delete-session", "warning"); return; }
+    if (!context.hasUI) { context.ui.notify("/delete-session requires interactive confirmation.", "warning"); return; }
+    if (busy || shared[DELETE_KEY]) { context.ui.notify(`Sync is busy: ${busy ?? "Delete session"}.`, "warning"); return; }
+    if (!service || !config) { context.ui.notify("Run /sync-setup first.", "warning"); return; }
+    const root = context.sessionManager.getSessionFile();
+    if (!root) { context.ui.notify("No persistent session to delete.", "info"); return; }
+    const active = service;
+    stopTimers();
+    busy = "Delete session";
+    publish();
+    let pending: PendingDelete | undefined;
+    let replaced = false;
+    try {
+      await context.waitForIdle();
+      const plan = await active.planDeleteSessionTree(root);
+      const preview = plan.candidates.map(candidate => `• ${terminalText(candidate.name)} (${formatBytes(candidate.bytes)})\n  ${candidate.path}`).join("\n");
+      if (!await confirm(context, "Delete current session and descendants?",
+        `${plan.candidates.length} session(s), including manual forks and renamed descendants.\n${preview}\n\nSwitch to a fresh session first, then permanently delete these local files and commit their snapshot removal. Other orphans and /tmp data stay untouched. Recent descendants are included. Close other Pi processes using these sessions before confirming. Push publishes the deletion; Git history and backups remain.`)) return;
+      pending = { agentDir: paths.agentDir, root: resolve(root), expectedPaths: plan.candidates.map(candidate => candidate.path), handled: false };
+      shared[DELETE_KEY] = pending;
+      // Do not hold inFlight across newSession: session_shutdown waits for it.
+      // The fresh instance consumes the intent before starting automatic Pull.
+      const result = await context.newSession({
+        withSession: async fresh => {
+          replaced = true;
+          if (!pending!.handled) fresh.ui.notify("Session switched, but deletion was not performed. Original files were retained; check that amox-pi-sync is loaded in the new session.", "error");
+        },
+      });
+      if (result.cancelled) context.ui.notify("Session deletion cancelled; no files deleted.", "info");
+    } catch (failure) {
+      // An error can happen after replacement: the captured old ctx may be stale.
+      // A fresh instance reports deletion failures in its session_start handler.
+      if (!pending?.handled && !replaced) report(failure);
+    } finally {
+      if (pending && shared[DELETE_KEY] === pending) delete shared[DELETE_KEY];
+      if (!pending?.handled && !replaced && ctx === context) {
+        busy = undefined;
+        publish();
+        await startTimers();
+      }
+    }
   }
 
   async function pushWithPrune(quiet = false): Promise<boolean> {
@@ -442,17 +492,18 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     }
   }
 
-  pi.on("session_start", async (_event, context) => {
+  pi.on("session_start", async (event, context) => {
     stopTimers();
     ctx = context;
     paths = defaultPaths(process.env.PI_CODING_AGENT_DIR);
     config = null;
     service = undefined;
     error = undefined;
+    let startupService: SyncService | undefined;
     try {
       config = await loadConfig(paths);
-      const active = makeService();
-      if (active) await active.initializeBaseline();
+      startupService = makeService();
+      if (startupService) await startupService.initializeBaseline();
     } catch (failure) { error = message(failure); context.ui.notify(`amox-pi-sync config: ${error}`, "error"); }
     // Clear the old upstream widget without creating a replacement widget.
     context.ui.setWidget(STATUS_KEY, undefined);
@@ -464,7 +515,31 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
       if (pill) pillAnchor = pill;
       showStatus(current);
     }) : undefined;
-    await startTimers();
+    const pending = shared[DELETE_KEY];
+    const deleting = pending && pending.agentDir === paths.agentDir && event.reason === "new"
+      && event.previousSessionFile && resolve(event.previousSessionFile) === pending.root;
+    if (deleting) {
+      pending.handled = true;
+      // Capture the old fingerprint so the auto watcher sees this deletion even
+      // though startTimers normally fingerprints after startup work completes.
+      let before: string | undefined;
+      let deleted = false;
+      if (startupService && !error) {
+        try { before = await startupService.fingerprint(); }
+        catch (failure) { report(failure); }
+        if (!error) deleted = await run("Delete session", async sync => {
+          const result = await sync.deleteSessionTree(pending.root, pending.expectedPaths);
+          return `Deleted ${result.removed.length} local and ${result.repoRemoved} snapshot session(s). Snapshot removal is committed locally; Push to publish. Git history and backups remain.`;
+        });
+      } else context.ui.notify("Session switched, but deletion could not start. Original files were retained.", "error");
+      if (shared[DELETE_KEY] === pending) delete shared[DELETE_KEY];
+      if (!deleted) {
+        context.ui.notify("Automatic sync is paused after the deletion failure. Resolve the error before reloading or syncing manually.", "warning");
+        return;
+      }
+      await startTimers();
+      if (config?.mode === "auto" && before !== undefined) fingerprint = before;
+    } else await startTimers();
   });
 
   pi.on("session_shutdown", async () => {
@@ -478,6 +553,10 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     ctx = undefined;
   });
 
+  pi.registerCommand("delete-session", {
+    description: "Delete the current session and its descendants after switching to a fresh session",
+    handler: deleteCurrentSession,
+  });
   pi.registerCommand("sync-status", {
     description: "Show sync state, managed paths, last results and actions",
     handler: async (_args, context) => { showStatus(context); },

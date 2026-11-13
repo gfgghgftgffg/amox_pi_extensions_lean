@@ -375,6 +375,3 @@
 - 无本次门面源码变化，不添加上游内部单元测试，保留全部既有断言。check 负责重新捕获字符代理、联合
   goal/subagents 类型与功能／原版 dist ABI／global v1 child gate、源码/dist 契约、独立生产安装和两类审计。
   当前结果以 check 输出为准；未运行真实 provider／MCP 或交互鼠标／键盘端到端测试。其它包不升版或发布。
-- 本候选已调用 check 并提交实质发布摘要，但工具仅返回
-  `Cannot read properties of undefined (reading 'changed')`，没有测试／安装／审计结果或新字符统计。
-  因此不宣称验收通过；保留同一候选，未修改受保护的检查／发布基础设施，须主机侧诊断后重验。

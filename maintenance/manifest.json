@@ -103,7 +103,7 @@
   ],
   "release": {
     "version": "0.1.30",
-    "baseCommit": "10640fb13fefc5e028428a5fb59615550a401e96",
+    "baseCommit": "5b4c3283cdd60053d7710fcf413bf0084af835cc",
     "packageIds": [
       "pi-subagents-lean"
     ]

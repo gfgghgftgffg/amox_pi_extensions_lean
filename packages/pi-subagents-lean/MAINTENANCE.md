@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.24.0`（精确固定；`dependencies`；此前为 0.23.2）。
+- `@tintinweb/pi-subagents@0.25.0`（精确固定；`dependencies`；此前为 0.24.0）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -297,6 +297,41 @@
 - check 实际执行类型／回归、source/dist 契约一致性、独立生产安装、契约及 ceil(chars/4) 字符代理捕获、两种审计；
   dist 缺失或不一致不能回退源码。漏洞按所有者策略仅警告。真实模型／MCP、交互 viewer 与 worktree reopen
   未端到端验证，结果以工具输出为准；三平台 CI 与发布由固定后续流程负责。
+
+## 本次审查：0.24.0 → 0.25.0
+
+- sources.json 精确 Git 发布源码：`f0b5304bbfcf4598007a85773a2eac8539536fdd` →
+  `b8efc069f05efe50b58a4b74140116c1c9a9dcc1`。远端 `e22c178c0c4a64e01f7ef9eee4ed8c81d3622593`
+  不采用；lean 作者仍为 `e4892d465a15467214ed390ed380bdfc3f179887`，无作者更新。
+- 对比新旧 CHANGELOG、package.json、完整 invocation-config.ts、child-context.ts、default-agents.ts、
+  prompts.ts、settings.ts，以及 index.ts 的 Agent/schema/render/execute、usage 包装、workflow/schema/
+  注册/通知、result/steer、saved-result 格式化、manager registry 与生命周期、Settings 接线。
+  阅读新 nested-tools.ts 的作用域与默认值。此为门面兼容审查，不是整个上游逐文件审计。
+- 无工具增删或参数、required、类型、约束变化。run 必填 prompt/description/subagent_type；name/model/
+  thinking/max_turns/run_in_background/resume/isolated/inherit_context 与条件 isolation/schedule 保持；
+  result 为 agent_id/wait/verbose，steer 为 agent_id/message，workflow 为 script/scriptPath/name/args/
+  resumeFromRunId/title/description。顶层后台 true、inherit_context=false、isolated=false、isolation=off、
+  wait/verbose=false 及文件优先级保持。Pi >=1.1.0/typebox * peers 和 croner/nanoid 运行依赖范围不变。
+- default-agents.ts 给内置 general-purpose 增加 allowedSubagents: all；Explore/Plan 不变。上游说明 workflow
+  内仍由脚本扇出，自定义 Agent 仍须显式 allowed_subagents；旧 eject 的同名文件不自动获得委派。
+  默认 maxSubagentDepth 仍为 2（主会话 0），maxConcurrentNested 仍为 10。prompts.ts 新增仅在 runner
+  设置 delegationGuideline 时插入的“不把整个任务转交单个子 Agent”提示。门面不复制 runner 或修改角色。
+- settings.ts 从整份项目快照写入改为重读目标 JSON 并仅合并变化键；已有项目文件默认 project，否则 global，
+  Settings 中 Tab 切换。删除键以 undefined 表示，避免冻结默认值和覆盖其它会话无关设置。Settings 接线新增
+  来源标记、Delete 重置、过滤和范围内数字编辑；数字加载范围保持不变。不是模型参数，不加入常驻 Schema。
+- index.ts 的 saved-result 文本在 completedAt 为真时新增 UTC 分钟精度 Finished 行及相对年龄；saved entry
+  数据结构、ID/handle/alias 查找、outbox.cancel 与 textResult 返回保持。该行在 content[].text 中，不是
+  structuredContent 或新增 details 字段；render 仍直接委派。双语 README 在现有用法与配置段说明这些变化。
+- CHANGELOG 另记录 session switch 清理已完成 nested children，以及 schedule lock 对自身 PID 立即回收、
+  其它占锁立即失败，触发任务仍运行但状态记账失败发 subagents:scheduled error。由固定依赖承接；这些实现
+  未逐行审计，不新增上游内部测试，也不声称进行了交互 UI、真实调度竞争或 provider/MCP 端到端验证。
+- 内部适配继续成立：npm 自带 dist/index.js 和 dist/child-context.js、相同 ALS 查询、global v1 多 checker、
+  typebox v1/instancePath、启动名单正则、直接字段优先、捕获 usage 包装后 execute、五参数调用与 render
+  委派、workflow 条件注册、缺 sessionManager 时 result 空 branch fallback。无需修改 index.ts 或新增回归；
+  保留全部既有断言，不复制引擎。仅 subagents 发布，goal 参加联合验收但不升版。
+- check 实际捕获字符代理并运行联合类型/功能/global v1/原版 dist result 与 notification ABI、源码/dist
+  契约、独立生产安装及两类依赖审计；当前结果以 check 输出为准。字符代理 ceil(chars/4) 非计费 token，
+  上游漏洞按所有者策略仅警告。后续精确提交三平台 CI 和独立 Release 验证仍由固定流程执行。
 
 ## 运行时产物与验收
 

@@ -32,7 +32,7 @@
 }
 ```
 
-读取已完成的结果。用 `run` 返回的 `agent_id`；重新加载后也可以用保存的 handle：
+读取已完成的结果。用 `run` 返回的 `agent_id`；重新加载后也可以用保存的 handle。保存的结果会在有完成时间时显示该时间及距今时长：
 
 ```json
 { "op": "result", "agent_id": "agent-id" }
@@ -77,7 +77,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 ## 重要提醒：检查 Agent 定义
 
-上游会扫描全局、工作区和项目目录里的内置及自定义 Agent。本包不附带私有 Agent、会话或记忆。安装后检查每个 Agent 的 `model`，删掉不需要的类型，并避开与 `general-purpose`、`Explore`、`Plan` 重名。内置 Explore 默认继承会话模型，除非 Agent 文件自己指定。
+上游会扫描全局、工作区和项目目录里的内置及自定义 Agent。本包不附带私有 Agent、会话或记忆。安装后检查每个 Agent 的 `model`，删掉不需要的类型，并避开与 `general-purpose`、`Explore`、`Plan` 重名。内置 Explore 默认继承会话模型，除非 Agent 文件自己指定。内置 `general-purpose` 在 workflow 之外可以继续委派，受上游深度和并发限制约束；同名自定义文件未设置 `allowed_subagents` 时仍禁用委派。Settings 默认保存到全局文件，项目已有 `.pi/subagents.json` 时保存到项目文件；Tab 可切换目标文件。
 
 带过改动、后来被删掉的 worktree 不能重新打开；干净的 worktree 会在主 checkout 里打开。后台任务结束时通知父会话。配置了 `allowed_subagents` 的 Agent 共享默认最多 10 个运行中嵌套子 Agent 的限制，超限派生会失败，不会排队；顶层和 workflow Agent 不受此限制。通过 `/agents → Settings → Max nested concurrency` 配置（`0` 表示不限）。Agent 文件、workflow、worktree 和 `subagents.json` 见[上游文档](https://github.com/tintinweb/pi-subagents)；集成使用它的[事件](https://github.com/tintinweb/pi-subagents#events)和 [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md)。改了 Agent 定义、发现范围或 trust 设置后重新加载。行为说明在[更新日志](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
 

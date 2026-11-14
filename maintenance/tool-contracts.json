@@ -586,7 +586,7 @@
     },
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.24.0",
+      "version": "0.25.0",
       "entry": "node_modules/@tintinweb/pi-subagents/dist/index.js",
       "registeredTools": [
         "Agent",
@@ -1892,7 +1892,7 @@
     },
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"

@@ -32,7 +32,7 @@ Start an agent:
 }
 ```
 
-Read a finished result. Use the `agent_id` from `run`, or a saved handle after reload:
+Read a finished result. Use the `agent_id` from `run`, or a saved handle after reload. Saved results include their finish time and age when available:
 
 ```json
 { "op": "result", "agent_id": "agent-id" }
@@ -77,7 +77,7 @@ For optional goal integration, also install or update [`pi-goal-x-lean`](../pi-g
 
 ## Important: review your agent definitions
 
-Upstream discovers built-in and custom agents in global, workspace and project directories. This package does not ship private agents, sessions or memory. After install, check each agent's `model`, remove types you do not want, and avoid names that collide with `general-purpose`, `Explore` and `Plan`. Built-in Explore inherits the session model unless the agent file sets one.
+Upstream discovers built-in and custom agents in global, workspace and project directories. This package does not ship private agents, sessions or memory. After install, check each agent's `model`, remove types you do not want, and avoid names that collide with `general-purpose`, `Explore` and `Plan`. Built-in Explore inherits the session model unless the agent file sets one. Built-in `general-purpose` can delegate outside workflows, within the upstream depth and concurrency limits; a same-named custom file without `allowed_subagents` keeps delegation disabled. Settings saves globally unless the project already has `.pi/subagents.json`; Tab switches the target file.
 
 A removed worktree that held changes cannot be reopened; a clean one reopens in the main checkout. Background tasks notify the parent when they finish. Agents with `allowed_subagents` share a default limit of 10 running nested children; excess nested spawns fail instead of queuing. Top-level and workflow agents are outside this limit. Configure it through `/agents → Settings → Max nested concurrency` (`0` means unlimited). Agent files, workflows, worktrees and `subagents.json` are documented [upstream](https://github.com/tintinweb/pi-subagents); integrations use its [events](https://github.com/tintinweb/pi-subagents#events) and [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Reload after changing agent definitions, discovery or trust settings. Behavior notes are in the [changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md).
 

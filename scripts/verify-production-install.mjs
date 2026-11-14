@@ -2,7 +2,7 @@
 // Pack and install each workspace in an independent npm prefix, exactly as
 // the per-extension installer does. No sibling or host peer may be installed.
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { installPackedExtension, packageEntries } from "./lib/extension-package.mjs";
@@ -12,10 +12,12 @@ import { resolveUpstreamRuntimeEntry } from "./lib/upstream-runtime.mjs";
 import { parsePackageIds } from "./lib/package-selection.mjs";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
 const allEntries = packageEntries(repoRoot);
 const entries = packageEntries(repoRoot, parsePackageIds(process.argv.slice(2), { flags: ["--keep"] }));
-console.log(`Host module (from dev checkout): ${hostModulePath}`);
+// Reuse only npm's cache, not the user's npm/Pi configuration. Resolve the host
+// after redirecting HOME so a managed ~/.pi cannot mask missing dev dependencies.
+const npmCache = process.env.npm_config_cache ?? process.env.NPM_CONFIG_CACHE
+  ?? (process.platform === "win32" ? join(process.env.LOCALAPPDATA ?? join(homedir(), "AppData", "Local"), "npm-cache") : join(homedir(), ".npm"));
 const tempRoot = mkdtempSync(join(tmpdir(), "amox-production-install-"));
 const failures = [];
 function check(ok, message) {
@@ -23,6 +25,26 @@ function check(ok, message) {
   if (!ok) failures.push(message);
 }
 try {
+  const home = join(tempRoot, "home");
+  mkdirSync(home);
+  check(!existsSync(join(home, ".pi")), "isolated HOME starts without managed Pi");
+  for (const key of Object.keys(process.env)) {
+    if (["PI_CODING_AGENT_MODULE", "PI_CODING_AGENT_DIR", "PI_CODING_AGENT_SESSION_DIR"].includes(key)
+      || key.startsWith("PI_GOAL_") || key.startsWith("PI_SUBAGENT_")) delete process.env[key];
+    if (["npm_config_cache", "npm_config_userconfig", "npm_config_globalconfig"].includes(key.toLowerCase())) delete process.env[key];
+  }
+  Object.assign(process.env, {
+    HOME: home,
+    USERPROFILE: home,
+    TMPDIR: tempRoot,
+    TMP: tempRoot,
+    TEMP: tempRoot,
+    npm_config_cache: npmCache,
+    npm_config_userconfig: join(home, ".npmrc"),
+    npm_config_globalconfig: join(home, "global.npmrc"),
+  });
+  const hostModulePath = resolveHostModulePath({ requireFrom: import.meta.url });
+  console.log(`Host module (from dev checkout): ${hostModulePath}`);
   check(!JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")).pi, "root is not an install-all Pi package");
   for (const entry of entries) {
     console.log(`\nIndependent production install: ${entry.packageName}`);

@@ -4,11 +4,11 @@ Base: e5e754af8cb2a75efc54f24c4106ada886dcae4a
 Release after verified merge: v0.1.36
 
 <!-- amox-release-summary:v0.1.36:start -->
-- Update pi-web-access-lean to the pinned pi-web-access 0.48.0 runtime, exposing SpecStream, Autom and cloro through on-demand help and existing JSON input without expanding the single-tool schema.
-- Inherit opt-in SpecStream hosted page fetching, more complete readable extraction, network-timeout routing fallback, AnySearch domain filtering and stricter DuckDuckGo pacing from upstream.
-- Support image and video-frame questions through upstream answer mode with image-capable Pi models; document that answers are text and stored-result retrieval returns original source content.
-- Add focused offline facade regressions for new provider requests/results, timeout fallback, hosted fetch/get response layers and image-answer capability boundaries; preserve existing adapter behavior and baseline assertions.
-- Record exact before/after source evidence and compatibility decisions in package maintenance notes and the source review, synchronize English/Chinese usage docs, and recapture character-proxy measurements.
+- Upgrade the web facade's pinned engine to pi-web-access 0.48.0; SpecStream, Autom and cloro are available through dynamic help and existing JSON delegation, retaining one compact web_access tool.
+- Inherit optional SpecStream hosted fetching, broader readable-page recovery, network-timeout fallback, AnySearch domain filtering and revised DuckDuckGo pacing from upstream.
+- Document upstream image/video-frame answer support with image-capable Pi models, text answers and original-source stored retrieval in both user READMEs.
+- Add focused offline facade regressions for new providers, exact request shapes and filtered results, timeout routing, hosted fetch/get layers, image host streaming and text-only model refusal. Correct the new PNG fixture to a decodable image and prevent its hosted fallback from masking decoding failure; preserve all baseline assertions.
+- Record exact source revisions, compatibility findings and unchanged adapter boundaries in MAINTENANCE.md and agent-review.md; recapture character proxies and run selected verification, fresh installs and both audits.
 <!-- amox-release-summary:v0.1.36:end -->
 
 Source review: [agent-review.md](agent-review.md).

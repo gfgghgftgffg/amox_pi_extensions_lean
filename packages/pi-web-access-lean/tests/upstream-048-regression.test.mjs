@@ -25,7 +25,7 @@ dns.lookup = async () => [{ address: "93.184.216.34", family: 4 }];
 syncBuiltinESMExports();
 const requests = [];
 const body = "# Hosted page\n\nOffline SpecStream page body.";
-const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aC1sAAAAASUVORK5CYII=";
+const png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
 globalThis.fetch = async (input, init = {}) => {
   const url = new URL(input instanceof Request ? input.url : String(input));
   requests.push({ url, method: init.method, body: init.body ? JSON.parse(init.body) : undefined, headers: new Headers(init.headers) });
@@ -37,7 +37,10 @@ globalThis.fetch = async (input, init = {}) => {
   }
   if (url.href === "https://api.cloro.dev/v1/monitor/google") return Response.json({ result: { organicResults: [source, other].map(({ url, ...hit }) => ({ ...hit, link: url })) } });
   if (url.origin === "https://api.specstream.ai" && url.pathname === "/v1/web-search") return Response.json({ data: { sources: [source, other] }, error: null });
-  if (url.href === "https://api.specstream.ai/v1/extract") return Response.json({ data: { results: [{ status: "ok", title: "Hosted page", text: body }] } });
+  if (url.href === "https://api.specstream.ai/v1/extract") {
+    assert.deepEqual(JSON.parse(init.body).urls, ["https://source.example/blocked"]);
+    return Response.json({ data: { results: [{ status: "ok", title: "Hosted page", text: body }] } });
+  }
   if (url.href === "https://source.example/blocked") return new Response("Forbidden", { status: 403 });
   if (url.href === "https://source.example/pixel.png") return new Response(Buffer.from(png, "base64"), { headers: { "content-type": "image/png" } });
   throw new Error(`Unexpected offline target: ${url.href}`);

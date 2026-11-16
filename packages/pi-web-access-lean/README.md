@@ -10,7 +10,8 @@ A lighter wrapper for [`pi-web-access`](https://github.com/nicobailon/pi-web-acc
 
 - One tool covers `search`, `check`, `fetch`, `get` and `help`. The upstream engine still runs, and this package does not register those upstream tools a second time.
 - Local PDF paths and `file:///` return the saved Markdown and its path. Metadata includes the Markdown character count and, when the engine provides it, the page count. This path extracts Markdown only, not the upstream structured extract mode.
-- Uncommon parameters stay in `help`, including the allowed search providers. Pass them as a JSON object string in `input`.
+- Uncommon parameters stay in `help`, including the allowed search providers. Pass them as a JSON object string in `input`; explicit provider choices follow upstream configuration.
+- Remote image and video-frame questions use upstream answer mode with a model that accepts images. The reply contains the text answer; stored-result retrieval returns the original source content.
 
 ## Source
 

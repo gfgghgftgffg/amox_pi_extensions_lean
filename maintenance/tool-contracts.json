@@ -825,7 +825,7 @@
     },
     "pi-web-access": {
       "package": "pi-web-access",
-      "version": "0.47.0",
+      "version": "0.48.0",
       "entry": "node_modules/pi-web-access/dist/index.js",
       "registeredTools": [
         "web_search",
@@ -1973,7 +1973,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"

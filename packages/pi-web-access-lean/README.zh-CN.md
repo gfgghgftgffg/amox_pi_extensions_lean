@@ -10,7 +10,8 @@
 
 - 一个工具覆盖 `search`、`check`、`fetch`、`get` 和 `help`。执行仍走上游引擎，不把上游那几个工具再注册一遍。
 - 本地 PDF 路径和 `file:///` 返回已保存的 Markdown 及路径。元数据含 Markdown 字符数，引擎提供时也含页数。这条路径只提取 Markdown，不是上游的结构化 extract。
-- 冷门参数留在 `help` 里，包括允许的搜索 Provider。调用时把它们写成 JSON 对象字符串放进 `input`。
+- 冷门参数留在 `help` 里，包括允许的搜索 Provider。调用时把它们写成 JSON 对象字符串放进 `input`；显式 Provider 选择沿用上游配置。
+- 远端图片和视频帧问答走上游 answer 模式，需要支持图片输入的模型。回复包含文字回答；续取存储结果返回原始来源内容。
 
 ## 来源
 

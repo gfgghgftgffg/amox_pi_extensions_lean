@@ -12,12 +12,12 @@
       "id": "pi-web-access-lean",
       "path": "packages/pi-web-access-lean",
       "packageName": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "entry": "index.ts",
       "upstreamPackage": "pi-web-access",
-      "upstreamVersion": "0.47.0",
+      "upstreamVersion": "0.48.0",
       "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
-      "upstreamGitHead": "322e44fafc1aaa691779cdf2116584e67edd7645",
+      "upstreamGitHead": "896d75bec55e316726db287a870eb166c4e3f40c",
       "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
       "leanCommit": "49a89158d14095b5853f945850a26369bf101363"
     },
@@ -102,10 +102,10 @@
     }
   ],
   "release": {
-    "version": "0.1.35",
-    "baseCommit": "3b2ea8376b4ed86f30997159d9f88e57f1fc2018",
+    "version": "0.1.36",
+    "baseCommit": "e5e754af8cb2a75efc54f24c4106ada886dcae4a",
     "packageIds": [
-      "pi-subagents-lean"
+      "pi-web-access-lean"
     ]
   }
 }

@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `pi-web-access@0.47.0`（精确固定；`dependencies`；此前为 0.46.0）。
+- `pi-web-access@0.48.0`（精确固定；`dependencies`；此前为 0.47.0）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`（由宿主提供，`node_modules` 不安装）。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2。
@@ -383,6 +383,48 @@
 - 双语 README 更新原有帮助与配置段；check 实际捕获契约及 ceil(chars/4) 字符代理、更新测量并执行
   类型／回归／契约、独立生产安装及两类审计。代理不是计费 token；真实 Provider／代理、GitHub 克隆和跨平台
   行为未端到端实测，结果以工具输出和后续三平台 CI 为准。
+
+## 本次审查：0.47.0 → 0.48.0
+
+- sources.json 精确源码：`322e44fafc1aaa691779cdf2116584e67edd7645` →
+  `896d75bec55e316726db287a870eb166c4e3f40c`，目标与 npm gitHead／远端一致。web lean 作者仍为
+  `49a89158d14095b5853f945850a26369bf101363`，无作者更新；其它包无稳定发布变化，不改其发布文件。
+  sync 无 fork review／移植，本次不推进其基线。
+- 比较新旧 CHANGELOG、package.json、index.ts 的导入与业务注册／执行面、fetch-params.ts、
+  web-tool-contract.ts、web-tool-core.ts 的 fetch／answer／存储路径、page-query.ts、gemini-search.ts
+  的 Provider 表与 timeout 分类、extract.ts 的路由与 HTTP 可读提取分支、anysearch.ts、
+  tool-activation.ts 与 DuckDuckGo 限流默认值；完整阅读新增 specstream.ts、autom.ts、cloro.ts。
+  范围为门面兼容审查，不是全仓安全审计。
+- 无业务工具、调用字段、required／类型或调用默认值增删；numResults=5、workflow=none、默认 readable
+  保持，运行依赖与 peer 范围不变。新增 Provider specstream／autom／cloro，均为显式或配置路由选择，
+  不进 auto/all。现有 help 动态名单与 input JSON 已可披露／委派，无需扩大常驻 schema 或修改 index.ts。
+- SpecStream GET /v1/web-search 使用 q（最多 2000 字符）、Bearer key，域名本地复筛；
+  POST /v1/extract 传 urls 与 format=markdown。托管 fetch 必须配置路由并允许 remote hosted，默认顺序不变，
+  HTTP 仍先尝试且保留 SSRF／域名／redirect 预检。Autom GET /v1/google/search 使用 x-api-key，
+  域名变 site 表达式，recency 变 tbs，最多一页；cloro POST /v1/monitor/google 默认 google，
+  配置 cloroMode=aimode／bing_aimode 可切换文字回答与来源，country=US，recency 不应用。
+  AI Mode 用原 prompt、仅本地过滤来源。三者均用各自 ApiKey／BaseUrl 配置和对应环境变量。
+- answer 不再拒绝 image payload／frames：帧及标签或图片送给 host answerFromPage，再用支持 image 的
+  Pi 模型；不支持时返回 Page answer failed。成功回复去掉图片／帧，只给文字回答；extract 仍拒绝图片。
+  原 thumbnail 附带文本路径保持文本问答。本地 PDF 仍是独立 Markdown 直读，不因此新增图片／视频问答实现。
+- structuredContent.urls[].content 在 answer 中是回答，存储仍为原始 fetchResults（去 thumbnail），
+  get 取原始来源；rendered content 含存储／续取提示，不能等同结构化正文。返回对象仍原样透传。
+- Readability 非短文但少于可见文本一半时额外尝试 Defuddle，仅当结果至少 500 字符且可见文本增益
+  至少 1.5 倍才替换，失败保留既有结果；不宣称任何页面完整。Provider 的 aborted due to timeout
+  归 network，配置 fallbackOn=[network] 可继续，用户取消语义保持。AnySearch max_results 封顶 10，
+  结果与 inlineContent 都按域名本地复筛，可供 empty／domain-miss 回退。
+- DuckDuckGo 进程内间隔改 10 秒、每 10 分钟最多 10 次，预计等待超过 20 秒即 quota；bot check
+  暂停 30 分钟并倍增至 2 小时，cooldown 文件供其它进程共享暂停。不是共享所有进程的请求起始配额。
+  curator server 由静态导入改按需导入；auto activation 在首个请求前可随模型重选，已发请求会话保留。
+  facade 丢弃 loader／拦截 setActiveTools，保持直接单工具，不复制激活实现。
+- 五参数 execute、四默认名路由、prepareArguments、provider 字符串数组兼容与本地 PDF 既有适配继续适用。
+  历史作者容错扩展／全局 hint rewrite 不复用决定保持。双语 README 更新当前功能段，不维护上游参数手册。
+- 新增 upstream-048-regression.test.mjs：真实门面新 Provider help／JSON／过滤与请求形状、timeout
+  路由回退、HTTP 失败后 SpecStream 抓取和 get、图片送入 host streamSimple 后文字返回／原始来源续取及
+  text-only 模型拒绝。DNS/fetch 在导入前 mock，绝对 HTTPS URL、虚构 key、拒绝意外目标；保留全部基线断言。
+  不复制与门面无关的限流／curator／提取算法测试；真实服务、ffmpeg／视频解码和交互模型切换未实测。
+- check 实际重捕获契约及 ceil(chars/4) 字符代理、更新测量，执行选择范围类型／回归／契约、
+  独立生产安装和两类审计；结果以工具输出为准。字符代理不是计费 token，审计发现按所有者策略仅警告。
 
 ## 升级步骤
 

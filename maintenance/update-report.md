@@ -1,15 +1,15 @@
 # Local upstream maintenance
 
-Base: 3b2ea8376b4ed86f30997159d9f88e57f1fc2018
-Release after verified merge: v0.1.35
+Base: e5e754af8cb2a75efc54f24c4106ada886dcae4a
+Release after verified merge: v0.1.36
 
-<!-- amox-release-summary:v0.1.35:start -->
-- Update pi-subagents-lean to upstream @tintinweb/pi-subagents 0.25.0, retaining the published dist runtime and the single subagent facade.
-- Built-in general-purpose agents can now delegate outside workflows within the existing depth and nested concurrency limits; existing custom overrides remain opt-in. Document this behavior in both user READMEs.
-- Settings now saves to the global file unless the project already has subagents.json, supports Tab to switch targets, and merges changed keys; upstream also adds source tags, reset/filter controls and validated numeric editing.
-- Saved result text now includes the finish timestamp and age when available. Upstream also fixes finished nested-child retention on session switch and schedule lock stalls.
-- Record exact before/after source evidence and unchanged tool/parameter/default and child-context contracts in MAINTENANCE.md and agent-review.md. No facade source adjustment or unrelated upstream test is needed; preserve existing assertions and jointly validate goal/subagents compatibility, source/dist contracts, production installations and both dependency audits.
-<!-- amox-release-summary:v0.1.35:end -->
+<!-- amox-release-summary:v0.1.36:start -->
+- Upgrade the web facade's pinned engine to pi-web-access 0.48.0; SpecStream, Autom and cloro are available through dynamic help and existing JSON delegation, retaining one compact web_access tool.
+- Inherit optional SpecStream hosted fetching, broader readable-page recovery, network-timeout fallback, AnySearch domain filtering and revised DuckDuckGo pacing from upstream.
+- Document upstream image/video-frame answer support with image-capable Pi models, text answers and original-source stored retrieval in both user READMEs.
+- Add focused offline facade regressions for new providers, exact request shapes and filtered results, timeout routing, hosted fetch/get layers, image host streaming and text-only model refusal. Correct the new PNG fixture to a decodable image and prevent its hosted fallback from masking decoding failure; preserve all baseline assertions.
+- Record exact source revisions, compatibility findings and unchanged adapter boundaries in MAINTENANCE.md and agent-review.md; recapture character proxies and run selected verification, fresh installs and both audits.
+<!-- amox-release-summary:v0.1.36:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

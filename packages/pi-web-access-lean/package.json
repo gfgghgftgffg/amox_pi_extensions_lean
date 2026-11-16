@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-web-access-lean",
-  "version": "0.1.17",
+  "version": "0.1.18",
   "type": "module",
   "description": "A lighter wrapper for pi-web-access: one web_access tool, about 87% less tool text on the first call.",
   "license": "MIT",
@@ -46,7 +46,7 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "pi-web-access": "0.47.0"
+    "pi-web-access": "0.48.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",

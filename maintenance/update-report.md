@@ -4,11 +4,11 @@ Base: e4892a45ae5148565ac79b4b4258f050e4a7cae9
 Release after verified merge: v0.1.37
 
 <!-- amox-release-summary:v0.1.37:start -->
-- Update pi-subagents-lean to the staged @tintinweb/pi-subagents 0.26.0 runtime, preserving its published dist entrypoints and the goal/subagents joint compatibility gate.
-- Align the compact workflow guideline with upstream explicit workflow opt-in: requests for a number of agents use parallel run calls; requested or named workflows use workflow.
-- Preserve on-demand workflow authoring help across inline, skill and deferred settings, and document that the single lean facade does not defer an individual operation. Verify the bundled skill is reachable through its actual published path.
-- Carry upstream strict draft-07 workflow schema validation, failure diagnostics and live workflow progress/accounting improvements through the pinned engine; distinguish notification failure text from structured tool content.
-- Update both user READMEs and detailed exact-source review records; add focused real-dist facade exposure/help and authoring-error regressions while preserving all baseline assertions. Recalculate character proxies and run joint tests, contracts, fresh production installs and both dependency audits.
+- Update pi-subagents-lean to @tintinweb/pi-subagents 0.26.0, retaining published dist entrypoints and mandatory joint goal/subagents validation without publishing the unchanged goal package.
+- Require an explicit workflow request in the compact guideline, matching upstream workflow opt-in; requests for several agents use parallel run calls.
+- Preserve on-demand workflow authoring reference delivery for inline, skill and deferred settings. Document that the single facade keeps its workflow operation available and verify the actual published skill path.
+- Inherit strict draft-07 schema validation, workflow failure reasons, live progress and corrected retry/resume accounting from the pinned upstream runtime; document notification text versus tool response structure.
+- Refresh bilingual README and exact-source maintenance review, character proxies and focused real-dist regression coverage. Correct the new early-validation regression to accept the observed absence of details while still asserting no task ID or structuredContent; baseline assertions remain intact. Run joint type/function/ABI/contract checks, fresh production installs and both dependency audits on this same candidate.
 <!-- amox-release-summary:v0.1.37:end -->
 
 Source review: [agent-review.md](agent-review.md).

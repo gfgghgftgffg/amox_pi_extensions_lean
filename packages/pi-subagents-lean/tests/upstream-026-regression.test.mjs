@@ -60,7 +60,7 @@ test("workflow exposure changes on-demand help while retaining the single facade
       assert.equal(result.content[0].type, "text");
       assert.match(result.content[0].text, /meta/);
       assert.equal(result.structuredContent, undefined);
-      assert.equal(result.details.taskId, undefined);
+      assert.equal(result.details?.taskId, undefined);
     }
     const disabled = loadFacade({ workflowsEnabled: false, workflowToolExposure: "deferred" });
     const result = await disabled.execute("disabled", { op: "workflow", input: "{}" });

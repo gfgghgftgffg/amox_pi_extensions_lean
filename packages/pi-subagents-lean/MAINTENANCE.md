@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.25.0`（精确固定；`dependencies`；此前为 0.24.0）。
+- `@tintinweb/pi-subagents@0.26.0`（精确固定；`dependencies`；此前为 0.25.0）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -332,6 +332,50 @@
 - check 实际捕获字符代理并运行联合类型/功能/global v1/原版 dist result 与 notification ABI、源码/dist
   契约、独立生产安装及两类依赖审计；当前结果以 check 输出为准。字符代理 ceil(chars/4) 非计费 token，
   上游漏洞按所有者策略仅警告。后续精确提交三平台 CI 和独立 Release 验证仍由固定流程执行。
+
+## 本次审查：0.25.0 → 0.26.0
+
+- sources.json 的精确 Git 发布源码：`b8efc069f05efe50b58a4b74140116c1c9a9dcc1` →
+  `dbbd769781847f9c0f74ba2a8545ff33c4b26e7c`，目标 npm gitHead 与远端 HEAD 一致。
+  lean 作者仍为 `e4892d465a15467214ed390ed380bdfc3f179887`，无新作者源码可复用。
+- 对比新旧 CHANGELOG/package.json、完整 invocation-config.ts/child-context.ts、index.ts 的 Agent
+  schema/execute/render、usage 包装、workflow schema/注册/execute/render/通知/冲突处理、result/steer
+  及 Settings 接线；对比 workflow/tool-description.ts、json-schema.ts，阅读 task.ts 的新计数和通知
+  形状、settings.ts 新 exposure 字段/默认/校验及 runtime.ts 的 host 类型。此为门面兼容审查，
+  不是整个上游逐文件或安全审计；下述未逐行检查的 worker/host 行为以 CHANGELOG 为依据。
+- 四工具无增删，字段/required/类型/约束及五参数 execute 保持。run 的必填 prompt/description/
+  subagent_type、高级 name/model/thinking/max_turns/resume/isolated/inherit_context 与条件 isolation/
+  schedule 不变；result 为 agent_id/wait/verbose，steer 为 agent_id/message，workflow 为 script/
+  scriptPath/name/args/resumeFromRunId/title/description。后台默认 true、inherit_context/isolated=false、
+  isolation=off、wait/verbose=false、文件优先级保持。Pi >=1.1.0/typebox * peers 不变；运行依赖新增
+  ajv ^8.20.0，croner/nanoid 范围保持，随固定引擎安装，不复制 validator。
+- 上游删除按任务规模推荐 workflow 的 guideline，保留明确 opt-in 规则；“用 N 个 Agent”应并行 Agent，
+  明确 workflow/编排请求、用户调用的 skill/命令指示或指定已保存 workflow 才使用 workflow。
+  门面首条 guideline 以短句明确 workflow request，替换原泛化建议；其它 schema/委派实现不改。
+- 新设置 workflowToolExposure 默认 inline；skill 将参考正文换成随包 skill 的绝对路径，inline/deferred
+  都读取同一 skill 正文，文件缺失回退 pointer 并警告。npm pi.skills 新声明 ./skills；门面不复制 skill，
+  help 返回捕获的完整 description，skill 模式可直接读取路径，无需依赖宿主列出传递依赖的 skills。
+  原版 deferred 是 SubagentWorkflow 的 exposure 元数据，需要 tool_search；门面继续只注册 subagent，
+  不将单个操作变成独立 deferred 工具，故不延迟 workflow 操作。两种 README 明示此封装差异。
+  workflowsEnabled=false 仍不捕获 workflow；session_start 的冲突处理可重捕获 hidden 原工具对象，
+  但不会注销门面操作（原有局限不变）。原版 inactive-tool_search 警告也可能透传，不代表门面操作不可用。
+- workflow agent({schema}) 从 typebox raw JSON 校验切换为 Ajv draft-07 严格编译，拒绝未知 keyword、
+  非 draft-07 $schema、$async、错误引用/正则；先做节点/深度限制，后做不可满足 schema lint。
+  format 不校验，schema 错误在启动子 Agent 前结束 run。门面的调用参数校验仍用 typebox v1，
+  不与脚本的 StructuredOutput 校验混淆。README 链接上游 workflow 兼容说明，不复刻手册。
+- CHANGELOG 记录脚本 strict mode、返回值复制、pipeline 在 null 停止当前项、setTimeout、disallowedTools、
+  effort 大小写兼容，以及只读 agentError(label) 和 journal 失败理由。task 通知保留 task-id/tool-use-id/
+  status/result/usage，在有失败时加入转义的 <failures>（上限 40000 字符）。这是通知 content 文本，
+  不是工具 structuredContent。启动响应仍 content[].text + details.taskId；render 卡片继续委派。
+- 上游还修复运行中 tool/token 计数、retry 的 budget.spent 支出及 resume 仅计续跑；task 进度按 index
+  原位替换最新项，FleetView 新 phase 及 live card redraw。门面不持有该进度快照或复制 UI/runtime。
+- dist/index.js/dist/child-context.js、相同 ALS 查询与 global v1 多 checker、启动类型正则、instancePath、
+  直接字段优先、usage 包装捕获、render 委派和 result 空 branch fallback 继续成立。
+  新 tests/upstream-026-regression.test.mjs 只覆盖真实 dist 门面三种 exposure 的 help/skill 可读性、
+  单工具保持、meta 拒绝的真实文本形状及禁用 workflow，无 Agent/worker/provider 任务；基线断言完整保留。
+- 仅 subagents 发布，goal 联合验收但不升版。check 实际重测 ceil(chars/4) 字符代理（非计费 token）、
+  类型/功能/global v1/原版 dist result 和 notification ABI、source/dist 契约、独立生产安装及两类审计。
+  当前结论以 check 输出为准；真实模型/MCP、交互 UI 和脚本运行端到端未验证。漏洞按所有者策略仅警告。
 
 ## 运行时产物与验收
 

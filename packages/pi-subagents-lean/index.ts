@@ -174,7 +174,7 @@ export function createSubagentsFacade(
       description: "Run or inspect subagents/workflows through one tool; use help for advanced parameters.",
       parameters,
       promptGuidelines: [
-        "subagent: run requires prompt, description (3-5 words), and subagent_type; use workflow for scripted multi-agent orchestration.",
+        "subagent: run requires prompt, description (3-5 words), and subagent_type; workflow requires an explicit workflow request.",
         "subagent: Put advanced options in input as a JSON object; direct fields override duplicate JSON keys. result uses agent_id; steer uses agent_id and message. Use help only when advanced parameters are unclear.",
         "subagent: Background completion is notified; never poll or sleep. Summarize results and verify claimed code changes.",
       ],

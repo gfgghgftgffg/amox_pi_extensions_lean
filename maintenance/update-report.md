@@ -1,15 +1,15 @@
 # Local upstream maintenance
 
-Base: e5e754af8cb2a75efc54f24c4106ada886dcae4a
-Release after verified merge: v0.1.36
+Base: e4892a45ae5148565ac79b4b4258f050e4a7cae9
+Release after verified merge: v0.1.37
 
-<!-- amox-release-summary:v0.1.36:start -->
-- Upgrade the web facade's pinned engine to pi-web-access 0.48.0; SpecStream, Autom and cloro are available through dynamic help and existing JSON delegation, retaining one compact web_access tool.
-- Inherit optional SpecStream hosted fetching, broader readable-page recovery, network-timeout fallback, AnySearch domain filtering and revised DuckDuckGo pacing from upstream.
-- Document upstream image/video-frame answer support with image-capable Pi models, text answers and original-source stored retrieval in both user READMEs.
-- Add focused offline facade regressions for new providers, exact request shapes and filtered results, timeout routing, hosted fetch/get layers, image host streaming and text-only model refusal. Correct the new PNG fixture to a decodable image and prevent its hosted fallback from masking decoding failure; preserve all baseline assertions.
-- Record exact source revisions, compatibility findings and unchanged adapter boundaries in MAINTENANCE.md and agent-review.md; recapture character proxies and run selected verification, fresh installs and both audits.
-<!-- amox-release-summary:v0.1.36:end -->
+<!-- amox-release-summary:v0.1.37:start -->
+- Update pi-subagents-lean to @tintinweb/pi-subagents 0.26.0, retaining published dist entrypoints and mandatory joint goal/subagents validation without publishing the unchanged goal package.
+- Require an explicit workflow request in the compact guideline, matching upstream workflow opt-in; requests for several agents use parallel run calls.
+- Preserve on-demand workflow authoring reference delivery for inline, skill and deferred settings. Document that the single facade keeps its workflow operation available and verify the actual published skill path.
+- Inherit strict draft-07 schema validation, workflow failure reasons, live progress and corrected retry/resume accounting from the pinned upstream runtime; document notification text versus tool response structure.
+- Refresh bilingual README and exact-source maintenance review, character proxies and focused real-dist regression coverage. Correct the new early-validation regression to accept the observed absence of details while still asserting no task ID or structuredContent; baseline assertions remain intact. Run joint type/function/ABI/contract checks, fresh production installs and both dependency audits on this same candidate.
+<!-- amox-release-summary:v0.1.37:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

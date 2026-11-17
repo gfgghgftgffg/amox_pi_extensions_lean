@@ -42,13 +42,13 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.21",
+      "version": "0.1.22",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
-      "upstreamVersion": "0.25.0",
+      "upstreamVersion": "0.26.0",
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
-      "upstreamGitHead": "b8efc069f05efe50b58a4b74140116c1c9a9dcc1",
+      "upstreamGitHead": "dbbd769781847f9c0f74ba2a8545ff33c4b26e7c",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
       "leanCommit": "e4892d465a15467214ed390ed380bdfc3f179887"
     },
@@ -102,10 +102,10 @@
     }
   ],
   "release": {
-    "version": "0.1.36",
-    "baseCommit": "e5e754af8cb2a75efc54f24c4106ada886dcae4a",
+    "version": "0.1.37",
+    "baseCommit": "e4892a45ae5148565ac79b4b4258f050e4a7cae9",
     "packageIds": [
-      "pi-web-access-lean"
+      "pi-subagents-lean"
     ]
   }
 }

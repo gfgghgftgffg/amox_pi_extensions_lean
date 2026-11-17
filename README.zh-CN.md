@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-五个可独立安装的 Pi 扩展，涵盖搜索、任务管理、子 Agent、持久目标和数据同步。lean 包精简工具描述和 schema，保留上游执行能力。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，四个 lean 包已注册的工具文本合计减少约 **82.6%**；同步包不计入统计。
+五个可独立安装的 Pi 扩展，涵盖搜索、任务管理、子 Agent、持久目标和数据同步。lean 包精简工具描述和 schema，保留上游执行能力。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，四个 lean 包已注册的工具文本合计减少约 **83.2%**；同步包不计入统计。
 
 | 扩展 | 工具 | 用途 |
 | --- | --- | --- |

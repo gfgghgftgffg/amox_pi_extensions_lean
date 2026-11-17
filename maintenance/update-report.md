@@ -1,15 +1,15 @@
 # Local upstream maintenance
 
-Base: e5e754af8cb2a75efc54f24c4106ada886dcae4a
-Release after verified merge: v0.1.36
+Base: e4892a45ae5148565ac79b4b4258f050e4a7cae9
+Release after verified merge: v0.1.37
 
-<!-- amox-release-summary:v0.1.36:start -->
-- Upgrade the web facade's pinned engine to pi-web-access 0.48.0; SpecStream, Autom and cloro are available through dynamic help and existing JSON delegation, retaining one compact web_access tool.
-- Inherit optional SpecStream hosted fetching, broader readable-page recovery, network-timeout fallback, AnySearch domain filtering and revised DuckDuckGo pacing from upstream.
-- Document upstream image/video-frame answer support with image-capable Pi models, text answers and original-source stored retrieval in both user READMEs.
-- Add focused offline facade regressions for new providers, exact request shapes and filtered results, timeout routing, hosted fetch/get layers, image host streaming and text-only model refusal. Correct the new PNG fixture to a decodable image and prevent its hosted fallback from masking decoding failure; preserve all baseline assertions.
-- Record exact source revisions, compatibility findings and unchanged adapter boundaries in MAINTENANCE.md and agent-review.md; recapture character proxies and run selected verification, fresh installs and both audits.
-<!-- amox-release-summary:v0.1.36:end -->
+<!-- amox-release-summary:v0.1.37:start -->
+- Update pi-subagents-lean to the staged @tintinweb/pi-subagents 0.26.0 runtime, preserving its published dist entrypoints and the goal/subagents joint compatibility gate.
+- Align the compact workflow guideline with upstream explicit workflow opt-in: requests for a number of agents use parallel run calls; requested or named workflows use workflow.
+- Preserve on-demand workflow authoring help across inline, skill and deferred settings, and document that the single lean facade does not defer an individual operation. Verify the bundled skill is reachable through its actual published path.
+- Carry upstream strict draft-07 workflow schema validation, failure diagnostics and live workflow progress/accounting improvements through the pinned engine; distinguish notification failure text from structured tool content.
+- Update both user READMEs and detailed exact-source review records; add focused real-dist facade exposure/help and authoring-error regressions while preserving all baseline assertions. Recalculate character proxies and run joint tests, contracts, fresh production installs and both dependency audits.
+<!-- amox-release-summary:v0.1.37:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

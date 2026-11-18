@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.26.0`（精确固定；`dependencies`；此前为 0.25.0）。
+- `@tintinweb/pi-subagents@0.26.1`（精确固定；`dependencies`；此前为 0.26.0）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -423,6 +423,37 @@
   不复用作者入口、锁文件、包装版本或测量；本仓继续用 npm `dist/index.js`。先前不复用的 op 推断／对象 input 决定不变。
 - 无门面源码变化，不新增回归、不改既有断言。中英文 README 只在现有行为段说明观察器跳转键跟随宿主绑定。
   check 实际执行类型／既有回归、source/dist 契约、独立生产安装、字符代理与两类审计；结果以输出为准。
+
+## 本次审查：0.26.0 → 0.26.1
+
+- sources.json 精确 Git 发布源码：`dbbd769781847f9c0f74ba2a8545ff33c4b26e7c` →
+  `14ef1946b439ad2c7e7db618ecdb36f5532052e7`，目标对应 npm gitHead；不采用远端
+  `9a1b37dff9c6626a48912d23efabfa13e3c53ddb`。lean 作者仍为
+  `e4892d465a15467214ed390ed380bdfc3f179887`，没有新作者源码可复用。仅 subagents 发布，goal 联合验收但不升版。
+- 对比两版 CHANGELOG、package.json、完整 invocation-config.ts、child-context.ts、prompts.ts、mention-clone.ts，
+  nested-tools.ts 的注册与描述、agent-types.ts 的共享 formatter，以及 index.ts 的 Agent schema/execute/render、
+  usage 包装、workflow schema/execute/render/通知与 result/steer；对比 runner 的 reopen、模型/思考级别解析和
+  SDK session 构建路径。这是门面兼容性审查，不声称逐文件审计整个引擎。
+- 四个上游工具无增删，字段、required、类型、约束不变。frontmatter 优先级、顶层后台默认 true、
+  inherit_context/isolated=false、isolation 默认 off、result wait/verbose=false 不变；Pi >=1.1.0、typebox *
+  peers 与 Ajv/croner/nanoid 运行依赖范围不变。高级字段继续走 JSON input/help，无需增加常驻 schema。
+- reopen 修复：Agent execute 对已保存会话不再解析父模型或 agent 文件 model/thinking；runner 在 resumeSessionFile
+  存在时不再使用文件/父会话的回退，交给 createAgentSession 恢复原模型和思考级别。底层 runner 的显式选项仍优先；
+  Agent 续跑路径不传这些覆盖。SDK 返回 modelFallbackMessage 时通过 UI warning 提示。当前 prompt/tools 定义仍生效；
+  编辑文件的 model/thinking 不改变续跑，双语 README 在现有定义说明段记录此边界。
+- mention clone 改用 withoutCwdSection：按规范化 cwd 精确移除最后一个匹配的 cwd section，保留其后的扩展段；
+  没匹配则原样返回。append-mode inheritableParentPrompt 只提取 cwdSection helper，行为不变。
+- 顶层 Agent 的类型列表 formatter 移到 agent-types.ts，nested Agent 复用它，在允许的 enabled 类型中显示描述和
+  内置工具范围；compact 用首句，custom 在 nested 中按 full。名字/深度/所有权和 nested 后台收集要求不变。
+  这些是上游子会话工具说明，不复制到顶层 lean prompt，也不新增本地引擎实现。
+- npm dist/index.js、dist/child-context.js、完全相同的 child ALS 查询/global v1 聚合、启动名单正则、typebox v1
+  instancePath 校验、直接字段优先、捕获 withUsageReporting 后的五参数 execute、render 委派和 workflow 条件捕获继续适用。
+  结果仍为 content[].text 与 details（usage 可由包装加入）；workflow 通知为 content 文本与 details，卡片呈现不等于
+  structuredContent/body。没有新的结果 ABI。保留现有 workflow 显式请求规则与 exposure 封装边界。
+- 无门面源码变化，不添加无关上游测试，保留全部既有断言。check 重新捕获字符代理（ceil(chars/4)，不是计费 token），
+  实际执行联合 goal/subagents 类型/功能、global v1/原版 dist result/notification ABI、source/dist 契约、独立生产安装及两类审计。
+  当前验证结果以 check 输出为准；真实 provider 模型恢复、mention 模型调用、交互 UI/MCP 不在本次离线验收范围内。
+  其它包发布文件和 sync 基线不变，未启动维护 subagent 或其它 Agent。
 
 ## 本次审查：0.23.2 → 0.24.0
 

@@ -1,15 +1,14 @@
 # Local upstream maintenance
 
-Base: e4892a45ae5148565ac79b4b4258f050e4a7cae9
-Release after verified merge: v0.1.37
+Base: 89a0a79a36d9283b9c6373b2e160cbc995cdb8ec
+Release after verified merge: v0.1.38
 
-<!-- amox-release-summary:v0.1.37:start -->
-- Update pi-subagents-lean to @tintinweb/pi-subagents 0.26.0, retaining published dist entrypoints and mandatory joint goal/subagents validation without publishing the unchanged goal package.
-- Require an explicit workflow request in the compact guideline, matching upstream workflow opt-in; requests for several agents use parallel run calls.
-- Preserve on-demand workflow authoring reference delivery for inline, skill and deferred settings. Document that the single facade keeps its workflow operation available and verify the actual published skill path.
-- Inherit strict draft-07 schema validation, workflow failure reasons, live progress and corrected retry/resume accounting from the pinned upstream runtime; document notification text versus tool response structure.
-- Refresh bilingual README and exact-source maintenance review, character proxies and focused real-dist regression coverage. Correct the new early-validation regression to accept the observed absence of details while still asserting no task ID or structuredContent; baseline assertions remain intact. Run joint type/function/ABI/contract checks, fresh production installs and both dependency audits on this same candidate.
-<!-- amox-release-summary:v0.1.37:end -->
+<!-- amox-release-summary:v0.1.38:start -->
+- Update pi-subagents-lean to the pinned @tintinweb/pi-subagents 0.26.1 runtime: resuming a saved agent restores its recorded model and thinking level instead of silently selecting the parent's current settings; the SDK reports model fallback through a user warning.
+- Inherit upstream mention-clone cwd deduplication and richer allowed-agent descriptions/tool scopes for nested delegation, including compact description mode, without expanding the lean tool schema or copying engine code.
+- Clarify resume behavior in both user READMEs and record the exact publication-source review, unchanged parameters/defaults, response-layer boundaries and internal facade compatibility in MAINTENANCE.md and maintenance/agent-review.md.
+- Retain the published dist entrypoints, one-tool facade and all baseline assertions. Recalculate character proxies and validate joint goal/subagents types/functions, child-context global v1, native dist result/notification ABI, source/dist parity, contracts, fresh production installs and both dependency audits. Only subagents is selected for release.
+<!-- amox-release-summary:v0.1.38:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

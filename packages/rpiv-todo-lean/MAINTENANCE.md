@@ -221,6 +221,21 @@
 - 本次无门面行为变化，不加重复测试或修改既有断言。check 实际执行类型／既有回归／契约、三包独立
   生产安装和两种审计，并重测字符代理；结果以其输出为准。ceil(chars/4) 非计费 token，Pi 1.4 与交互 UI 未实测。
 
+## 本次 lean-only 审查：作者文档与图表重写
+
+- sources.json 精确作者 before/after：`664409f1e91e7eb8375cb0e473321a7075f20de1` →
+  `b9b799537282eb7c37d4bae28c47232cd6e49936`。完整比较两版 397 行 index.ts，入口逐行相同；
+  阅读两版 package.json 与中英文 README。没有新 action、字段、默认值或执行逻辑可复用。
+- 作者仅将 package description 改为不带旧字符代理百分比的功能描述，重写双语文档并新增 chart 资产；
+  todo/i18n pins 仍是 2.15.0。保留本仓脚本管理元数据、当前中英文说明与 check 实测代理，
+  不复制其锁文件、图表或测量。
+- 历史未采用功能不变：withHostPlan、bare id 推断和较强逐步 workflow 指令不因文档重写重新引入。
+  本地完整批量 schema、hook-first 归一化、原子执行、RPC 会话隔离、stale guards 与异步命令等待保持；
+  不替换为作者入口或原地修改上游 schema。无本地源码变化，不新增重复测试或放宽既有断言。
+- 本次没有引擎 before/after／CHANGELOG；todo/i18n 稳定版仍为 2.15.0 /
+  `ce6d3530410812ca504ec294995581a52170f9e1`，不采用或声称审查远端
+  `1a4add9dbe61597059a93dd9200bf25d51238659`。本包不升版；check 的实际选定范围与审计结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view @juicesharp/rpiv-todo version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码（`tool/types.ts`、`todo.ts`、`todo-overlay.ts`、`index.ts`、`state/*`）及 `CHANGELOG.md`。

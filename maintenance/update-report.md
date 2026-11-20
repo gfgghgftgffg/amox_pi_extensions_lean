@@ -1,14 +1,15 @@
 # Local upstream maintenance
 
-Base: 89a0a79a36d9283b9c6373b2e160cbc995cdb8ec
-Release after verified merge: v0.1.38
+Base: b3b2e2cb1cc3ed78b71a1f084ba7af86ae49fe69
+Release after verified merge: v0.1.39
 
-<!-- amox-release-summary:v0.1.38:start -->
-- Update pi-subagents-lean to the pinned @tintinweb/pi-subagents 0.26.1 runtime: resuming a saved agent restores its recorded model and thinking level instead of silently selecting the parent's current settings; the SDK reports model fallback through a user warning.
-- Inherit upstream mention-clone cwd deduplication and richer allowed-agent descriptions/tool scopes for nested delegation, including compact description mode, without expanding the lean tool schema or copying engine code.
-- Clarify resume behavior in both user READMEs and record the exact publication-source review, unchanged parameters/defaults, response-layer boundaries and internal facade compatibility in MAINTENANCE.md and maintenance/agent-review.md.
-- Retain the published dist entrypoints, one-tool facade and all baseline assertions. Recalculate character proxies and validate joint goal/subagents types/functions, child-context global v1, native dist result/notification ABI, source/dist parity, contracts, fresh production installs and both dependency audits. Only subagents is selected for release.
-<!-- amox-release-summary:v0.1.38:end -->
+<!-- amox-release-summary:v0.1.39:start -->
+### pi-subagents-lean
+- Update the pinned `@tintinweb/pi-subagents` runtime to 0.26.2 while retaining the single compact `subagent` facade and published `dist` runtime.
+- Support upstream's subagent prompt-cache retention setting and per-agent `cache_retention` override; the default remains `inherit`, with no change to the parent session's cache policy.
+- Pick up expanded nested/workflow lifecycle events, richer agent/workflow RPC observation, and RPC stop settlement waiting without changing the facade's tool schema or the goal integration ABI.
+- Document the current cache and integration behavior in English and Simplified Chinese; record exact upstream and lean-author reuse reviews. No web, todo, goal, or sync release is included.
+<!-- amox-release-summary:v0.1.39:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

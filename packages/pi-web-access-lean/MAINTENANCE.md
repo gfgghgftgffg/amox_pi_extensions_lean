@@ -426,6 +426,21 @@
 - check 实际重捕获契约及 ceil(chars/4) 字符代理、更新测量，执行选择范围类型／回归／契约、
   独立生产安装和两类审计；结果以工具输出为准。字符代理不是计费 token，审计发现按所有者策略仅警告。
 
+## 本次 lean-only 审查：作者文档与图表重写
+
+- sources.json 精确作者 before/after：`49a89158d14095b5853f945850a26369bf101363` →
+  `c982d81368b64ff4abf71ecf59d3148a9fbb8e08`。完整比较两版 422 行 index.ts，入口逐行相同；
+  阅读两版 package.json 与中英文 README。没有新工具、参数、默认值或执行逻辑可复用。
+- 作者仅把 package description 改为不带旧字符代理百分比的功能描述，重写双语文档并新增 chart 资产；
+  引擎 pin 仍是 0.47.0。保留本仓固定 0.48.0、脚本管理元数据、当前中英文说明与 check 实测代理，
+  不复制其旧 pin、锁文件、图表或测量。
+- 历史复用决定不变：不引入 op 推断／对象 input／顶层合并或 rendered content 的 hint 重写。
+  本地 prepareArguments、Provider 字符串数组兼容、PDF 分支、loader 丢弃与 active-list 拦截保持；
+  rendered text、structuredContent 与 stored body 仍分别处理。无本地源码变化，不新增重复测试。
+- 本次只有 lean 快照，没有新引擎 before/after；稳定版仍是 0.48.0 /
+  `896d75bec55e316726db287a870eb166c4e3f40c`，不采用或声称审查远端
+  `438e58be6307efb7cd539af3806757abe303aa0c`。本包不升版；check 的实际选定范围与审计结果以输出为准。
+
 ## 升级步骤
 
 1. `npm view pi-web-access version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。

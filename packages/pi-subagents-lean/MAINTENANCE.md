@@ -14,7 +14,7 @@
 
 ## 锁定的上游版本
 
-- `@tintinweb/pi-subagents@0.26.1`（精确固定；`dependencies`；此前为 0.26.0）。
+- `@tintinweb/pi-subagents@0.26.2`（精确固定；`dependencies`；此前为 0.26.1）。
 - 0.21.0 沿用 0.20.0 的 Pi `>=1.1.0` 与 `typebox` v1 `*` peer；
   `@sinclair/typebox` 不是上游运行时依赖（上游开发依赖仍列有它）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
@@ -485,3 +485,39 @@
 - 无本次门面源码变化，不添加上游内部单元测试，保留全部既有断言。check 负责重新捕获字符代理、联合
   goal/subagents 类型与功能／原版 dist ABI／global v1 child gate、源码/dist 契约、独立生产安装和两类审计。
   当前结果以 check 输出为准；未运行真实 provider／MCP 或交互鼠标／键盘端到端测试。其它包不升版或发布。
+
+## 本次审查：0.26.1 → 0.26.2 与 lean 作者文档更新
+
+- sources.json 精确 Git 发布源码：`14ef1946b439ad2c7e7db618ecdb36f5532052e7` →
+  `e9bd10502cd512288642bd8a97c169042a2310b9`，目标与 npm gitHead／远端 HEAD 一致。
+  仅 subagents 更新引擎，goal 参加联合验收但不升版；web/todo 稳定运行时不改变，sync 无移植或基线推进。
+- 对比两版 CHANGELOG/package.json、完整 invocation-config.ts/child-context.ts、settings.ts 的校验／默认／应用、
+  custom-agents.ts 的 frontmatter 解析；阅读新增 cache-retention.ts、subagent-info.ts、workflow-info.ts 和
+  cross-extension-rpc.ts。核对 index.ts 的 lifecycle/RPC 接线、Agent/workflow/result/steer schema 与执行／渲染、
+  原生通知路径，agent-manager.ts 的运行跟踪／stop settle，以及 workflow task 的结果／通知格式；阅读对应 focused
+  上游测试作为真实响应形状证据。这是门面兼容审查，不是全仓逐文件或安全审计。
+- 四个模型工具及调用字段不增删，required／类型／约束和调用默认值不变。frontmatter 优先级、顶层后台 true、
+  inherit_context/isolated=false、isolation=off、result wait/verbose=false 保持；Pi >=1.1.0/typebox * peers 与
+  Ajv/croner/nanoid 范围不变。新 cacheRetention 是设置，cache_retention 是 Agent 文件字段，不是工具参数：
+  默认 inherit，可选 none/short/long；文件值覆盖设置，请求自己指定的 retention 仍优先，父会话不受影响。
+  runner 在 bindExtensions 前包装子会话 streamFunction；门面不复制此实现，不扩大常驻 Schema 或 help 参数手册。
+- created/started/completed/failed/steered/compacted 现在覆盖 nested 与 workflow Agent，以 parentAgentId/workflowId
+  标记归属；共享白名单 payload 增加 structuredJson/sessionFile，并区分含后代的 usage 与自身 ownUsage。
+  RPC 仍为 v2，ping 新增 features；get/list 返回快照及 notificationPending/settling，新增 workflow_get/list。
+  workflow_started/settled 携带摘要，settled/get 的 result 是未截断的拷贝；这与模型通知 content 文本中仍截断到
+  4000 字符的 result 不是同一层，也不是工具 structuredContent/body。事件总线变化不改 goal 的通知 XML 消费方式。
+- rpc:stop 现在等待目标及所有后代的 run 收尾，默认 5000ms，settleTimeoutMs 可设并夹到 0..60000；
+  成功回复 data.settled。超时后可重停，get/list 用 settling 表示尚未收尾。此 RPC 等待语义不改变 steer_subagent
+  工具或 goal guard 的工具调用面。
+- npm dist/index.js/dist/child-context.js、相同 child ALS 查询/global v1 多 checker、启动名单正则、typebox v1
+  instancePath、直接字段优先、捕获 withUsageReporting 后五参数 execute、render 委派、workflow 条件捕获及
+  result 缺 sessionManager 空 branch fallback 继续成立。Agent 结果 content 头、启动 details 与 Agent/workflow
+  通知 XML 保持 goal 所需 ABI；联合验收覆盖真实 dist result/notification，而不把 bus 新 payload 当作工具结果。
+- lean 作者 `e4892d465a15467214ed390ed380bdfc3f179887` → `97e0c181a4cbe7b80967de607fdbe03e9e9345eb`：
+  完整 205 行 index.ts 相同，仍导入 src/index.ts；仅 package description、双语文档重写和 chart 资产变化。
+  不复制作者源码入口、0.23.1 旧 pin、锁文件或测量，历史 op 推断／对象 input 容错仍不引入。本地 dist 入口、
+  显式 op、child-context 注册与 result fallback 均不变。
+- 无门面源码变化，不新增无关上游测试或修改既有断言。中英文 README 只更新当前缓存与集成行为说明。
+  check 重新捕获 ceil(chars/4) 字符代理（非计费 token），实际执行联合类型/功能/global v1/原版 dist ABI、
+  source/dist 契约、独立生产安装及两类审计；结果以输出为准，漏洞按所有者策略仅警告。真实 provider 缓存、
+  交互 UI、外部 RPC/workflow 服务不在离线验收内；后续三平台 CI 与 Release 由固定流程独立执行。

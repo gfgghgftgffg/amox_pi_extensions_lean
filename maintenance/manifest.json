@@ -12,14 +12,14 @@
       "id": "pi-web-access-lean",
       "path": "packages/pi-web-access-lean",
       "packageName": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.19",
+      "version": "0.1.20",
       "entry": "index.ts",
       "upstreamPackage": "pi-web-access",
       "upstreamVersion": "0.48.0",
       "upstreamRepository": "https://github.com/nicobailon/pi-web-access.git",
       "upstreamGitHead": "896d75bec55e316726db287a870eb166c4e3f40c",
       "leanRepository": "https://github.com/kunkun9527/pi-web-access-lean.git",
-      "leanCommit": "c982d81368b64ff4abf71ecf59d3148a9fbb8e08"
+      "leanCommit": "23fc35266b5f8eed5607ca0c270d46c6d1774fa3"
     },
     {
       "id": "rpiv-todo-lean",
@@ -42,7 +42,7 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.24",
+      "version": "0.1.25",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
@@ -50,7 +50,7 @@
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
       "upstreamGitHead": "e9bd10502cd512288642bd8a97c169042a2310b9",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
-      "leanCommit": "97e0c181a4cbe7b80967de607fdbe03e9e9345eb"
+      "leanCommit": "30c53d8a63add7c9c6bbfd00a2d0689448a377bf"
     },
     {
       "id": "pi-goal-x-lean",
@@ -102,11 +102,10 @@
     }
   ],
   "release": {
-    "version": "0.1.39",
-    "baseCommit": "b3b2e2cb1cc3ed78b71a1f084ba7af86ae49fe69",
+    "version": "0.1.40",
+    "baseCommit": "0301e72c75acfecc434afe8e7774950575f7b7e3",
     "packageIds": [
       "pi-web-access-lean",
-      "rpiv-todo-lean",
       "pi-subagents-lean"
     ]
   }

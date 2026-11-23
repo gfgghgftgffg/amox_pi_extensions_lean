@@ -145,3 +145,22 @@ test("real upstream 0.20.0 Agent schema constraints gate op=run before spawning"
     /subagent run parameters are invalid/,
   );
 });
+
+test("waiting guidance uses existing boolean fields without changing the facade schema", async () => {
+  const facade = loadFacade();
+  const background = facade.parameters.properties.run_in_background;
+  assert.equal(background.type, "boolean");
+  assert.equal(background.description, "False requests an inline result.");
+  assert.deepEqual(facade.parameters.required, ["op"]);
+  assert.equal(facade.parameters.properties.wait, undefined);
+
+  const guidance = facade.promptGuidelines.join("\n");
+  assert.ok(guidance.includes(`op=result with input '{"wait":true}' (default: non-blocking)`));
+  assert.match(guidance, /Never poll or sleep/);
+
+  const help = await facade.execute("help-result-wait", { op: "help", input: "result" });
+  const [, schemaText] = help.content[0].text.split("\n\nParameters:\n");
+  const schema = JSON.parse(schemaText);
+  assert.equal(schema.properties.wait.type, "boolean");
+  assert.ok(!schema.required.includes("wait"));
+});

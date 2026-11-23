@@ -20,7 +20,7 @@ The facade comes from [kunkun9527/pi-subagents-lean](https://github.com/kunkun95
 
 ## Usage
 
-Start an agent:
+Start an agent. Set `run_in_background: false` to request the result inline when the next step depends on it. The agent’s configuration can require background execution:
 
 ```json
 {
@@ -32,7 +32,7 @@ Start an agent:
 }
 ```
 
-Read a finished result. Use the `agent_id` from `run`, or a saved handle after reload. Saved results include their finish time and age when available:
+Use the `agent_id` from `run`, or a saved handle after reload. `result` checks status or returns finished output without waiting by default. Prefer the completion notification for background work. If the next step needs an already running agent’s result, pass `input: '{"wait":true}'` to `result`. Saved results include their finish time and age when available:
 
 ```json
 { "op": "result", "agent_id": "agent-id" }
@@ -86,7 +86,7 @@ A removed worktree that held changes cannot be reopened; a clean one reopens in 
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 269 |
+| @gfgghgftgffg/pi-subagents-lean | 301 |
 | @tintinweb/pi-subagents | 8832 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

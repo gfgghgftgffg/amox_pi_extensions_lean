@@ -441,6 +441,12 @@
   `896d75bec55e316726db287a870eb166c4e3f40c`，不采用或声称审查远端
   `438e58be6307efb7cd539af3806757abe303aa0c`。本包不升版；check 的实际选定范围与审计结果以输出为准。
 
+## 本次 lean-only 审查：作者引擎 pin 对齐
+
+- `sources.json` 的作者提交 `c982d81368b64ff4abf71ecf59d3148a9fbb8e08` → `23fc35266b5f8eed5607ca0c270d46c6d1774fa3`。完整比较两版 `index.ts`、`package.json` 及中英文 README。422 行入口一致，工具、参数、默认值与执行逻辑没有差异。作者包与引擎 pin 从 0.47.0 移至 0.48.0，已有测量数字随文档保留。
+- 本仓已固定 `pi-web-access@0.48.0`（npm gitHead `896d75bec55e316726db287a870eb166c4e3f40c`）。本次快照只有作者版本对，没有新的引擎源码或 CHANGELOG。未发布的远端 HEAD `f5a745af5bf7c81fa55d47bf86c4afa25ac870e8` 不在审查范围内。
+- 本地四个默认名路由、五参数 execute、上游 prepareArguments、provider 字符串数组兼容、本地 PDF 分支、loader 拦截与远端返回值透传保持。沿用历史排除项，作者既有的 op 推断、对象 input、顶层合并及提示改写均未移植。双语 README 明确显式 `op`、字符串 `input` 以及用响应 ID 调用 `get` 的方式。无门面源码变化或新增网络回归，既有离线测试继续区分工具文本、结构化正文与存储正文。
+
 ## 升级步骤
 
 1. `npm view pi-web-access version` 确认目标稳定版本，对比 manifest 中当前固定版本/revision 与目标源码及 `CHANGELOG.md`。

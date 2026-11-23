@@ -1,15 +1,12 @@
 # Local upstream maintenance
 
-Base: b3b2e2cb1cc3ed78b71a1f084ba7af86ae49fe69
-Release after verified merge: v0.1.39
+Base: 0301e72c75acfecc434afe8e7774950575f7b7e3
+Release after verified merge: v0.1.40
 
-<!-- amox-release-summary:v0.1.39:start -->
-### pi-subagents-lean
-- Update the pinned `@tintinweb/pi-subagents` runtime to 0.26.2 while retaining the single compact `subagent` facade and published `dist` runtime.
-- Support upstream's subagent prompt-cache retention setting and per-agent `cache_retention` override; the default remains `inherit`, with no change to the parent session's cache policy.
-- Pick up expanded nested/workflow lifecycle events, richer agent/workflow RPC observation, and RPC stop settlement waiting without changing the facade's tool schema or the goal integration ABI.
-- Document the current cache and integration behavior in English and Simplified Chinese; record exact upstream and lean-author reuse reviews. No web, todo, goal, or sync release is included.
-<!-- amox-release-summary:v0.1.39:end -->
+<!-- amox-release-summary:v0.1.40:start -->
+- `pi-subagents-lean` now explains how to request an inline result with `run_in_background: false`. For an agent already running in the background, the tool recommends relying on the completion notification and shows how to use `result` with `{"wait":true}` when the next step depends on the result. The bilingual usage guide covers both paths and the existing workflow opt-in remains in the tool instructions.
+- `pi-web-access-lean` clarifies how to call `web_access` with an explicit operation and how to use the returned response ID with `get` when an upstream retrieval hint appears. The lean author's engine pin catches up to the version already used here.
+<!-- amox-release-summary:v0.1.40:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

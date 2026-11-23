@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Five independently installable Pi extensions for search, task management, subagents, persistent goals and data sync. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **83.2%** less registered tool text across the four lean wrappers; the sync package is excluded.
+Five independently installable Pi extensions for search, task management, subagents, persistent goals and data sync. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **82.9%** less registered tool text across the four lean wrappers; the sync package is excluded.
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |

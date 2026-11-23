@@ -19,7 +19,7 @@ The facade comes from [kunkun9527/pi-web-access-lean](https://github.com/kunkun9
 
 ## Usage
 
-Call `web_access` with `op` and `input`.
+Call `web_access` with an explicit `op` and put the query, claim, URL, local PDF path or response ID in `input`.
 
 Search:
 
@@ -57,7 +57,7 @@ Extra fields go inside the `input` string as JSON:
 { "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
 ```
 
-If a result names an upstream tool, call the matching `web_access` operation instead. Page text is left as returned.
+If a result names `get_search_content`, use `web_access` with `op: "get"` and the returned response ID. Additional retrieval fields go inside the JSON `input` string. Page text is left as returned.
 
 ## Installation
 

@@ -521,3 +521,9 @@
   check 重新捕获 ceil(chars/4) 字符代理（非计费 token），实际执行联合类型/功能/global v1/原版 dist ABI、
   source/dist 契约、独立生产安装及两类审计；结果以输出为准，漏洞按所有者策略仅警告。真实 provider 缓存、
   交互 UI、外部 RPC/workflow 服务不在离线验收内；后续三平台 CI 与 Release 由固定流程独立执行。
+
+## 本次 lean-only 审查：等待结果的提示
+
+- `sources.json` 的作者提交 `97e0c181a4cbe7b80967de607fdbe03e9e9345eb` → `30c53d8a63add7c9c6bbfd00a2d0689448a377bf`。完整比较两版 `index.ts`、`package.json` 与双语 README。作者引擎 pin 从 0.23.1 移至 0.26.2，本仓已固定该版本（npm gitHead `e9bd10502cd512288642bd8a97c169042a2310b9`）。本次未提供新引擎版本对或新 CHANGELOG。
+- 作者仅修改 `run_in_background` 描述以及两条提示，分别压缩 result/steer 字段说明、推荐有依赖时用 `result` 的 JSON `wait`。工具、参数类型、必填字段、默认值及执行逻辑无变化。适配现有可选布尔字段的描述，说明 `false` 请求在调用内获得结果，Agent 配置可要求后台运行。保留高级 JSON、直接字段优先、`help`、显式 workflow 请求及等待通知的现有提示，并补充默认不等待与阻塞时的 `wait` 用法。双语 README 同步当前用法。
+- 继续使用 npm `dist/index.js` 和 `dist/child-context.js`。显式 op、typebox v1 校验、启动名单正则、五参数执行、原生结果/渲染/通知、global v1 及空 branch fallback 沿用本地实现。作者的 `src` 入口、旧有入参推断与测量均不复用。现有真实运行时集成测试追加一条提示回归，核对门面描述、可选字段与从 help 文本解析出的真实 `wait` schema。联合验收仍覆盖 goal 与 subagents，发布选择由固定脚本管理。

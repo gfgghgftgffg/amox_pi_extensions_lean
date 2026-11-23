@@ -1891,7 +1891,7 @@
     },
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.24",
+      "version": "0.1.25",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -1900,8 +1900,8 @@
         "subagent"
       ],
       "totals": {
-        "registeredProxyTokens": 269,
-        "activeProxyTokens": 269
+        "registeredProxyTokens": 301,
+        "activeProxyTokens": 301
       },
       "tools": [
         {
@@ -1913,7 +1913,7 @@
           "promptGuidelines": [
             "subagent: run requires prompt, description (3-5 words), and subagent_type; workflow requires an explicit workflow request.",
             "subagent: Put advanced options in input as a JSON object; direct fields override duplicate JSON keys. result uses agent_id; steer uses agent_id and message. Use help only when advanced parameters are unclear.",
-            "subagent: Background completion is notified; never poll or sleep. Summarize results and verify claimed code changes."
+            "subagent: Background completion is notified. If blocked, use op=result with input '{\"wait\":true}' (default: non-blocking). Never poll or sleep. Summarize results and verify claimed code changes."
           ],
           "parameters": {
             "type": "object",
@@ -1944,7 +1944,8 @@
                 "description": "Agent types at startup: general-purpose, Explore, Plan."
               },
               "run_in_background": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "False requests an inline result."
               },
               "agent_id": {
                 "type": "string"
@@ -1960,19 +1961,19 @@
           },
           "chars": {
             "description": 86,
-            "schema": 543,
+            "schema": 592,
             "snippet": 0,
-            "guidelines": 446,
-            "total": 1075
+            "guidelines": 524,
+            "total": 1202
           },
-          "proxyTokens": 269
+          "proxyTokens": 301
         }
       ],
       "upstreamPackage": "@tintinweb/pi-subagents"
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.19",
+      "version": "0.1.20",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"

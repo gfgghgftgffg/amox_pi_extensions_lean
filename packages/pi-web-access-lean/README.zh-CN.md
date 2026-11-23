@@ -19,7 +19,7 @@
 
 ## 使用方法
 
-调用 `web_access`，传入 `op` 和 `input`。
+调用 `web_access` 时显式传入 `op`，并将搜索词、待核验的说法、URL、本地 PDF 路径或响应 ID 放入 `input`。
 
 搜索：
 
@@ -57,7 +57,7 @@
 { "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
 ```
 
-结果里如果点名上游工具，改调对应的 `web_access` 操作。页面正文不改写。
+如果结果提示调用 `get_search_content`，请用返回的响应 ID 调用 `web_access` 的 `op: "get"`。其他续取字段放在 `input` 的 JSON 字符串里。页面正文不改写。
 
 ## 安装
 

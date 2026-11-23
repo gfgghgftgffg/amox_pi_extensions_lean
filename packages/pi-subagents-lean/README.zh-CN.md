@@ -20,7 +20,7 @@
 
 ## 使用方法
 
-启动一个 Agent：
+启动一个 Agent。如果下一步依赖结果，可用 `run_in_background: false` 请求在调用内等待。Agent 配置可以强制后台运行：
 
 ```json
 {
@@ -32,7 +32,7 @@
 }
 ```
 
-读取已完成的结果。用 `run` 返回的 `agent_id`；重新加载后也可以用保存的 handle。保存的结果会在有完成时间时显示该时间及距今时长：
+用 `run` 返回的 `agent_id`，重新加载后也可以用保存的 handle。`result` 默认不等待，直接查询状态或返回已完成的结果。后台任务优先等完成通知。如果下一步必须用到正在运行的 Agent 的结果，调用 `result` 时传入 `input: '{"wait":true}'`。保存的结果会在有完成时间时显示该时间及距今时长：
 
 ```json
 { "op": "result", "agent_id": "agent-id" }
@@ -86,7 +86,7 @@ node scripts/install-extension.mjs pi-subagents-lean
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 269 |
+| @gfgghgftgffg/pi-subagents-lean | 301 |
 | @tintinweb/pi-subagents | 8832 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

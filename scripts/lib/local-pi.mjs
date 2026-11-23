@@ -2,6 +2,7 @@ import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "no
 import { dirname, join } from "node:path";
 import { Type } from "typebox";
 import { InMemoryCredentialStore } from "@earendil-works/pi-ai";
+import { openAICodexResponsesApi } from "@earendil-works/pi-ai/compat";
 import { createAgentSession, createExtensionRuntime, ModelRuntime, SessionManager, SettingsManager } from "@earendil-works/pi-coding-agent";
 import { adapterWritable, assertRegularPath, fileInventory, jsonText, lfText, readJson } from "./files.mjs";
 import { FORK_AREAS, validateForkReview } from "./fork-review.mjs";
@@ -13,7 +14,7 @@ export function loadDailyPrompt() {
 export function modelConfig(config) {
   for (const key of ["provider", "model", "apiKey"]) if (typeof config?.[key] !== "string" || !config[key]) throw new Error(`Configure local model ${key}`);
   const api = config.api || "openai-responses", thinking = config.thinking || "medium";
-  if (!["openai-responses", "openai-completions", "anthropic-messages"].includes(api)) throw new Error("Unsupported model API");
+  if (!["openai-responses", "openai-codex-responses", "openai-completions", "anthropic-messages"].includes(api)) throw new Error("Unsupported model API");
   if (!["off", "minimal", "low", "medium", "high", "xhigh"].includes(thinking)) throw new Error("Unsupported thinking level");
   if (config.baseUrl) {
     const url = new URL(config.baseUrl);
@@ -157,6 +158,29 @@ export function createForkReviewTools({ repo, context, entry, evidence }) {
 // Sessions use isolated in-memory state and no personal extensions or discovery.
 // Review sessions are read-only; the adaptation session retains its candidate
 // through local and CI feedback.
+const SUB2API_CODEX_ACCOUNT = "amox-local-maintenance";
+const SUB2API_CODEX_TOKEN = [
+  Buffer.from(JSON.stringify({ alg: "none", typ: "JWT" })).toString("base64url"),
+  Buffer.from(JSON.stringify({ "https://api.openai.com/auth": { chatgpt_account_id: SUB2API_CODEX_ACCOUNT } })).toString("base64url"),
+  "unsigned",
+].join(".");
+function sub2apiCodexStream(model, context, options = {}) {
+  const apiKey = options.apiKey;
+  if (!apiKey) throw new Error(`No API key for provider: ${model.provider}`);
+  const baseUrl = model.baseUrl.replace(/\/+$/, ""), codexUrl = `${baseUrl}/codex/responses`;
+  const upstreamFetch = options.fetch ?? globalThis.fetch;
+  const relayFetch = async (input, init) => {
+    const request = input instanceof Request ? input : undefined, url = request?.url ?? String(input);
+    const headers = new Headers(init?.headers ?? request?.headers);
+    if (url !== codexUrl || headers.get("Authorization") !== `Bearer ${SUB2API_CODEX_TOKEN}`
+      || headers.get("chatgpt-account-id") !== SUB2API_CODEX_ACCOUNT) return upstreamFetch(input, init);
+    headers.set("Authorization", `Bearer ${apiKey}`);
+    headers.delete("chatgpt-account-id");
+    return upstreamFetch(`${baseUrl}/responses`, { ...init, headers, redirect: "error" });
+  };
+  return openAICodexResponsesApi().streamSimple({ ...model, baseUrl: `${baseUrl}/codex` }, context,
+    { ...options, apiKey: SUB2API_CODEX_TOKEN, transport: "sse", fetch: relayFetch });
+}
 export async function openLocalPi({ repo, scratch, config, tools, log = console.log,
   runtimeFactory = ModelRuntime.create, sessionFactory = createAgentSession, budgetMs = 45 * 60_000, instructions,
   maxTurns = localPiMaxTurns() }) {
@@ -167,7 +191,8 @@ export async function openLocalPi({ repo, scratch, config, tools, log = console.
     refreshOnCreate: false, modelsStorePath: join(scratch, "models-store.json") });
   if (config.baseUrl) runtime.registerProvider(config.provider, { baseUrl: config.baseUrl, api: config.api,
     models: [{ id: config.model, name: config.model, reasoning: config.thinking !== "off", input: ["text"],
-      contextWindow: 128000, maxTokens: 16384, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }] });
+      contextWindow: 128000, maxTokens: 16384, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } }],
+    ...(config.api === "openai-codex-responses" && config.provider.startsWith("sub2api") ? { streamSimple: sub2apiCodexStream } : {}) });
   await runtime.setRuntimeApiKey(config.provider, config.apiKey);
   const model = runtime.getModel(config.provider, config.model);
   if (!model) throw new Error("Configured local Pi model not found");

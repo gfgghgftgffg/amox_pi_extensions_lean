@@ -26,6 +26,7 @@ test("model credentials are required and compatible endpoint config never execut
   assert.throws(() => modelConfig({}), /Configure/);
   const config = { provider: "custom", model: "model-id", apiKey: "dummy-key", baseUrl: "https://example.com/v1", api: "openai-responses" };
   assert.equal(modelConfig(config).thinking, "medium");
+  assert.equal(modelConfig({ ...config, provider: "sub2api-gpt-only", api: "openai-codex-responses" }).api, "openai-codex-responses");
   for (const base of ["http://example.com", "https://user:secret@example.com", "!curl https://example.com", "https://example.com?key=secret"]) {
     assert.throws(() => modelConfig({ ...config, baseUrl: base }));
   }

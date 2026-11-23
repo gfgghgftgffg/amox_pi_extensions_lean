@@ -21,7 +21,7 @@ Linux 维护主机每天 02:23 UTC（北京时间 10:23）启动一次性 Pi SDK
 }
 ```
 
-支持 `openai-responses`、`openai-completions` 和 `anthropic-messages`，内置 provider 可省略 `baseUrl`。两个凭据文件均设为 **600**，不提交到 Git。
+支持 `openai-responses`、`openai-codex-responses`、`openai-completions` 和 `anthropic-messages`，内置 provider 可省略 `baseUrl`。Codex Responses 使用 SSE 传输；`sub2api-gpt-only` 等独立 provider 需同步各自的 API key，不会自动继承个人 Pi 配置。两个凭据文件均设为 **600**，不提交到 Git。
 
 ## 部署
 

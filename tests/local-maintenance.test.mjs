@@ -67,6 +67,38 @@ test("local Pi repairs the same candidate from check output with no discovery or
   } finally { pi?.dispose(); rmSync(root, { recursive: true, force: true }); }
 });
 
+test("Codex Responses registration uses SSE without loading personal provider extensions", async () => {
+  const root = mkdtempSync(join(tmpdir(), "amox-codex-provider-"));
+  let registration, pi, fetchCalls = 0;
+  try {
+    pi = await openLocalPi({ repo: root, scratch: join(root, "sdk"), tools: [],
+      config: { provider: "sub2api-gpt-only", model: "gpt-6.2-sol", api: "openai-codex-responses",
+        baseUrl: "https://offline.invalid/v1", apiKey: "offline-key", thinking: "medium" },
+      runtimeFactory: async (options) => {
+        const runtime = await ModelRuntime.create(options), original = runtime.registerProvider.bind(runtime);
+        runtime.registerProvider = (name, value) => { registration = value; return original(name, value); };
+        return runtime;
+      },
+      sessionFactory: async ({ model, modelRuntime }) => {
+        assert.equal(model.api, "openai-codex-responses");
+        const registered = modelRuntime.getModel("sub2api-gpt-only", "gpt-6.2-sol");
+        assert.equal(registered?.id, model.id); assert.equal(registered?.provider, model.provider); assert.equal(registered?.api, model.api);
+        return { session: { messages: [], subscribe() {}, dispose() {} } };
+      } });
+    const model = { ...registration.models[0], provider: "sub2api-gpt-only", baseUrl: "https://offline.invalid/v1" };
+    const stream = registration.streamSimple(model, { messages: [], systemPrompt: "offline" }, {
+      apiKey: "offline-key", fetch: async (url, init) => {
+        fetchCalls++; assert.equal(String(url), "https://offline.invalid/v1/responses");
+        const headers = new Headers(init.headers);
+        assert.equal(headers.get("Authorization"), "Bearer offline-key"); assert.equal(headers.get("chatgpt-account-id"), null);
+        assert.equal(init.redirect, "error"); throw new Error("offline fixture");
+      },
+    });
+    for await (const event of stream) assert.notEqual(event.type, "start");
+    assert.equal(fetchCalls, 1, "SSE must use the explicit fetch rather than a Codex WebSocket");
+  } finally { pi?.dispose(); rmSync(root, { recursive: true, force: true }); }
+});
+
 test("remote acceptance requires all three actual platforms at the exact SHA; mutation requests are not retried", async () => {
   const sha = "a".repeat(40), seen = [];
   let complete = false;

@@ -171,12 +171,12 @@ export function createSubagentsFacade(
     const facadeTool: ToolDefinition<typeof FACADE_PARAMETERS, any, any> = {
       name: "subagent",
       label: "Subagent",
-      description: "Run or inspect subagents/workflows through one tool; use help for advanced parameters.",
+      description: "Run or inspect subagents and workflows.",
       parameters,
       promptGuidelines: [
         "subagent: run requires prompt, description (3-5 words), and subagent_type; workflow requires an explicit workflow request.",
-        "subagent: Put advanced options in input as a JSON object; direct fields override duplicate JSON keys. result uses agent_id; steer uses agent_id and message. Use help only when advanced parameters are unclear.",
-        `subagent: Background completion is notified. If blocked, use op=result with input '{"wait":true}' (default: non-blocking). Never poll or sleep. Summarize results and verify claimed code changes.`,
+        "subagent: Use JSON input for advanced options. Direct fields override input. result and steer need agent_id. steer also needs message. Use help if unclear.",
+        `subagent: Await completion notifications. Never poll or sleep. If blocked, use op=result with input '{"wait":true}' (default: non-blocking). Summarize results and verify code changes.`,
       ],
       renderCall(args, theme, context) {
         const routed = renderParams(args);

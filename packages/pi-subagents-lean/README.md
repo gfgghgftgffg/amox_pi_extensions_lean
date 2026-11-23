@@ -86,7 +86,7 @@ A removed worktree that held changes cannot be reopened; a clean one reopens in 
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-subagents-lean | 301 |
+| @gfgghgftgffg/pi-subagents-lean | 273 |
 | @tintinweb/pi-subagents | 8832 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

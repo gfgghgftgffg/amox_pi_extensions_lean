@@ -4,8 +4,8 @@ Base: 0301e72c75acfecc434afe8e7774950575f7b7e3
 Release after verified merge: v0.1.40
 
 <!-- amox-release-summary:v0.1.40:start -->
-- `pi-subagents-lean` now explains how to request an inline result with `run_in_background: false`. For an agent already running in the background, the tool recommends relying on the completion notification and shows how to use `result` with `{"wait":true}` when the next step depends on the result. The bilingual usage guide covers both paths and the existing workflow opt-in remains in the tool instructions.
-- `pi-web-access-lean` clarifies how to call `web_access` with an explicit operation and how to use the returned response ID with `get` when an upstream retrieval hint appears. The lean author's engine pin catches up to the version already used here.
+- `pi-subagents-lean` explains how to request an inline result with `run_in_background: false`. For background work, follow the completion notification or pass `{"wait":true}` in the `result` operation’s JSON `input` when the next step depends on the result. Both usage paths are documented in English and Chinese.
+- `pi-web-access-lean` documents explicit operation selection and shows how to continue a stored result with `get` when the engine refers to `get_search_content`. The lean author’s new engine pin matches the release already used by this package.
 <!-- amox-release-summary:v0.1.40:end -->
 
 Source review: [agent-review.md](agent-review.md).

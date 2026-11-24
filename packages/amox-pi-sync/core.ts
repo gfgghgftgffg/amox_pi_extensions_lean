@@ -296,12 +296,16 @@ export class SyncService {
     try {
       validate(this.config, this.paths);
       await noLinks(lockFile); await fs.mkdir(path.dirname(lockFile), { recursive: true });
-      try { lock = await fs.open(lockFile, "wx", 0o600); }
-      catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-        const recovered = await this.claimStaleLock(lockFile);
-        if (!recovered.released) throw new Error(`Sync locked by another process: ${recovered.message}. Use /sync-unlock only after the owning process has exited.`);
-        lock = await fs.open(lockFile, "wx", 0o600);
+      let recoveredStale = false;
+      while (!lock) {
+        try { lock = await fs.open(lockFile, "wx", 0o600); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+          if (recoveredStale) throw new Error(`Sync lock changed during recovery: ${lockFile}; retry after the current operation finishes`);
+          const recovered = await this.claimStaleLock(lockFile);
+          if (!recovered.released) throw new Error(`Sync locked by another process: ${recovered.message}. Use /sync-unlock only after the owning process has exited.`);
+          recoveredStale = true;
+        }
       }
       await lock.writeFile(JSON.stringify({ pid: process.pid, operation: name, createdAt: new Date().toISOString() }));
       return await work();

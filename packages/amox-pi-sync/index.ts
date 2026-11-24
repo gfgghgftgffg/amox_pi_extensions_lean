@@ -107,7 +107,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     return service;
   }
 
-  async function run(label: string, action: (sync: SyncService) => Promise<unknown>, quiet = false): Promise<boolean> {
+  async function run(label: string, action: (sync: SyncService, progress: (stage: string) => void) => Promise<unknown>, quiet = false): Promise<boolean> {
     if (!service || !config || !ctx) {
       if (!quiet) ctx?.ui.notify("Run /sync-setup <private-ssh-repository> first.", "warning");
       return false;
@@ -127,7 +127,7 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
     publish();
     try {
       const pushedFingerprint = label === "Push" ? await active.fingerprint() : undefined;
-      const result = await action(active);
+      const result = await action(active, stage => { busy = `${label}: ${stage}`; publish(); });
       notice = `${label} completed`;
       // Mark only the pre-push snapshot as observed. Changes made while Git
       // runs must remain detectable by the next watcher pass.
@@ -534,8 +534,9 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
       if (startupService && !error) {
         try { before = await startupService.fingerprint(); }
         catch (failure) { report(failure); }
-        if (!error) deleted = await run("Delete session", async sync => {
-          const result = await sync.deleteSessionTree(pending.root, pending.expectedPaths);
+        if (!error) deleted = await run("Delete session", async (sync, progress) => {
+          progress("preparing");
+          const result = await sync.deleteSessionTree(pending.root, pending.expectedPaths, progress);
           return `Deleted ${result.removed.length} local and ${result.repoRemoved} snapshot session(s). Snapshot removal is committed locally; Push to publish. Git history and backups remain.`;
         });
       } else context.ui.notify("Session switched, but deletion could not start. Original files were retained.", "error");
@@ -566,6 +567,18 @@ export default function amoxPiSync(pi: ExtensionAPI): void {
   pi.registerCommand("delete-session", {
     description: "Delete the current session and its descendants after switching to a fresh session",
     handler: deleteCurrentSession,
+  });
+  pi.registerCommand("sync-unlock", {
+    description: "Remove a sync lock only after its owning process has exited",
+    handler: async (args, context) => {
+      if (args.trim()) { context.ui.notify("Usage: /sync-unlock", "warning"); return; }
+      if (busy) { context.ui.notify(`Sync is busy: ${busy}.`, "warning"); return; }
+      if (!service) { context.ui.notify("Run /sync-setup first.", "warning"); return; }
+      try {
+        const result = await service.unlockStale();
+        context.ui.notify(result.message, result.released ? "info" : "warning");
+      } catch (failure) { report(failure); }
+    },
   });
   pi.registerCommand("sync-status", {
     description: "Show sync state, managed paths, last results and actions",

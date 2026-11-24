@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createJiti } from "jiti";
+import { spawnSync } from "node:child_process";
 import { visibleWidth } from "@earendil-works/pi-tui";
 
 const jiti = createJiti(import.meta.url);
@@ -94,9 +95,26 @@ async function fixture(t, configured = true, starline = true) {
 
 test("manual startup is local-only and never creates an upstream widget", async t => {
   const f = await fixture(t);
-  assert.deepEqual([...f.commands.keys()].sort(), ["delete-session", "sync-prune", "sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status"]);
+  assert.deepEqual([...f.commands.keys()].sort(), ["delete-session", "sync-prune", "sync-pull", "sync-push", "sync-settings", "sync-setup", "sync-status", "sync-unlock"]);
   assert.deepEqual(f.statuses.at(-1), ["pi-sync", "Sync: Manual"]);
   assert.ok(f.widgets.every(([, value]) => value === undefined));
+  assert.equal(f.gitCalls.length, 0);
+});
+
+test("/sync-unlock works in manual mode and refuses a live owner's lock", async t => {
+  const f = await fixture(t), lockFile = join(f.root, "amox-pi-sync.json.lock");
+  const stopped = spawnSync(process.execPath, ["-e", ""]); assert.equal(stopped.status, 0);
+  await writeFile(lockFile, JSON.stringify({ pid: stopped.pid, operation: "deleteSessionTree", createdAt: new Date().toISOString() }));
+  await f.commands.get("sync-unlock").handler("", f.ctx);
+  assert.ok(f.notifications.some(([message, level]) => level === "info" && /Removed stale sync lock/.test(message)));
+  await assert.rejects(readFile(lockFile));
+  await f.commands.get("sync-unlock").handler("", f.ctx);
+  assert.match(f.notifications.at(-1)[0], /No sync lock exists/);
+  await writeFile(lockFile, JSON.stringify({ pid: process.pid, operation: "deleteSessionTree", createdAt: new Date().toISOString() }));
+  await f.commands.get("sync-unlock").handler("", f.ctx);
+  assert.equal(f.notifications.at(-1)[1], "warning");
+  assert.match(f.notifications.at(-1)[0], /live process/);
+  await readFile(lockFile);
   assert.equal(f.gitCalls.length, 0);
 });
 

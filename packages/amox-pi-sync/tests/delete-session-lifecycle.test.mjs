@@ -58,7 +58,8 @@ async function fixture(t, { mode = "manual", configured = true, reuse = false, c
     trace.push(`${owner(this).name}:plan`);
     return { candidates };
   });
-  stub("deleteSessionTree", async function (file, expectedPaths) {
+  stub("deleteSessionTree", async function (file, expectedPaths, onProgress) {
+    onProgress?.("committing the snapshot deletion");
     const instance = owner(this);
     state.deletions.push({ service: this, file, expectedPaths, instance });
     trace.push(`${instance.name}:delete`);
@@ -197,6 +198,7 @@ for (const reuse of [false, true]) for (const mode of ["manual", "auto", "off"])
     assert.equal(globalThis[deleteKey], undefined);
     assert.deepEqual(f.staleCalls, [], "outgoing ctx and pi must never be reused after shutdown");
     assert.ok(fresh.notifications.some(([message, level]) => level === "info" && /Deleted 2 local and 2 snapshot/.test(message)));
+    assert.ok(fresh.statuses.some(([key, text]) => key === "pi-sync" && text === "Sync: Delete session: committing the snapshot deletion"));
     assert.ok(!fresh.notifications.some(([, level]) => level === "error"));
     const confirmation = f.old.confirmations[0].join("\n");
     assert.match(confirmation, /Current session/);

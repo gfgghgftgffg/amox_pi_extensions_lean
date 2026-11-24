@@ -1,5 +1,12 @@
 # Source review
 
+## amox-pi-sync stale-lock recovery
+
+- Local reliability fix on `7044cb0813f1f22bdf77edc6535826f1f836e988`; upstream remains `pi-sync-suite@0.1.1`, with no new engine or lean-author source. Release batch 0.1.42 selects only `amox-pi-sync@0.1.15`.
+- `SyncService.run` previously left its exclusive file behind after forced process termination. On EEXIST it now validates lock metadata and owner PID. Dead-owner recovery atomically moves the exact file aside and unlinks only that quarantined copy; live and malformed locks remain untouched. Age alone never authorizes takeover. `/sync-unlock` exposes the same bounded check in every mode.
+- Lock close and unlink failures are surfaced independently. If work and cleanup both fail, `AggregateError` retains both. Targeted deletion reports tree validation, Git snapshot, snapshot commit, local deletion and config-save stages without changing snapshot-first ordering or session handoff.
+- Added real-file regressions for dead and live PIDs, malformed metadata, competing recovery, release failure and manual-mode command behavior. Lifecycle tests verify visible progress and unchanged fresh-session deletion sequencing. Package typecheck and 107 sync tests pass; selected contracts, fresh production installation, both dependency audits, exact-head three-platform CI and Release/npm integrity remain required before claiming publication.
+
 ## pi-subagents 0.26.3 and pi-goal-x 0.34.2
 
 - `sources.json` supplies subagents Git publication revisions `e9bd10502cd512288642bd8a97c169042a2310b9` → `1d35501a1c8ec0c8a3cd38886f7edbfadd3f1388` and the SHA-512-verified npm goal pair `npm:pi-goal-x@0.34.1` → `npm:pi-goal-x@0.34.2`. Reviewed those sources, not unpublished HEADs. No lean-author change; web/todo have no staged release change. Sync remains at its approved integrated baseline; no fork delta or port decision in this batch.

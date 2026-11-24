@@ -9,7 +9,7 @@ const jiti = createJiti(import.meta.url, {
 });
 const { createGoalFacade } = await jiti.import(fileURLToPath(new URL("../index.ts", import.meta.url)));
 const names = ["create_goal", "get_goal", "update_goal", "set_goal_tasks", "update_goal_task",
-  "goal_question", "goal_questionnaire", "propose_goal_draft"];
+  "goal_questionnaire", "propose_goal_draft"];
 const makeCore = () => ({ state: { goal: null }, scheduler: { schedule() {}, claim() { return null; } } });
 const withCore = upstream => pi => { pi._goalCore = makeCore(); upstream(pi); };
 

@@ -42,13 +42,13 @@
       "id": "pi-subagents-lean",
       "path": "packages/pi-subagents-lean",
       "packageName": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.25",
+      "version": "0.1.26",
       "entry": "index.ts",
       "upstreamPackage": "@tintinweb/pi-subagents",
       "upstreamEntry": "dist/index.js",
-      "upstreamVersion": "0.26.2",
+      "upstreamVersion": "0.26.3",
       "upstreamRepository": "https://github.com/tintinweb/pi-subagents.git",
-      "upstreamGitHead": "e9bd10502cd512288642bd8a97c169042a2310b9",
+      "upstreamGitHead": "1d35501a1c8ec0c8a3cd38886f7edbfadd3f1388",
       "leanRepository": "https://github.com/kunkun9527/pi-subagents-lean.git",
       "leanCommit": "30c53d8a63add7c9c6bbfd00a2d0689448a377bf"
     },
@@ -56,7 +56,7 @@
       "id": "pi-goal-x-lean",
       "path": "packages/pi-goal-x-lean",
       "packageName": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "index.ts",
       "maintenanceMode": "original-facade",
       "sourceFiles": [
@@ -66,17 +66,16 @@
       ],
       "upstreamPackage": "pi-goal-x",
       "upstreamEntry": "extensions/goal.ts",
-      "upstreamVersion": "0.34.1",
+      "upstreamVersion": "0.34.2",
       "upstreamRepository": "https://github.com/tmonk/pi-goal-x.git",
       "upstreamSource": "npm",
-      "upstreamRef": "npm:pi-goal-x@0.34.1",
+      "upstreamRef": "npm:pi-goal-x@0.34.2",
       "registeredTools": [
         "get_goal",
         "create_goal",
         "update_goal",
         "set_goal_tasks",
         "update_goal_task",
-        "goal_question",
         "goal_questionnaire",
         "propose_goal_draft"
       ]
@@ -102,11 +101,11 @@
     }
   ],
   "release": {
-    "version": "0.1.40",
-    "baseCommit": "0301e72c75acfecc434afe8e7774950575f7b7e3",
+    "version": "0.1.41",
+    "baseCommit": "d63335e4709997654c3924ea12ac07cf3e3c756c",
     "packageIds": [
-      "pi-web-access-lean",
-      "pi-subagents-lean"
+      "pi-subagents-lean",
+      "pi-goal-x-lean"
     ]
   }
 }

@@ -8,7 +8,7 @@
   "upstream": {
     "pi-goal-x": {
       "package": "pi-goal-x",
-      "version": "0.34.1",
+      "version": "0.34.2",
       "entry": "node_modules/pi-goal-x/extensions/goal.ts",
       "registeredTools": [
         "get_goal",
@@ -16,17 +16,21 @@
         "update_goal",
         "set_goal_tasks",
         "update_goal_task",
-        "goal_question",
         "goal_questionnaire",
         "propose_goal_draft"
       ],
       "activeToolNames": [
         "create_goal",
-        "get_goal"
+        "get_goal",
+        "goal_questionnaire",
+        "propose_goal_draft",
+        "set_goal_tasks",
+        "update_goal",
+        "update_goal_task"
       ],
       "totals": {
-        "registeredProxyTokens": 2096,
-        "activeProxyTokens": 322
+        "registeredProxyTokens": 1691,
+        "activeProxyTokens": 1691
       },
       "tools": [
         {
@@ -122,7 +126,7 @@
         },
         {
           "name": "update_goal",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Update lifecycle status or optionally save continuation. New waits require strictExecutionContract opt-in. Wait: future ISO deadline; reuse wait_id/deadline without polling on recheck. Completion is audited.",
           "promptSnippet": "",
@@ -186,13 +190,11 @@
                         "properties": {
                           "interval_seconds": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 2147483
+                            "minimum": 1
                           },
                           "max_checks": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 9007199254740991
+                            "minimum": 1
                           }
                         },
                         "additionalProperties": false
@@ -228,16 +230,16 @@
           },
           "chars": {
             "description": 207,
-            "schema": 1303,
+            "schema": 1258,
             "snippet": 0,
             "guidelines": 0,
-            "total": 1510
+            "total": 1465
           },
-          "proxyTokens": 378
+          "proxyTokens": 367
         },
         {
           "name": "set_goal_tasks",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Set or restructure the task tree with user confirmation. Matching IDs retain progress; removed IDs are deleted. Confirmation stops the turn; continuation follows.",
           "promptSnippet": "",
@@ -261,51 +263,48 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "Short stable slug e.g. 'task-1'"
+                      "description": "Short slug, e.g. task-1."
                     },
                     "title": {
-                      "type": "string",
-                      "description": "Human-readable task title"
+                      "type": "string"
                     },
                     "parent_id": {
                       "type": "string",
-                      "description": "Parent id; omit for roots."
+                      "description": "Leave out for top-level tasks."
                     },
                     "verification_contract": {
                       "type": "string",
-                      "description": "Required completion evidence."
+                      "description": "Evidence needed to complete it."
                     },
                     "lightweight_subtasks": {
                       "type": "boolean",
-                      "description": "Children do not gate parent completion."
+                      "description": "Its subtasks do not block it."
                     }
                   }
-                },
-                "description": "Flat parent-linked task list"
+                }
               },
               "block_completion": {
                 "type": "boolean",
-                "description": "Require all tasks resolved; default false."
+                "description": "The goal cannot complete until every task is done."
               },
               "change_summary": {
-                "type": "string",
-                "description": "Optional summary of the task list change"
+                "type": "string"
               }
             },
             "additionalProperties": false
           },
           "chars": {
             "description": 162,
-            "schema": 806,
+            "schema": 659,
             "snippet": 0,
             "guidelines": 253,
-            "total": 1221
+            "total": 1074
           },
-          "proxyTokens": 306
+          "proxyTokens": 269
         },
         {
           "name": "update_goal_task",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Update task progress without stopping the turn. Use ordered updates for an atomic batch, or task_id/status for one task. An invalid update rejects the whole batch.",
           "promptSnippet": "",
@@ -325,9 +324,9 @@
                   "start",
                   "complete",
                   "skipped",
-                  "pending",
-                  ""
-                ]
+                  "pending"
+                ],
+                "description": "Single-task status. Leave it out when using updates."
               },
               "updates": {
                 "type": "array",
@@ -375,63 +374,18 @@
           },
           "chars": {
             "description": 163,
-            "schema": 819,
+            "schema": 885,
             "snippet": 0,
             "guidelines": 364,
-            "total": 1346
+            "total": 1412
           },
-          "proxyTokens": 337
-        },
-        {
-          "name": "goal_question",
-          "active": false,
-          "source": "cli",
-          "description": "Ask one structured question during a user-started goal draft.",
-          "promptSnippet": "",
-          "promptGuidelines": [],
-          "parameters": {
-            "type": "object",
-            "required": [
-              "question"
-            ],
-            "properties": {
-              "question": {
-                "type": "string",
-                "description": "The question to ask."
-              },
-              "options": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "description": "A concise answer option."
-                }
-              },
-              "recommended": {
-                "type": "integer",
-                "minimum": 0,
-                "description": "Zero-based recommended option."
-              },
-              "allow_custom": {
-                "type": "boolean",
-                "description": "Allow a custom answer; defaults to true."
-              }
-            },
-            "additionalProperties": false
-          },
-          "chars": {
-            "description": 61,
-            "schema": 428,
-            "snippet": 0,
-            "guidelines": 0,
-            "total": 489
-          },
-          "proxyTokens": 123
+          "proxyTokens": 353
         },
         {
           "name": "goal_questionnaire",
-          "active": false,
+          "active": true,
           "source": "cli",
-          "description": "Ask a short structured questionnaire during a user-started goal draft.",
+          "description": "During a goal draft, ask the user one or more questions in a dialog.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
@@ -445,64 +399,53 @@
                 "items": {
                   "type": "object",
                   "required": [
-                    "id",
-                    "question",
-                    "options"
+                    "question"
                   ],
                   "properties": {
-                    "id": {
-                      "type": "string",
-                      "description": "Stable question id."
-                    },
                     "question": {
-                      "type": "string",
-                      "description": "Question for the user."
-                    },
-                    "context": {
-                      "type": "string",
-                      "description": "Optional short context."
+                      "type": "string"
                     },
                     "options": {
                       "type": "array",
                       "items": {
-                        "type": "string",
-                        "description": "Answer option."
+                        "type": "string"
                       }
                     },
                     "recommended": {
                       "type": "integer",
-                      "minimum": 0
+                      "minimum": 0,
+                      "description": "Index of the suggested option."
                     },
                     "allow_custom": {
-                      "type": "boolean"
+                      "type": "boolean",
+                      "description": "Default true."
+                    },
+                    "context": {
+                      "type": "string"
                     }
                   }
-                }
+                },
+                "minItems": 1
               }
             },
             "additionalProperties": false
           },
           "chars": {
-            "description": 70,
-            "schema": 553,
+            "description": 68,
+            "schema": 459,
             "snippet": 0,
             "guidelines": 0,
-            "total": 623
+            "total": 527
           },
-          "proxyTokens": 156
+          "proxyTokens": 132
         },
         {
           "name": "propose_goal_draft",
-          "active": false,
+          "active": true,
           "source": "cli",
-          "description": "Present the drafted objective and agent-selected task plan for explicit user confirmation.",
+          "description": "Show the drafted goal, and tasks if any, for the user to confirm.",
           "promptSnippet": "",
-          "promptGuidelines": [
-            "Use only during a /goal, /sisyphus, or /goal-tweak guided draft.",
-            "Clarify ambiguity before proposing. Include tasks when the work naturally decomposes into trackable milestones; omit them for genuinely simple work.",
-            "Set token_budget only when the user explicitly asked for a token budget or a spend limit. Never invent, estimate, or infer one from the objective's size; omitting it creates a goal with no budget.",
-            "Confirmation creates or revises the goal atomically. Continue Chatting leaves drafting active for refinement."
-          ],
+          "promptGuidelines": [],
           "parameters": {
             "type": "object",
             "required": [
@@ -511,27 +454,7 @@
             "properties": {
               "objective": {
                 "type": "string",
-                "description": "Complete proposed objective; preserve it exactly for budget-only tweaks."
-              },
-              "token_budget": {
-                "anyOf": [
-                  {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Only on user request: positive whole-token lifetime limit; null removes it. Omit to retain the current tweak budget or create without one."
-              },
-              "auto_continue": {
-                "type": "boolean",
-                "description": "Defaults to true."
-              },
-              "sisyphus": {
-                "type": "boolean",
-                "description": "Must match the user-selected goal mode."
+                "description": "The whole goal block, headings included."
               },
               "tasks": {
                 "type": "array",
@@ -544,49 +467,63 @@
                   "properties": {
                     "id": {
                       "type": "string",
-                      "description": "Short stable slug, for example task-1."
+                      "description": "Short slug, e.g. task-1."
                     },
                     "title": {
-                      "type": "string",
-                      "description": "Human-readable task title."
+                      "type": "string"
                     },
                     "parent_id": {
                       "type": "string",
-                      "description": "Optional parent task id in this proposal."
+                      "description": "Leave out for top-level tasks."
                     },
                     "verification_contract": {
                       "type": "string",
-                      "description": "Evidence required for this task."
+                      "description": "Evidence needed to complete it."
                     },
                     "lightweight_subtasks": {
                       "type": "boolean",
-                      "description": "True only for a task with lightweight children."
+                      "description": "Its subtasks do not block it."
                     }
                   }
-                },
-                "description": "Flat parent-linked task tree to confirm with the goal."
+                }
               },
               "block_completion": {
                 "type": "boolean",
-                "description": "Require task completion before goal completion."
+                "description": "The goal cannot complete until every task is done."
+              },
+              "token_budget": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Only if the user asked for a budget. null removes it."
+              },
+              "auto_continue": {
+                "type": "boolean",
+                "description": "Default true."
               }
             },
             "additionalProperties": false
           },
           "chars": {
-            "description": 90,
-            "schema": 1286,
+            "description": 65,
+            "schema": 924,
             "snippet": 0,
-            "guidelines": 517,
-            "total": 1893
+            "guidelines": 0,
+            "total": 989
           },
-          "proxyTokens": 474
+          "proxyTokens": 248
         }
       ]
     },
     "@tintinweb/pi-subagents": {
       "package": "@tintinweb/pi-subagents",
-      "version": "0.26.2",
+      "version": "0.26.3",
       "entry": "node_modules/@tintinweb/pi-subagents/dist/index.js",
       "registeredTools": [
         "Agent",
@@ -1354,7 +1291,7 @@
   "lean": {
     "@gfgghgftgffg/pi-goal-x-lean": {
       "package": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "entry": "packages/pi-goal-x-lean/index.ts",
       "registeredTools": [
         "get_goal",
@@ -1362,17 +1299,21 @@
         "update_goal",
         "set_goal_tasks",
         "update_goal_task",
-        "goal_question",
         "goal_questionnaire",
         "propose_goal_draft"
       ],
       "activeToolNames": [
         "create_goal",
-        "get_goal"
+        "get_goal",
+        "goal_questionnaire",
+        "propose_goal_draft",
+        "set_goal_tasks",
+        "update_goal",
+        "update_goal_task"
       ],
       "totals": {
-        "registeredProxyTokens": 1535,
-        "activeProxyTokens": 238
+        "registeredProxyTokens": 1297,
+        "activeProxyTokens": 1297
       },
       "tools": [
         {
@@ -1462,7 +1403,7 @@
         },
         {
           "name": "update_goal",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Complete (audited), block, or pause a goal; reason required for blocked/paused. Alternatively declare continuation; wait requires strictExecutionContract and a future ISO deadline. Reuse wait_id/deadline on recheck.",
           "promptSnippet": "",
@@ -1525,13 +1466,11 @@
                         "properties": {
                           "interval_seconds": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 2147483
+                            "minimum": 1
                           },
                           "max_checks": {
                             "type": "integer",
-                            "minimum": 1,
-                            "maximum": 9007199254740991
+                            "minimum": 1
                           }
                         },
                         "additionalProperties": false
@@ -1563,16 +1502,16 @@
           },
           "chars": {
             "description": 215,
-            "schema": 985,
+            "schema": 940,
             "snippet": 0,
             "guidelines": 0,
-            "total": 1200
+            "total": 1155
           },
-          "proxyTokens": 300
+          "proxyTokens": 289
         },
         {
           "name": "set_goal_tasks",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Confirm a flat parent-linked task tree; matching IDs retain progress, removed IDs are deleted. block_completion defaults false. Confirmation stops the turn, then continues.",
           "promptSnippet": "",
@@ -1632,7 +1571,7 @@
         },
         {
           "name": "update_goal_task",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Update task_id/status or ordered atomic updates; one invalid entry rejects the batch. Evidence completes contracted tasks; reason is required to skip.",
           "promptSnippet": "",
@@ -1651,8 +1590,7 @@
                   "start",
                   "complete",
                   "skipped",
-                  "pending",
-                  ""
+                  "pending"
                 ]
               },
               "updates": {
@@ -1698,57 +1636,16 @@
           },
           "chars": {
             "description": 150,
-            "schema": 526,
+            "schema": 523,
             "snippet": 0,
             "guidelines": 364,
-            "total": 1040
+            "total": 1037
           },
           "proxyTokens": 260
         },
         {
-          "name": "goal_question",
-          "active": false,
-          "source": "cli",
-          "description": "Ask one user-started drafting question. recommended is zero-based; allow_custom defaults true.",
-          "promptSnippet": "",
-          "promptGuidelines": [],
-          "parameters": {
-            "type": "object",
-            "required": [
-              "question"
-            ],
-            "properties": {
-              "question": {
-                "type": "string"
-              },
-              "options": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                }
-              },
-              "recommended": {
-                "type": "integer",
-                "minimum": 0
-              },
-              "allow_custom": {
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
-          },
-          "chars": {
-            "description": 94,
-            "schema": 246,
-            "snippet": 0,
-            "guidelines": 0,
-            "total": 340
-          },
-          "proxyTokens": 85
-        },
-        {
           "name": "goal_questionnaire",
-          "active": false,
+          "active": true,
           "source": "cli",
           "description": "Ask a batch of user-started drafting questions. recommended is zero-based; allow_custom defaults true.",
           "promptSnippet": "",
@@ -1764,18 +1661,10 @@
                 "items": {
                   "type": "object",
                   "required": [
-                    "id",
-                    "question",
-                    "options"
+                    "question"
                   ],
                   "properties": {
-                    "id": {
-                      "type": "string"
-                    },
                     "question": {
-                      "type": "string"
-                    },
-                    "context": {
                       "type": "string"
                     },
                     "options": {
@@ -1790,34 +1679,33 @@
                     },
                     "allow_custom": {
                       "type": "boolean"
+                    },
+                    "context": {
+                      "type": "string"
                     }
                   }
-                }
+                },
+                "minItems": 1
               }
             },
             "additionalProperties": false
           },
           "chars": {
             "description": 102,
-            "schema": 407,
+            "schema": 382,
             "snippet": 0,
             "guidelines": 0,
-            "total": 509
+            "total": 484
           },
-          "proxyTokens": 128
+          "proxyTokens": 121
         },
         {
           "name": "propose_goal_draft",
-          "active": false,
+          "active": true,
           "source": "cli",
-          "description": "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; sisyphus must match the user's mode.",
+          "description": "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; the user-started draft determines the mode.",
           "promptSnippet": "",
-          "promptGuidelines": [
-            "Use only during a /goal, /sisyphus, or /goal-tweak guided draft.",
-            "Clarify ambiguity before proposing. Include tasks when the work naturally decomposes into trackable milestones; omit them for genuinely simple work.",
-            "Set token_budget only when the user explicitly asked for a token budget or a spend limit. Never invent, estimate, or infer one from the objective's size; omitting it creates a goal with no budget.",
-            "Confirmation creates or revises the goal atomically. Continue Chatting leaves drafting active for refinement."
-          ],
+          "promptGuidelines": [],
           "parameters": {
             "type": "object",
             "required": [
@@ -1826,23 +1714,6 @@
             "properties": {
               "objective": {
                 "type": "string"
-              },
-              "token_budget": {
-                "anyOf": [
-                  {
-                    "type": "integer",
-                    "minimum": 1
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "auto_continue": {
-                "type": "boolean"
-              },
-              "sisyphus": {
-                "type": "boolean"
               },
               "tasks": {
                 "type": "array",
@@ -1873,25 +1744,39 @@
               },
               "block_completion": {
                 "type": "boolean"
+              },
+              "token_budget": {
+                "anyOf": [
+                  {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "auto_continue": {
+                "type": "boolean"
               }
             },
             "additionalProperties": false
           },
           "chars": {
-            "description": 194,
-            "schema": 548,
+            "description": 201,
+            "schema": 518,
             "snippet": 0,
-            "guidelines": 517,
-            "total": 1259
+            "guidelines": 0,
+            "total": 719
           },
-          "proxyTokens": 315
+          "proxyTokens": 180
         }
       ],
       "upstreamPackage": "pi-goal-x"
     },
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.25",
+      "version": "0.1.26",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"

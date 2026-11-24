@@ -6,7 +6,7 @@ A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x). The 
 
 ## Features
 
-- Keeps upstream tools, commands, UI, settings and goal-file formats.
+- Keeps the seven upstream tools, commands, UI, settings and goal-file formats. The active profile is fixed apart from the task setting; `goal_questionnaire` handles drafting and the user-started draft supplies the goal mode.
 - Adds a small integration layer that keeps goals in the parent session and waits for tracked Agent/workflow results before automatic continuation or completion.
 
 ## Installation
@@ -30,13 +30,15 @@ For a Git checkout, use `node scripts/install-extension.mjs pi-goal-x-lean`.
 
 Confirm the plan to start. Use `/goal-direct` for direct creation, `/sisyphus` for ordered steps, `/goal-tweak` to revise, and `/goal-pause` / `/goal-resume` to pause or resume. See the [upstream guide](https://github.com/tmonk/pi-goal-x#readme) for all commands.
 
+If a provider error cannot be retried, or a configured network-retry limit is exhausted, the goal pauses. Fix the provider issue, then use `/goal-resume [text]`; optional text is sent to the agent.
+
 ## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-goal-x-lean | 1535 |
-| pi-goal-x | 2096 |
+| @gfgghgftgffg/pi-goal-x-lean | 1297 |
+| pi-goal-x | 1691 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

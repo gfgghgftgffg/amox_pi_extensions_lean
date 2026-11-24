@@ -39,7 +39,7 @@ function runScenario(file, scenario, overrides = {}, args = []) {
 }
 
 for (const [scenario, title] of [
-  ["contracts", "real Pi SDK loader preserves the eight upstream contracts and initial active profile"],
+  ["contracts", "real Pi SDK loader preserves the seven upstream contracts and fixed active profile"],
   ["lifecycle", "goal creation, atomic task batches, evidence gate, pause, refresh and session persistence"],
   ["cohost", "three existing lean facades and sync coexist while goal controls only its own active profile"],
   ["auditor", "upstream completion-auditor injection rejects then approves through the facade"],

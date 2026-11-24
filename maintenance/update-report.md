@@ -1,13 +1,14 @@
 # Local upstream maintenance
 
-Base: 0301e72c75acfecc434afe8e7774950575f7b7e3
-Release after verified merge: v0.1.40
+Base: d63335e4709997654c3924ea12ac07cf3e3c756c
+Release after verified merge: v0.1.41
 
-<!-- amox-release-summary:v0.1.40:start -->
-- `pi-subagents-lean` explains how to request an inline result with `run_in_background: false`. For background work, follow the completion notification or pass `{"wait":true}` in the `result` operation’s JSON `input` when the next step depends on the result. Both usage paths are documented in English and Chinese.
-- `pi-web-access-lean` documents explicit operation selection and shows how to continue a stored result with `get` when the engine refers to `get_search_content`. The lean author’s new engine pin matches the release already used by this package.
-<!-- amox-release-summary:v0.1.40:end -->
+<!-- amox-release-summary:v0.1.41:start -->
+- Update pi-subagents to 0.26.3 while retaining the lean facade, published dist execution and native notification/result integration.
+- Follow pi-goal-x 0.34.2: keep seven tools with a fixed task-setting-dependent profile, remove obsolete goal_question metadata and the proposal sisyphus argument, and preserve upstream drafting, lifecycle and delegation behavior.
+- Update pause/resume and user documentation for the current upstream contracts.
+<!-- amox-release-summary:v0.1.41:end -->
 
 Source review: [agent-review.md](agent-review.md).
 
-The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.
+Owner approved the goal 0.34.2 contract migration. This manually repaired candidate runs real tests, contracts, standalone production installs and both dependency audits. Publication still requires exact-head three-platform CI and release verification.

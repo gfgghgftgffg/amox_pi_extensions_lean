@@ -12,9 +12,8 @@ const DESCRIPTIONS: Record<string, string> = {
   update_goal: "Complete (audited), block, or pause a goal; reason required for blocked/paused. Alternatively declare continuation; wait requires strictExecutionContract and a future ISO deadline. Reuse wait_id/deadline on recheck.",
   set_goal_tasks: "Confirm a flat parent-linked task tree; matching IDs retain progress, removed IDs are deleted. block_completion defaults false. Confirmation stops the turn, then continues.",
   update_goal_task: "Update task_id/status or ordered atomic updates; one invalid entry rejects the batch. Evidence completes contracted tasks; reason is required to skip.",
-  goal_question: "Ask one user-started drafting question. recommended is zero-based; allow_custom defaults true.",
   goal_questionnaire: "Ask a batch of user-started drafting questions. recommended is zero-based; allow_custom defaults true.",
-  propose_goal_draft: "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; sisyphus must match the user's mode.",
+  propose_goal_draft: "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; the user-started draft determines the mode.",
 };
 
 // Visit schema positions only: a field named 'description' or an object-valued

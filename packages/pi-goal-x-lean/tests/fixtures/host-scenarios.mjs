@@ -2,8 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { openHost, facadePath, upstreamPath, repoRoot, goalNames, initialProfile, activeProfile,
-  taskProfile, pausedProfile, textOf, goalFile } from "./host-session.mjs";
+import { openHost, facadePath, upstreamPath, repoRoot, goalNames, initialProfile, textOf, goalFile } from "./host-session.mjs";
 
 const scenario = process.argv[2];
 const json = value => JSON.parse(JSON.stringify(value));
@@ -92,7 +91,7 @@ if (scenario === "contracts") {
     assert.equal(created.details.goal.tokenBudget, 5000);
     assert.equal(created.details.goal.autoContinue, true);
     assert.ok(existsSync(goalFile(created.details.goal)));
-    host.profile(activeProfile);
+    host.profile(initialProfile);
     const tasks = await host.execute("set_goal_tasks", { block_completion: true, tasks: [
       { id: "parent", title: "Parent milestone" },
       { id: "child", parent_id: "parent", title: "Child verification", verification_contract: "Targeted checks must pass" },
@@ -100,7 +99,7 @@ if (scenario === "contracts") {
     ] });
     assert.equal(tasks.terminate, true);
     assert.equal(tasks.details.goal.taskList.tasks[0].subtasks[0].id, "child");
-    host.profile(taskProfile);
+    host.profile(initialProfile);
     let before = snapshotPool();
     const rejected = await host.execute("update_goal_task", { updates: [
       { task_id: "other", status: "complete" }, { task_id: "missing", status: "complete" },
@@ -130,7 +129,7 @@ if (scenario === "contracts") {
     assert.equal(paused.terminate, true);
     assert.equal(paused.details.goal.status, "paused");
     assert.equal(paused.details.goal.pauseReason, "Waiting for user review");
-    host.profile(pausedProfile);
+    host.profile(initialProfile);
     const file = goalFile(paused.details.goal);
     assert.match(readFileSync(file, "utf8"), /Waiting for user review/);
     // Even with no external edits, the user-owned refresh must preserve state.
@@ -145,7 +144,7 @@ if (scenario === "contracts") {
   } finally { await host.close(); }
   host = await openHost([facadePath], { sessionManager: manager });
   try {
-    host.profile(pausedProfile);
+    host.profile(initialProfile);
     const restored = (await host.execute("get_goal")).details.goal;
     assert.equal(restored.id, expected.id);
     assert.equal(restored.status, "paused");
@@ -208,11 +207,11 @@ if (scenario === "contracts") {
     // Deliberately select read but leave write disabled; goal profile changes must preserve both choices.
     host.profile(initialProfile, ordinary);
     await host.execute("create_goal", { objective: "Cohost profile fixture" });
-    host.profile(activeProfile, ordinary);
+    host.profile(initialProfile, ordinary);
     await host.execute("set_goal_tasks", { tasks: [{ id: "one", title: "One milestone" }] });
-    host.profile(taskProfile, ordinary);
+    host.profile(initialProfile, ordinary);
     await host.execute("update_goal", { status: "paused", reason: "User review" });
-    host.profile(pausedProfile, ordinary);
+    host.profile(initialProfile, ordinary);
     await host.command("goal-unfocus");
     host.profile(initialProfile, ordinary);
     assert.ok(host.runner.getCommand("sync-status"), "sync command remains installed");

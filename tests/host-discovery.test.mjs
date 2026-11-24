@@ -22,7 +22,7 @@ const entryPaths = manifest.packages.map((entry) => resolve(repoRoot, entry.path
 const goalTools = ["get_goal", "create_goal", "update_goal", "set_goal_tasks", "update_goal_task",
   "goal_questionnaire", "propose_goal_draft"];
 const expectedTools = ["web_access", "todo", "subagent", ...goalTools];
-const expectedActiveTools = ["web_access", "todo", "subagent", "get_goal", "create_goal"];
+const expectedActiveTools = expectedTools;
 const upstreamToolNames = [
   "web_search",
   "source_check",
@@ -69,7 +69,7 @@ test("one host session loads the existing facades, sync and seven goal tools wit
     assert.deepEqual([...result.loadedPaths].sort(), [...entryPaths].sort(), "only the declared monorepo entrypoints load");
     assert.deepEqual(result.tools.map((tool) => tool.name), expectedTools);
     assert.deepEqual(result.tools.filter(tool => tool.active).map(tool => tool.name), expectedActiveTools,
-      "old facades remain active; goal advertises only its initial create/get profile");
+      "old facades remain active; goal advertises its fixed task-enabled profile");
     assert.equal(result.tools.some(tool => /goal2/i.test(tool.name)), false);
     assert.ok(result.tools.every((tool) => tool.source !== "builtin"), "facades must not be built-in tools");
     for (const upstreamName of upstreamToolNames) {

@@ -56,6 +56,8 @@ See the full parameter list for one operation:
 { "op": "help", "input": "run" }
 ```
 
+Print (`pi -p`) and JSON runs wait for background agents and workflows before exiting so the parent can respond to their results. Set `headlessWaitMinutes` in `subagents.json` to limit the wait (`0`, the default, means no limit). A subagent also waits for its own background children before finishing; their results remain available while their parent's record is retained.
+
 ## Installation
 
 This is a public npm package. Install without a version pin:

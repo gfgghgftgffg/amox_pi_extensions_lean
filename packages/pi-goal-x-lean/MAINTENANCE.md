@@ -2,7 +2,7 @@
 
 Keep this file in English.
 
-The original facade depends on exact `pi-goal-x@0.34.1`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
+The original facade depends on exact `pi-goal-x@0.34.2`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
 
 ## Retained behavior
 
@@ -41,6 +41,12 @@ If a subagents manager is present without a compatible v1 service, the goal faca
 ## Upstream snapshot limitation
 
 Both the original and facade entrypoints were verified to retain the old objective after an external in-place edit and `/goal-refresh` on pi-goal-x 0.34.1; shutdown can overwrite the edit. Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
+
+## Review: 0.34.1 → 0.34.2
+
+- Exact npm publication snapshots with SHA-512 in `sources.json`; neither a Git HEAD substitute nor a published changelog was used. The manifests retain the same Pi/typebox peers and Node requirement. The new `extensions/goal.ts` inlines the removed `goal-tools.ts` installer in the same registration order; formatting and terminal input move to dedicated modules. The facade still imports `goal.ts`, `goal-context.ts` and `goal-session-safety.ts`, receives `_goalCore`, and interposes on the same scheduler `schedule`/`claim` methods. No removed shim is restored.
+- `goal-events.ts` now pauses at `agent_settled` for non-transient provider errors and after a configured retry limit is exhausted. `goal-scheduler.ts` saves the pause and clears continuation state; transient retries remain separate. `session_compact_failed` flushes buffered goal changes and warns without pausing; the next request after successful compaction still gets the goal resync delta. `/goal-resume [text]` forwards text as a follow-up when idle or steer when busy, before attempting to resume the goal. `runGoalRefresh` still has the same cache/refresh sequence; do not infer a storage fix from the version bump.
+- No facade code or schema adaptation. `get_goal` keeps separate model text (`content[].text`), goal state (`details.goal`) and successful page payload (`details.page`); renderer output is not the tool response. Retain the existing contract, lifecycle, snapshot parity and joint subagents regressions.
 
 ## Verification
 

@@ -56,6 +56,8 @@
 { "op": "help", "input": "run" }
 ```
 
+打印（`pi -p`）和 JSON 模式退出前会等待后台 Agent 和 workflow，以便父会话根据结果作答。可在 `subagents.json` 中设置 `headlessWaitMinutes` 限制等待时间（默认 `0`，不设上限）。子 Agent 也会等自己的后台子任务结束才完成；只要父记录仍保留，就能读取这些子任务的结果。
+
 ## 安装
 
 这是公开的 npm 包，安装时不固定版本：

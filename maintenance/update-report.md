@@ -1,12 +1,14 @@
 # Local upstream maintenance
 
-Base: 0301e72c75acfecc434afe8e7774950575f7b7e3
-Release after verified merge: v0.1.40
+Base: d63335e4709997654c3924ea12ac07cf3e3c756c
+Release after verified merge: v0.1.41
 
-<!-- amox-release-summary:v0.1.40:start -->
-- `pi-subagents-lean` explains how to request an inline result with `run_in_background: false`. For background work, follow the completion notification or pass `{"wait":true}` in the `result` operation’s JSON `input` when the next step depends on the result. Both usage paths are documented in English and Chinese.
-- `pi-web-access-lean` documents explicit operation selection and shows how to continue a stored result with `get` when the engine refers to `get_search_content`. The lean author’s new engine pin matches the release already used by this package.
-<!-- amox-release-summary:v0.1.40:end -->
+<!-- amox-release-summary:v0.1.41:start -->
+- Subagents: print and JSON sessions wait for background agents and workflows and can answer with their results before exiting. Set `headlessWaitMinutes` to request cancellation after a limit; the default is unlimited.
+- Subagents: delegating agents wait for their background children; completed nested results remain available for the lifetime of the parent's record.
+- Goal: unretryable provider errors or exhausted configured network retries pause the goal with a reason instead of leaving it active. Use `/goal-resume [text]` after fixing the issue to resume and optionally send instructions.
+- Goal: failed context compaction saves buffered goal progress and warns without pausing the goal. Existing goal tool names and the subagent result-wait guard are preserved.
+<!-- amox-release-summary:v0.1.41:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

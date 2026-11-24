@@ -6,7 +6,7 @@ A lightweight wrapper over [pi-goal-x](https://github.com/tmonk/pi-goal-x). The 
 
 ## Features
 
-- Keeps upstream tools, commands, UI, settings and goal-file formats.
+- Keeps the seven upstream tools, commands, UI, settings and goal-file formats. The active profile is fixed apart from the task setting; `goal_questionnaire` handles drafting and the user-started draft supplies the goal mode.
 - Adds a small integration layer that keeps goals in the parent session and waits for tracked Agent/workflow results before automatic continuation or completion.
 
 ## Installation
@@ -37,7 +37,7 @@ If a provider error cannot be retried, or a configured network-retry limit is ex
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-goal-x-lean | 1295 |
+| @gfgghgftgffg/pi-goal-x-lean | 1297 |
 | pi-goal-x | 1691 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

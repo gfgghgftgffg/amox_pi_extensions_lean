@@ -76,7 +76,6 @@
         "update_goal",
         "set_goal_tasks",
         "update_goal_task",
-        "goal_question",
         "goal_questionnaire",
         "propose_goal_draft"
       ]

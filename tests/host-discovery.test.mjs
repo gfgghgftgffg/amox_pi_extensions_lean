@@ -1,6 +1,6 @@
 // Host-discovery checks: load all monorepo entrypoints in ONE real
 // isolated Pi SDK session and prove that (a) the three existing facades and
-// eight goal tools are registered, (b) upstream engines are not discovered as extra extensions, and
+// seven goal tools are registered, (b) upstream engines are not discovered as extra extensions, and
 // (c) the upstream ext: selector identity (used by the Task Router) still
 // resolves to the expected names.
 import assert from "node:assert/strict";
@@ -20,7 +20,7 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.json"), "utf8"));
 const entryPaths = manifest.packages.map((entry) => resolve(repoRoot, entry.path, entry.entry));
 const goalTools = ["get_goal", "create_goal", "update_goal", "set_goal_tasks", "update_goal_task",
-  "goal_question", "goal_questionnaire", "propose_goal_draft"];
+  "goal_questionnaire", "propose_goal_draft"];
 const expectedTools = ["web_access", "todo", "subagent", ...goalTools];
 const expectedActiveTools = ["web_access", "todo", "subagent", "get_goal", "create_goal"];
 const upstreamToolNames = [
@@ -35,7 +35,7 @@ const upstreamToolNames = [
   "SubagentWorkflow",
 ];
 
-test("one host session loads the existing facades, sync and eight goal tools without extra upstream engines", async () => {
+test("one host session loads the existing facades, sync and seven goal tools without extra upstream engines", async () => {
   const env = createIsolatedEnvironment({ prefix: "amox-host-discovery-" });
   const previousEnv = {
     PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,

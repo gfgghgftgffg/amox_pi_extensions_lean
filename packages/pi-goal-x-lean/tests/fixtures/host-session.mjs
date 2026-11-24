@@ -7,11 +7,9 @@ export const repoRoot = fileURLToPath(new URL("../../../../", import.meta.url));
 export const facadePath = join(repoRoot, "packages/pi-goal-x-lean/index.ts");
 export const upstreamPath = join(repoRoot, "node_modules/pi-goal-x/extensions/goal.ts");
 export const goalNames = ["get_goal", "create_goal", "update_goal", "set_goal_tasks", "update_goal_task",
-  "goal_question", "goal_questionnaire", "propose_goal_draft"];
-export const initialProfile = ["create_goal", "get_goal"];
-export const activeProfile = ["create_goal", "get_goal", "update_goal", "set_goal_tasks"];
-export const taskProfile = [...activeProfile, "update_goal_task"];
-export const pausedProfile = activeProfile;
+  "goal_questionnaire", "propose_goal_draft"];
+// 0.34.2 uses a fixed, task-setting-dependent profile rather than goal phases.
+export const initialProfile = goalNames;
 
 // These are actual SDK resources, extension loading, runtime binding and contexts.
 // No alternate Type shim or fake ExtensionAPI is involved in integration checks.

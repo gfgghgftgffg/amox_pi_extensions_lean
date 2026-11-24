@@ -1312,8 +1312,8 @@
         "update_goal_task"
       ],
       "totals": {
-        "registeredProxyTokens": 1295,
-        "activeProxyTokens": 1295
+        "registeredProxyTokens": 1297,
+        "activeProxyTokens": 1297
       },
       "tools": [
         {
@@ -1703,7 +1703,7 @@
           "name": "propose_goal_draft",
           "active": true,
           "source": "cli",
-          "description": "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; sisyphus must match the user's mode.",
+          "description": "Confirm a draft before execution. Preserve objective for budget-only tweaks; token_budget=null removes the cap, omit retains it. auto_continue defaults true; the user-started draft determines the mode.",
           "promptSnippet": "",
           "promptGuidelines": [],
           "parameters": {
@@ -1763,13 +1763,13 @@
             "additionalProperties": false
           },
           "chars": {
-            "description": 194,
+            "description": 201,
             "schema": 518,
             "snippet": 0,
             "guidelines": 0,
-            "total": 712
+            "total": 719
           },
-          "proxyTokens": 178
+          "proxyTokens": 180
         }
       ],
       "upstreamPackage": "pi-goal-x"

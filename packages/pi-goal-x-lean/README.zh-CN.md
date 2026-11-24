@@ -6,7 +6,7 @@
 
 ## 功能
 
-- 保留上游工具、命令、界面、设置及目标文件格式。
+- 保留上游七个工具、命令、界面、设置及目标文件格式。除任务开关外，激活工具列表固定；草稿提问使用 `goal_questionnaire`，目标模式由用户发起的草稿决定。
 - 增加轻量联动层，让目标归父会话管理，并在已追踪的 Agent/workflow 交回结果前阻止自动续跑和完成验收。
 
 ## 安装
@@ -37,7 +37,7 @@ pi update --extensions
 <!-- amox-measurement:start -->
 | Package | Registered character proxy |
 | --- | ---: |
-| @gfgghgftgffg/pi-goal-x-lean | 1295 |
+| @gfgghgftgffg/pi-goal-x-lean | 1297 |
 | pi-goal-x | 1691 |
 
 Fixed ceil(characters / 4), not provider billing tokens.

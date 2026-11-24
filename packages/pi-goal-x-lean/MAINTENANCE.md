@@ -6,7 +6,7 @@ The original facade depends on exact `pi-goal-x@0.34.2`; it does not copy the en
 
 ## Retained behavior
 
-Keep all eight upstream tool names, schemas except description annotations, prompt guidelines, lifecycle hooks, commands, shortcuts, renderers and tool profiles. Do not suppress `setActiveTools`, collapse names or truncate goal context: stopped-turn gates, progress classification, drafting, live-tail retention and provider-cache placement depend on them. Unknown new tools pass through unchanged until reviewed.
+Keep all seven upstream tool names, schemas except description annotations, prompt guidelines, lifecycle hooks, commands, shortcuts, renderers and the fixed task-setting-dependent tool profile. Draft-state gating belongs to execution, not changing tool visibility. Do not suppress `setActiveTools`, collapse names or truncate goal context: stopped-turn gates, progress classification, drafting, live-tail retention and provider-cache placement depend on them. Unknown new tools pass through unchanged until reviewed.
 
 ## Integration contracts
 
@@ -40,13 +40,15 @@ If a subagents manager is present without a compatible v1 service, the goal faca
 
 ## Upstream snapshot limitation
 
-Both the original and facade entrypoints were verified to retain the old objective after an external in-place edit and `/goal-refresh` on pi-goal-x 0.34.1; shutdown can overwrite the edit. Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
+Both the original and facade entrypoints retain the old objective after an external in-place edit and `/goal-refresh`, observed on 0.34.1 and again in the staged 0.34.2 check. Shutdown can overwrite the edit (observed on 0.34.1). Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
 
 ## Review: 0.34.1 → 0.34.2
 
 - Exact npm publication snapshots with SHA-512 in `sources.json`; neither a Git HEAD substitute nor a published changelog was used. The manifests retain the same Pi/typebox peers and Node requirement. The new `extensions/goal.ts` inlines the removed `goal-tools.ts` installer in the same registration order; formatting and terminal input move to dedicated modules. The facade still imports `goal.ts`, `goal-context.ts` and `goal-session-safety.ts`, receives `_goalCore`, and interposes on the same scheduler `schedule`/`claim` methods. No removed shim is restored.
 - `goal-events.ts` now pauses at `agent_settled` for non-transient provider errors and after a configured retry limit is exhausted. `goal-scheduler.ts` saves the pause and clears continuation state; transient retries remain separate. `session_compact_failed` flushes buffered goal changes and warns without pausing; the next request after successful compaction still gets the goal resync delta. `/goal-resume [text]` forwards text as a follow-up when idle or steer when busy, before attempting to resume the goal. `runGoalRefresh` still has the same cache/refresh sequence; do not infer a storage fix from the version bump.
-- No facade code or schema adaptation. `get_goal` keeps separate model text (`content[].text`), goal state (`details.goal`) and successful page payload (`details.page`); renderer output is not the tool response. Retain the existing contract, lifecycle, snapshot parity and joint subagents regressions.
+- `get_goal` keeps separate model text (`content[].text`), goal state (`details.goal`) and successful page payload (`details.page`); renderer output is not the tool response.
+- Owner approved the upstream contract migration. `extensions/goal-tool-names.ts` and `extensions/goal-drafting.ts` remove `goal_question`, leaving `goal_questionnaire`, and replace the phase-dependent tool profile with a fixed, task-setting-dependent list. Draft gating moves into `goal-events.ts` and tool execution. `propose_goal_draft` removes `sisyphus` from its schema, strips the legacy argument in `prepareArguments`, and uses the mode of the user-started draft. The lean metadata drops the deleted tool and parameter instruction without suppressing the remaining upstream behavior.
+- Migrated only version-specific tests: seven registrations and fixed profiles replace the old eight-tool phase expectations. Lifecycle, execution, audit, task evidence, upstream-parity, child-session and joint ABI assertions remain. The first check failed four stale profile assertions even against upstream 0.34.2; subsequent verification must run all gates before publication.
 
 ## Verification
 

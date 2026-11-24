@@ -46,7 +46,7 @@ test("every recorded tool has consistent char accounting and a proxy token count
 test("lean facades are smaller than their pinned upstream engines", () => {
   assert.deepEqual(
     Object.values(snapshot.lean).map((record) => record.tools.map((tool) => tool.name)).flat().sort(),
-    ["create_goal", "get_goal", "goal_question", "goal_questionnaire", "propose_goal_draft",
+    ["create_goal", "get_goal", "goal_questionnaire", "propose_goal_draft",
       "set_goal_tasks", "subagent", "todo", "update_goal", "update_goal_task", "web_access"],
   );
   for (const [id, record] of Object.entries(snapshot.lean)) {

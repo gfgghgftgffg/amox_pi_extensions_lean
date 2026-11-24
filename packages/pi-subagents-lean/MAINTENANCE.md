@@ -16,7 +16,7 @@
 
 - `@tintinweb/pi-subagents@0.26.3`（精确固定；`dependencies`；此前为 0.26.2）。
 
-## 本次审查：0.26.2 → 0.26.3
+### 本次审查：0.26.2 → 0.26.3
 
 - `sources.json` 发布源码：`e9bd10502cd512288642bd8a97c169042a2310b9` → `1d35501a1c8ec0c8a3cd38886f7edbfadd3f1388`；lean 作者仍为 `30c53d8a63add7c9c6bbfd00a2d0689448a377bf`，无新源码可移植。新旧 manifest 的 peer 和运行依赖范围未变。
 - `src/index.ts` 新增 `agent_before_settle`：print/JSON 正常完成时等待 Agent/workflow，取出 outbox 的 `content` 和 `details` 写入 `custom_message` entry 并返回 `continue: true`，并非工具结果或 UI 渲染。TUI/RPC 保持原通知机制；错误/中止不进入等待。`headlessWaitMinutes` 缺省 0（无上限），正值每次等待到限时请求停止，待工作结束并丢弃停止通知；不是进程级硬超时。五参数工具调用、显式 op、真实 schema 校验、dist 入口及只读子会话桥接不需要改写。

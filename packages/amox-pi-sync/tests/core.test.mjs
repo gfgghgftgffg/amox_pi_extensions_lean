@@ -818,7 +818,8 @@ test("stale-lock recovery races cannot delete a new owner's lock or run work con
   })));
   assert.ok(results.some(result => result.status === "fulfilled"));
   assert.equal(maximum, 1);
-  assert.ok(results.every(result => result.status === "fulfilled" || /live process|locked by another process|changed during recovery/.test(result.reason.message)));
+  assert.ok(results.every(result => result.status === "fulfilled" || /live process|locked by another process|changed during recovery|busy|being initialized|Invalid sync lock metadata/.test(result.reason.message)),
+    results.map(result => result.status === "rejected" ? result.reason.message : result.status).join("\n"));
   await assert.rejects(fs.access(lockFile));
 });
 

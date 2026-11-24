@@ -238,7 +238,16 @@ export class SyncService {
   public activeSessionFile?: string;
   constructor(public config: Config, public paths: Paths, private exec: GitExecutor) { validate(config, paths); }
   private async claimStaleLock(lockFile: string): Promise<{ released: boolean; message: string }> {
-    const raw = await fs.readFile(lockFile, "utf8");
+    let raw: string;
+    try { raw = await fs.readFile(lockFile, "utf8"); }
+    catch (error) {
+      // Windows can report EBUSY/EPERM while another process is initializing
+      // the lock. That is never evidence that the owner has exited.
+      if (["EBUSY", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+        return { released: false, message: `Sync lock is busy or being initialized: ${lockFile}` };
+      }
+      throw error;
+    }
     let owner: { pid: number; operation: string; createdAt: string };
     try { owner = JSON.parse(raw); }
     catch { throw new Error(`Invalid sync lock metadata: ${lockFile}; inspect the file manually before removing it`); }
@@ -257,6 +266,9 @@ export class SyncService {
     try { await fs.rename(lockFile, recovery); }
     catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return { released: false, message: `Sync lock changed during recovery: ${lockFile}` };
+      if (["EBUSY", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+        return { released: false, message: `Sync lock is busy or being initialized: ${lockFile}` };
+      }
       throw error;
     }
     try {

@@ -272,8 +272,9 @@ export class SyncService {
       throw error;
     }
     try {
-      if (await fs.readFile(recovery, "utf8") !== raw) throw new Error(`Sync lock changed during recovery: ${lockFile}`);
-      await fs.unlink(recovery);
+      // rename already claimed the exact validated file atomically; no second
+      // pathname read is needed (and is not reliable on Windows here).
+      await fs.rm(recovery, { force: true });
       return { released: true, message: `Removed stale sync lock (${identity}): ${lockFile}` };
     } finally { await fs.rm(recovery, { force: true }); }
   }

@@ -52,6 +52,8 @@ Preview orphan subagent sessions, then delete them and sync that deletion:
 
 `/sync-status` opens the same actions without [Starline](https://github.com/Andy8647/pi-starline). `/sync-settings` changes paths and whether prune runs before push.
 
+If a sync process was forcibly terminated, its lock can remain after Push, Pull, Prune or `/delete-session` stops. The next write operation recovers it only when the recorded PID has exited. `/sync-unlock` performs the same check manually and never removes a live or malformed lock. Manual/off mode uses the same write lock; no operation is removed just because it is old.
+
 ## Install
 
 Requires Pi `>=1.1.0`, Node `>=22.19.0`, npm, Git and working SSH authentication.

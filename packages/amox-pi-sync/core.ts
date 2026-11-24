@@ -237,20 +237,95 @@ export class SyncService {
   public status: Status = {};
   public activeSessionFile?: string;
   constructor(public config: Config, public paths: Paths, private exec: GitExecutor) { validate(config, paths); }
+  private async claimStaleLock(lockFile: string): Promise<{ released: boolean; message: string }> {
+    let raw: string;
+    try { raw = await fs.readFile(lockFile, "utf8"); }
+    catch (error) {
+      // Windows can report EBUSY/EPERM while another process is initializing
+      // the lock. That is never evidence that the owner has exited.
+      if (["EBUSY", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+        return { released: false, message: `Sync lock is busy or being initialized: ${lockFile}` };
+      }
+      throw error;
+    }
+    let owner: { pid: number; operation: string; createdAt: string };
+    try { owner = JSON.parse(raw); }
+    catch { throw new Error(`Invalid sync lock metadata: ${lockFile}; inspect the file manually before removing it`); }
+    if (!Number.isSafeInteger(owner.pid) || owner.pid < 1 || typeof owner.operation !== "string" || !owner.operation
+      || typeof owner.createdAt !== "string" || !Number.isFinite(Date.parse(owner.createdAt))) {
+      throw new Error(`Invalid sync lock metadata: ${lockFile}; inspect the file manually before removing it`);
+    }
+    let alive = true;
+    try { process.kill(owner.pid, 0); }
+    catch (error) { if ((error as NodeJS.ErrnoException).code === "ESRCH") alive = false; }
+    const identity = `pid=${owner.pid}, operation=${owner.operation}, createdAt=${owner.createdAt}`;
+    if (alive) return { released: false, message: `Sync is locked by a live process (${identity}): ${lockFile}` };
+    // Only one recovery process can move this exact file aside. A new lock may
+    // then be created at the original path; unlink only our quarantined copy.
+    const recovery = `${lockFile}.${randomUUID()}.stale`;
+    try { await fs.rename(lockFile, recovery); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { released: false, message: `Sync lock changed during recovery: ${lockFile}` };
+      if (["EBUSY", "EPERM", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? "")) {
+        return { released: false, message: `Sync lock is busy or being initialized: ${lockFile}` };
+      }
+      throw error;
+    }
+    try {
+      // rename already claimed the exact validated file atomically; no second
+      // pathname read is needed (and is not reliable on Windows here).
+      await fs.rm(recovery, { force: true });
+      return { released: true, message: `Removed stale sync lock (${identity}): ${lockFile}` };
+    } finally { await fs.rm(recovery, { force: true }); }
+  }
+  async unlockStale(): Promise<{ released: boolean; message: string }> {
+    const lockFile = `${this.paths.configFile}.lock`;
+    await noLinks(lockFile);
+    try { return await this.claimStaleLock(lockFile); }
+    catch (error) {
+      if ((error as NodeJS.ErrnoException).code === "ENOENT") return { released: false, message: "No sync lock exists." };
+      throw error;
+    }
+  }
   private async run<T>(name: string, work: () => Promise<T>): Promise<T> {
     if (this.status.busy) throw new Error(`Sync busy: ${this.status.busy}; retry when it finishes`);
     this.status.busy = name; this.status.error = undefined;
     let lock: Awaited<ReturnType<typeof fs.open>> | undefined;
     const lockFile = `${this.paths.configFile}.lock`;
+    let operationError: unknown;
     try {
       validate(this.config, this.paths);
       await noLinks(lockFile); await fs.mkdir(path.dirname(lockFile), { recursive: true });
-      try { lock = await fs.open(lockFile, "wx", 0o600); }
-      catch (e) { if ((e as NodeJS.ErrnoException).code === "EEXIST") throw new Error(`Sync locked by another process: ${lockFile}. If its process exited, verify no sync is running before removing this lock.`); throw e; }
+      let recoveredStale = false;
+      while (!lock) {
+        try { lock = await fs.open(lockFile, "wx", 0o600); }
+        catch (error) {
+          if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+          if (recoveredStale) throw new Error(`Sync lock changed during recovery: ${lockFile}; retry after the current operation finishes`);
+          const recovered = await this.claimStaleLock(lockFile);
+          if (!recovered.released) throw new Error(`Sync locked by another process: ${recovered.message}. Use /sync-unlock only after the owning process has exited.`);
+          recoveredStale = true;
+        }
+      }
       await lock.writeFile(JSON.stringify({ pid: process.pid, operation: name, createdAt: new Date().toISOString() }));
       return await work();
-    } catch (e) { this.status.error = e instanceof Error ? e.message : String(e); throw e; }
-    finally { try { if (lock) { await lock.close(); await fs.unlink(lockFile); } } finally { this.status.busy = undefined; } }
+    } catch (e) { operationError = e; this.status.error = e instanceof Error ? e.message : String(e); throw e; }
+    finally {
+      let releaseError: unknown;
+      try { await lock?.close(); } catch (error) { releaseError = error; }
+      if (lock) {
+        try { await fs.unlink(lockFile); }
+        catch (error) { releaseError ??= error; }
+      }
+      this.status.busy = undefined;
+      if (releaseError) {
+        const failure = new Error(`Failed to release sync lock ${lockFile}: ${releaseError instanceof Error ? releaseError.message : String(releaseError)}`, { cause: releaseError });
+        this.status.error = operationError
+          ? `${operationError instanceof Error ? operationError.message : String(operationError)}; ${failure.message}` : failure.message;
+        if (operationError) throw new AggregateError([operationError, failure], this.status.error);
+        throw failure;
+      }
+    }
   }
   private async gitResult(args: string[], cwd = this.config.repoDir, timeoutMs = LOCAL_TIMEOUT_MS) {
     const result = await this.exec([...gitOptions, ...args], cwd, timeoutMs);
@@ -564,7 +639,8 @@ export class SyncService {
   /** The caller must first switch sessions and wait for the old runtime to shut down.
    * activeSessionFile protects this instance only, not other processes' writers.
    */
-  async deleteSessionTree(rootSessionFile: string, expectedPaths: string[]): Promise<PruneResult> { return this.run("deleteSessionTree", async () => {
+  async deleteSessionTree(rootSessionFile: string, expectedPaths: string[], onProgress: (stage: string) => void = () => {}): Promise<PruneResult> { return this.run("deleteSessionTree", async () => {
+    onProgress("checking the session tree");
     const root = this.deleteTreeRoot(rootSessionFile);
     if (!Array.isArray(expectedPaths)) throw new Error("Expected session paths must be an array");
     const expected = new Set(expectedPaths.map(validatePath));
@@ -576,6 +652,7 @@ export class SyncService {
       return current.candidates;
     };
     const candidates = await recheck();
+    onProgress("checking the Git snapshot");
     await this.ensureRepo();
     if ((await this.git(["diff", "--cached", "--name-only"])).trim()) throw new Error("Repository has staged changes; run Push or resolve them before deleting");
     if ((await this.git(["status", "--porcelain"])).trim()) throw new Error("Repository has uncommitted changes; run Push or resolve them before deleting");
@@ -592,11 +669,13 @@ export class SyncService {
     }
     for (const relative of repoRemoved) await fs.rm(path.join(this.config.repoDir, relative));
     if (repoRemoved.length) {
+      onProgress("committing the snapshot deletion");
       await this.stageDeletions(repoRemoved);
       await this.git(["commit", "-m", `amox-pi-sync: delete session tree (${repoRemoved.length} session(s))`]);
     }
     // Git may take time; reject new descendants or an active session before local deletion.
     await recheck();
+    onProgress("deleting local session files");
     const removed: string[] = [];
     for (const candidate of candidates) {
       const file = path.join(this.paths.agentDir, candidate.path);
@@ -607,6 +686,7 @@ export class SyncService {
     }
     const deleted = new Set(removed);
     this.config.syncedPaths = this.config.syncedPaths?.filter(item => !deleted.has(item));
+    onProgress("saving sync state");
     await saveConfig(this.config, this.paths);
     return { removed, repoRemoved: repoRemoved.length, skipped: 0 };
   }); }

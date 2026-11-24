@@ -695,7 +695,9 @@ test("targeted tree deletion includes recent renamed/manual forks, never unrelat
   assert.equal(f.calls.length, 0);
   const next = new SyncService(f.config, f.paths, f.exec);
   next.activeSessionFile = "sessions/new-active.jsonl";
-  assert.deepEqual(await next.deleteSessionTree(root, paths), { removed: paths, repoRemoved: 1, skipped: 0 });
+  const stages = [];
+  assert.deepEqual(await next.deleteSessionTree(root, paths, stage => stages.push(stage)), { removed: paths, repoRemoved: 1, skipped: 0 });
+  assert.deepEqual(stages, ["checking the session tree", "checking the Git snapshot", "committing the snapshot deletion", "deleting local session files", "saving sync state"]);
   await fs.access(path.join(f.paths.agentDir, "sessions/orphan.jsonl"));
   assert.deepEqual(f.config.syncedPaths, ["sessions/orphan.jsonl"]);
   await assert.rejects(f.service.planDeleteSessionTree(root), /missing/);
@@ -734,7 +736,7 @@ test("tree deletion rejects unsafe roots, active descendants, duplicates and hel
   f.service.activeSessionFile = root;
   await assert.rejects(f.service.deleteSessionTree(root, paths), /Active session/);
   f.service.activeSessionFile = undefined;
-  await fs.writeFile(`${f.paths.configFile}.lock`, "held");
+  await fs.writeFile(`${f.paths.configFile}.lock`, JSON.stringify({ pid: process.pid, operation: "deleteSessionTree", createdAt: new Date().toISOString() }));
   await assert.rejects(f.service.deleteSessionTree(root, paths), /locked by another process/);
   await fs.rm(`${f.paths.configFile}.lock`);
   await fs.rm(child);
@@ -777,6 +779,64 @@ test("tree preview skips unrelated malformed files, falls back to path and toler
   assert.deepEqual((await next.deleteSessionTree(root, paths)).removed, paths);
   await fs.access(path.join(f.paths.agentDir, "sessions/broken.jsonl"));
   await assert.rejects(next.planDeleteSessionTree(path.join(f.paths.agentDir, "sessions/broken.jsonl")), /no readable header/);
+});
+
+test("stale lock recovery takes over only a dead owner's file and clears it after the operation", async t => {
+  const f = await fixture(t);
+  const stopped = spawnSync(process.execPath, ["-e", ""]);
+  assert.equal(stopped.status, 0);
+  const lockFile = `${f.paths.configFile}.lock`;
+  await fs.writeFile(lockFile, JSON.stringify({ pid: stopped.pid, operation: "deleteSessionTree", createdAt: "2026-11-24T11:04:01.612Z" }));
+  assert.equal(await f.service.run("deleteSessionTree", async () => "completed"), "completed");
+  await assert.rejects(fs.access(lockFile));
+  assert.deepEqual(await f.service.unlockStale(), { released: false, message: "No sync lock exists." });
+});
+
+test("live and malformed locks are never removed as stale", async t => {
+  const f = await fixture(t);
+  const lockFile = `${f.paths.configFile}.lock`;
+  await fs.writeFile(lockFile, JSON.stringify({ pid: process.pid, operation: "deleteSessionTree", createdAt: new Date().toISOString() }));
+  const live = await f.service.unlockStale();
+  assert.equal(live.released, false); assert.match(live.message, /live process/);
+  await fs.access(lockFile);
+  await assert.rejects(f.service.run("deleteSessionTree", async () => "must not run"), /live process|locked by another process/);
+  await fs.writeFile(lockFile, "not-json");
+  await assert.rejects(f.service.unlockStale(), /Invalid sync lock metadata/);
+  assert.equal(await fs.readFile(lockFile, "utf8"), "not-json");
+});
+
+test("stale-lock recovery races cannot delete a new owner's lock or run work concurrently", async t => {
+  const f = await fixture(t);
+  const stopped = spawnSync(process.execPath, ["-e", ""]); assert.equal(stopped.status, 0);
+  const lockFile = `${f.paths.configFile}.lock`;
+  await fs.writeFile(lockFile, JSON.stringify({ pid: stopped.pid, operation: "deleteSessionTree", createdAt: new Date().toISOString() }));
+  const services = Array.from({ length: 6 }, () => new SyncService(f.config, f.paths, f.exec));
+  let running = 0, maximum = 0;
+  const results = await Promise.allSettled(services.map(service => service.run("check", async () => {
+    running++; maximum = Math.max(maximum, running);
+    await new Promise(resolve => setTimeout(resolve, 40)); running--;
+  })));
+  assert.ok(results.some(result => result.status === "fulfilled"));
+  assert.equal(maximum, 1);
+  assert.ok(results.every(result => result.status === "fulfilled" || /live process|locked by another process|changed during recovery|busy|being initialized|Invalid sync lock metadata/.test(result.reason.message)),
+    results.map(result => result.status === "rejected" ? result.reason.message : result.status).join("\n"));
+  await assert.rejects(fs.access(lockFile));
+});
+
+test("lock release failure is explicit and preserves the original operation error", async t => {
+  const f = await fixture(t), lockFile = `${f.paths.configFile}.lock`;
+  await assert.rejects(f.service.run("deleteSessionTree", async () => {
+    await fs.unlink(lockFile); await fs.mkdir(lockFile);
+    throw new Error("original operation failed");
+  }), error => {
+    assert.ok(error instanceof AggregateError);
+    assert.match(error.message, /original operation failed/);
+    assert.match(error.message, /Failed to release sync lock/);
+    assert.equal(error.errors.length, 2);
+    return true;
+  });
+  assert.equal(f.service.status.busy, undefined);
+  assert.match(f.service.status.error, /Failed to release sync lock/);
 });
 
 test("deletion confirmation configuration validates, persists and retains legacy absence", async t => {

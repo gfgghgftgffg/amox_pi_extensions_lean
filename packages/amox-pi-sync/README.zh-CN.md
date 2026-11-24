@@ -52,6 +52,8 @@ GitHub 使用 `git@github.com:OWNER/REPO.git`。网络连通性由插件外的�
 
 没装 [Starline](https://github.com/Andy8647/pi-starline) 时，`/sync-status` 也能打开这些操作。`/sync-settings` 用来改路径，以及是否在 Push 前自动清理孤儿会话。
 
+同步进程被强制终止后，锁文件可能残留，导致 Push、Pull、Prune 或 `/delete-session` 停止。后续写操作仅在锁中记录的 PID 已退出时自动恢复；`/sync-unlock` 可手动执行同一检查，不会删除活跃或格式异常的锁。manual/off 模式也使用同一把写锁，不会只因锁文件过旧就强行接管。
+
 ## 安装
 
 需要 Pi `>=1.1.0`、Node `>=22.19.0`、npm、Git 和可用的 SSH 认证。

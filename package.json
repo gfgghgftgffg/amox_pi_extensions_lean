@@ -5,6 +5,12 @@
   "type": "module",
   "description": "Independently installable Pi extensions with reviewed upstream maintenance and a manually maintained sync fork.",
   "license": "MIT",
+  "contributors": [
+    {
+      "name": "z472421519",
+      "url": "https://github.com/z472421519"
+    }
+  ],
   "engines": {
     "node": ">=22.19.0"
   },

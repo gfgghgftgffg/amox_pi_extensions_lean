@@ -2,7 +2,7 @@
 
 [English](npm-publishing.md)
 
-仓库包含五个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将本批选中、已验证的 GitHub Release 归档发布到公共 npm。各包实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准。新包须先完成下述首次发布配置，再使用 OIDC 发布。
+仓库包含六个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将本批选中、已验证的 GitHub Release 归档发布到公共 npm。各包实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准。新包须先完成下述首次发布配置，再使用 OIDC 发布。
 
 ## 按包独立发布
 
@@ -12,7 +12,7 @@
 
 ## 发布配置
 
-每个包分别配置 npm Trusted Publisher：`@gfgghgftgffg/pi-web-access-lean`、`@gfgghgftgffg/rpiv-todo-lean`、`@gfgghgftgffg/pi-subagents-lean`、`@gfgghgftgffg/pi-goal-x-lean`、`@gfgghgftgffg/amox-pi-sync`。
+每个包分别配置 npm Trusted Publisher：`@gfgghgftgffg/pi-web-access-lean`、`@gfgghgftgffg/rpiv-todo-lean`、`@gfgghgftgffg/pi-subagents-lean`、`@gfgghgftgffg/pi-goal-x-lean`、`@gfgghgftgffg/amox-pi-sync`、`@gfgghgftgffg/amox-high-level`。
 
 | 字段 | 值 |
 | --- | --- |

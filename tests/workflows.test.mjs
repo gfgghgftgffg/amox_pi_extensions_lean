@@ -177,12 +177,12 @@ test("public docs describe local Pi, reviewed npm publication and independent in
 test("publication docs describe availability checks and first-publication setup without release snapshots", () => {
   const english = read("README.md"), chinese = read("README.zh-CN.md");
   const npmEnglish = read("docs/npm-publishing.md"), npmChinese = read("docs/npm-publishing.zh-CN.md");
-  assert.match(npmEnglish, /five independent extension packages/);
+  assert.match(npmEnglish, /six independent extension packages/);
   assert.match(npmEnglish, /corresponding Release's npm job and public npm metadata for package availability/);
   assert.match(npmEnglish, /each new package needs a separate connection after its first publication/);
   assert.match(npmEnglish, /OIDC publisher rejects a missing npm package identity before any uploads/);
   assert.match(npmEnglish, /skip does not exercise OIDC trust/);
-  assert.match(npmChinese, /五个独立扩展包/);
+  assert.match(npmChinese, /六个独立扩展包/);
   assert.match(npmChinese, /实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准/);
   assert.match(npmChinese, /每个新包按下节完成首发后，单独配置自己的连接/);
   assert.match(npmChinese, /OIDC 发布脚本在任何上传前都会拒绝 registry 中不存在的包/);

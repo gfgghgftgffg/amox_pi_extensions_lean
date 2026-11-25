@@ -95,7 +95,7 @@ export async function completion(state, serviceResult, options) {
 
 export async function send(config, state, result, fetchImpl = fetch, exec = execFileSync) {
   const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
-    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|pi-goal-x-lean|amox-pi-sync)$/.test(item?.name ?? "")
+    /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|pi-goal-x-lean|amox-pi-sync|amox-high-level)$/.test(item?.name ?? "")
     && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 5).map(item => `${item.name}@${item.version}`);
   const fullMessage = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
   let message = fullMessage;

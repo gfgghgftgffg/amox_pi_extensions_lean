@@ -98,6 +98,24 @@
       "releaseVersioning": "independent",
       "toolContract": false,
       "registeredTools": []
+    },
+    {
+      "id": "amox-high-level",
+      "path": "packages/amox-high-level",
+      "packageName": "@gfgghgftgffg/amox-high-level",
+      "version": "0.1.0",
+      "entry": "index.ts",
+      "upstreamPackage": "pi-high-level",
+      "upstreamRepository": "https://github.com/z472421519/pi-high-level.git",
+      "upstreamGitHead": "4bad8dbd4368ed4fd18c3ad6089f06aa6eff147d",
+      "maintenanceMode": "manual-fork",
+      "sourceFiles": [
+        "index.ts",
+        "core.ts"
+      ],
+      "releaseVersioning": "independent",
+      "toolContract": false,
+      "registeredTools": []
     }
   ],
   "release": {

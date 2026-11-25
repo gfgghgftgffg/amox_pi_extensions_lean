@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Five independently installable Pi extensions for search, task management, subagents, persistent goals and data sync. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **84.5%** less registered tool text across the four lean wrappers; the sync package is excluded.
+Six independently installable Pi extensions for search, task management, subagents, persistent goals, data sync and high-level summaries. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **84.5%** less registered tool text across the four lean wrappers; the sync and high-level packages are excluded.
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |
@@ -11,12 +11,13 @@ Five independently installable Pi extensions for search, task management, subage
 | [pi-subagents-lean](packages/pi-subagents-lean/README.md) | `subagent` | Subagents and workflows |
 | [pi-goal-x-lean](packages/pi-goal-x-lean/README.md) | Original goal tools | Persistent goals, continuation and completion auditing |
 | [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, deletion propagation, orphan-session pruning, backups and diagnostics; configurable sessions/missions |
+| [amox-high-level](packages/amox-high-level/README.md) | No model tools; `/hl-*` commands | Display-only high-level summary cards with summary modes, thinking levels, history and a pi-starline menu |
 
 Minor adaptations let subagents and goal-x work together; see the [integration notes](packages/pi-goal-x-lean/MAINTENANCE.md#subagents-and-workflow-integration-boundaries).
 
 ## Installation
 
-Supports Linux, macOS and Windows. Requires Pi `>=1.1.0`, Node `>=22.19.0` and npm; `pi-goal-x-lean` requires Pi `>=1.4.0 <2.0.0`, and `amox-pi-sync` also needs Git and working SSH authentication. Install only the packages you need, without version pins:
+Supports Linux, macOS and Windows. Requires Pi `>=1.1.0`, Node `>=22.19.0` and npm; `pi-goal-x-lean` requires Pi `>=1.4.0 <2.0.0`, `amox-pi-sync` also needs Git and working SSH authentication, and `amox-high-level` requires Pi `>=1.6.0`. Install only the packages you need, without version pins:
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean
@@ -24,6 +25,7 @@ pi install npm:@gfgghgftgffg/rpiv-todo-lean
 pi install npm:@gfgghgftgffg/pi-subagents-lean
 pi install npm:@gfgghgftgffg/pi-goal-x-lean
 pi install npm:@gfgghgftgffg/amox-pi-sync
+pi install npm:@gfgghgftgffg/amox-high-level
 pi update --extensions
 ```
 
@@ -39,6 +41,7 @@ node scripts/install-extension.mjs rpiv-todo-lean
 node scripts/install-extension.mjs pi-subagents-lean
 node scripts/install-extension.mjs pi-goal-x-lean
 node scripts/install-extension.mjs amox-pi-sync
+node scripts/install-extension.mjs amox-high-level
 ```
 
 Goal works alone; for subagents integration, install or update both npm packages. See the [goal README](packages/pi-goal-x-lean/README.md).
@@ -58,5 +61,7 @@ Based on kunkun9527's [web](https://github.com/kunkun9527/pi-web-access-lean), [
 `pi-goal-x-lean` is an original facade over [tmonk/pi-goal-x](https://github.com/tmonk/pi-goal-x), retaining the upstream runtime as an exact dependency.
 
 `amox-pi-sync` is a standalone fork of [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), based on MIT `pi-sync-suite@0.1.1` (ref: `npm:pi-sync-suite@0.1.1`), retaining Copyright (c) 2026 Murat. It does not install the original suite; do not load both. Synced data may contain secrets: use a private SSH repository and review the package's safety limits.
+
+`amox-high-level` is a self-maintained derivative of [z472421519/pi-high-level](https://github.com/z472421519/pi-high-level), retaining the original MIT copyright and design attribution.
 
 License: [MIT](LICENSE).

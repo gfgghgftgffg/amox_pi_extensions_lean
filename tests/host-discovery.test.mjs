@@ -99,6 +99,6 @@ test("Task Router ext: selector identity is unchanged by the monorepo bundle", a
       names.includes(expected),
       `${entryPath} must keep canonical name ${expected}; got ${JSON.stringify(names)}`,
     );
-    assert.ok(names.every((name) => /^(?:pi-|rpiv-|amox-pi-)/.test(name)));
+    assert.ok(names.every((name) => /^(?:pi-|rpiv-|amox-)/.test(name)));
   }
 });

@@ -54,7 +54,7 @@ test("no lifecycle hooks anywhere in the workspace tree", () => {
 test("workspace package metadata matches maintenance/manifest.json", () => {
   assert.equal(manifest.schemaVersion, 1);
   assert.doesNotThrow(() => workspaceVersions(repoRoot));
-  assert.equal(workspacePackages.length, 5);
+  assert.equal(workspacePackages.length, 6);
   for (const { entry, dir, pkg } of workspacePackages) {
     assert.equal(entry.id, entry.path.split("/").pop());
     assert.equal(pkg.name, entry.packageName);
@@ -64,18 +64,24 @@ test("workspace package metadata matches maintenance/manifest.json", () => {
     assert.equal(pkg.repository.directory, entry.path);
     assert.match(pkg.repository.url, /gfgghgftgffg\/amox_pi_extensions_lean\.git/);
     if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) {
-      assert.equal(entry.id, "amox-pi-sync");
       assert.match(entry.version, /^0\.1\.\d+$/);
       assert.equal(entry.releaseVersioning, "independent");
       assert.equal(entry.toolContract, false);
       assert.deepEqual(entry.registeredTools, []);
-      assert.equal(entry.upstreamRef, "npm:pi-sync-suite@0.1.1");
-      assert.equal(entry.upstreamRepository, "https://github.com/MuratAitov/pi-sync.git");
       assert.deepEqual(pkg.dependencies, {});
       assert.ok(pkg.files.includes("core.ts"));
-      assert.equal(entry.maintenanceMode, "selective-fork");
       assert.deepEqual(entry.sourceFiles, ["index.ts", "core.ts"]);
-      assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
+      if (entry.id === "amox-pi-sync") {
+        assert.equal(entry.upstreamRef, "npm:pi-sync-suite@0.1.1");
+        assert.equal(entry.upstreamRepository, "https://github.com/MuratAitov/pi-sync.git");
+        assert.equal(entry.maintenanceMode, "selective-fork");
+        assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2026 Murat/);
+      } else {
+        assert.equal(entry.id, "amox-high-level");
+        assert.equal(entry.maintenanceMode, "manual-fork");
+        assert.equal(entry.upstreamRepository, "https://github.com/z472421519/pi-high-level.git");
+        assert.match(readFileSync(join(dir, "LICENSE"), "utf8"), /Copyright \(c\) 2025 z472421519/);
+      }
     } else {
       if (entry.maintenanceMode === "original-facade") {
         assert.equal(entry.id, "pi-goal-x-lean");
@@ -136,7 +142,9 @@ test("each workspace packs its own entrypoint, LICENSE and maintenance records o
       assert.ok(files.includes(path), `packed tarball is missing ${path}`);
     }
     for (const path of entry.sourceFiles ?? []) assert.ok(files.includes(path), `packed tarball is missing declared source ${path}`);
-    if (pkg.name === "@gfgghgftgffg/amox-pi-sync") assert.ok(files.includes("core.ts"), "sync tarball must include its standalone core");
+    if (["manual-fork", "selective-fork"].includes(entry.maintenanceMode)) {
+      assert.ok(files.includes("core.ts"), `${entry.id} tarball must include its standalone core`);
+    }
     assert.ok(!files.some((path) => path.startsWith("packages/") || path.startsWith("node_modules/")));
   }
 });

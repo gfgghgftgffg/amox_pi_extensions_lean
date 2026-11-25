@@ -157,7 +157,7 @@ test("selected manual sync fork verifies core.ts at its own version and still re
     const validate = (selected = entry) => validateNpmArchive({ repoRoot: fixture.root, entry: selected, asset, version: "0.1.0", repository });
     assert.equal(validate().version, "0.1.0");
     assert.throws(() => validate({ ...entry, maintenanceMode: undefined }), /Unexpected npm archive path/);
-    assert.throws(() => validate({ ...entry, id: "another-manual-fork" }), /Unexpected npm archive path/);
+    assert.equal(validate({ ...entry, id: "another-manual-fork" }).version, "0.1.0");
     const tar = gunzipSync(bytes), core = readFileSync(join(fixture.root, entry.path, "core.ts"));
     const offset = tar.indexOf(core); assert.ok(offset >= 0); tar[offset] ^= 1;
     writeFileSync(packed.archive, gzipSync(tar));

@@ -2,7 +2,7 @@
 
 [简体中文](npm-publishing.zh-CN.md)
 
-The repository contains five independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC. Check the corresponding Release's npm job and public npm metadata for package availability. New packages must complete the first-publication setup below before OIDC publication.
+The repository contains six independent extension packages. [Release](../.github/workflows/release.yml) publishes selected, verified GitHub Release archives to public npm through OIDC. Check the corresponding Release's npm job and public npm metadata for package availability. New packages must complete the first-publication setup below before OIDC publication.
 
 ## Independent package releases
 
@@ -12,7 +12,7 @@ Local checks, exact-head three-platform PR CI and independent Release verificati
 
 ## Publishing configuration
 
-Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, `@gfgghgftgffg/pi-subagents-lean`, `@gfgghgftgffg/pi-goal-x-lean`, and `@gfgghgftgffg/amox-pi-sync`.
+Each package needs its own npm Trusted Publisher: `@gfgghgftgffg/pi-web-access-lean`, `@gfgghgftgffg/rpiv-todo-lean`, `@gfgghgftgffg/pi-subagents-lean`, `@gfgghgftgffg/pi-goal-x-lean`, `@gfgghgftgffg/amox-pi-sync`, and `@gfgghgftgffg/amox-high-level`.
 
 | Field | Value |
 | --- | --- |

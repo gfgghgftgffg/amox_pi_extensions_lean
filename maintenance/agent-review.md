@@ -1,5 +1,13 @@
 # Source review
 
+## amox-high-level initial integration
+
+- Added `packages/amox-high-level` as an independently versioned, manually maintained derivative of `z472421519/pi-high-level` at `4bad8dbd4368ed4fd18c3ad6089f06aa6eff147d`. The package credits the original author and keeps the original MIT license.
+- Feature scope: manual/auto/minimum-character/minimum-line summary modes, summary thinking levels, session history that opens when empty, inline prompts, a pi-starline status menu, and an opt-out native fallback menu. Summary cards remain display-only and stay out of later model context.
+- The package has no model tools, so `toolContract` is false and it does not participate in tool-character contracts or automatic upstream porting. Existing `/hl-*` commands and `pi-high-level.json` config path are retained.
+- Release configuration is independent; this integration does not select the package for the current release batch.
+- Verification covers package typecheck, package tests, workspace metadata, packing, release-asset validation, and the repository test suite.
+
 ## pi-goal-x 0.34.2 → 0.35.1
 
 - Compared the SHA-512-recorded npm publication pair in `sources.json`, not repository HEAD `073277b199a48e1fedf28b0cb54ce26cc7eb62cf`. No published changelog was supplied; evidence comes from the manifests, source and packaged documentation. No lean-author movement. Web and todo Git HEADs are not staged releases; subagents stays pinned and participates in joint validation. Sync has no source delta or fork decision; no port or baseline change.

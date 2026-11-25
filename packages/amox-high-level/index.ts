@@ -452,7 +452,8 @@ export default function (pi: ExtensionAPI) {
 				},
 				{
 					reasoning: thinking === "off" ? undefined : thinking,
-					toolChoice: "none",
+					// Some Codex Responses routes reject an explicit "none" without tool definitions.
+					toolChoice: model.api === "openai-codex-responses" ? undefined : "none",
 					cacheRetention: "none",
 					maxTokens: summaryMaxTokens(thinking, (model as ModelLike).maxTokens),
 					disableContinuation: true,

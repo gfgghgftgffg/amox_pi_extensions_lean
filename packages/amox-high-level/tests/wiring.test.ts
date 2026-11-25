@@ -88,7 +88,7 @@ function context(
 	overrides: Partial<ExtensionContext> & {
 		branch?: unknown[];
 		summaryLines?: string;
-		availableModels?: { provider: string; id: string; authed?: boolean }[];
+		availableModels?: { provider: string; id: string; api?: string; authed?: boolean }[];
 	} = {},
 ) {
 	const notices: string[] = [];
@@ -227,6 +227,7 @@ test(
 		assert.equal(ctx.streamCalls[0]?.model.id, "claude-haiku-4-5");
 		assert.equal(ctx.streamCalls[0]?.options.reasoning, "minimal");
 		assert.equal(ctx.streamCalls[0]?.options.cacheRetention, "none");
+		assert.equal(ctx.streamCalls[0]?.options.toolChoice, "none");
 		assert.equal(ctx.streamCalls[0]?.options.maxTokens, 1_344);
 		assert.ok(ctx.streamCalls[0]?.options.signal instanceof AbortSignal);
 		assert.match(ctx.streamCalls[0]?.prompt ?? "", /<question>\nHow did we improve pi-high-level\?\n<\/question>/);
@@ -488,6 +489,19 @@ test(
 		(ctx.ui as any).select = async () => choices.shift();
 		await commands.get("hl-settings")?.handler("", ctx);
 		assert.equal(JSON.parse(fs.readFileSync(file, "utf8")).prompt, DEFAULT_SUMMARY_PROMPT);
+	}),
+);
+
+test(
+	"Codex Responses summaries leave tool choice at the SDK default",
+	withTempAgentDir(async () => {
+		const model = { provider: "sub2api-mixed", id: "k3.1-pro", api: "openai-codex-responses" };
+		const { commands } = install({ "hl-model": "sub2api-mixed/k3.1-pro" });
+		const ctx = context({ availableModels: [model] });
+
+		await commands.get("hl")?.handler("", ctx);
+		assert.deepEqual(ctx.streamCalls[0]?.model, model);
+		assert.equal(ctx.streamCalls[0]?.options.toolChoice, undefined);
 	}),
 );
 

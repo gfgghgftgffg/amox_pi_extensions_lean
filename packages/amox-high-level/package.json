@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/amox-high-level",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "High-level summary cards for Pi with summary modes, thinking levels, history, and a pi-starline menu.",
   "license": "MIT",

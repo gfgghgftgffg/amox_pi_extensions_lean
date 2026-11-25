@@ -103,7 +103,7 @@
       "id": "amox-high-level",
       "path": "packages/amox-high-level",
       "packageName": "@gfgghgftgffg/amox-high-level",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "entry": "index.ts",
       "upstreamPackage": "pi-high-level",
       "upstreamRepository": "https://github.com/z472421519/pi-high-level.git",

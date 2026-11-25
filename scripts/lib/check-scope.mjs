@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, posix } from "node:path";
 import { isDeepStrictEqual as equal } from "node:util";
 import { HEX40, readJson } from "./files.mjs";
-import { releaseEntries, workspaceVersions } from "./package-selection.mjs";
+import { workspaceVersions } from "./package-selection.mjs";
 import { compareExactStableVersions } from "./semver.mjs";
 
 function withoutVersion(value) { const copy = structuredClone(value); delete copy.version; return copy; }
@@ -80,45 +80,35 @@ function git(repoRoot, args) {
   return execFileSync("git", ["-C", repoRoot, "-c", "core.hooksPath=/dev/null", ...args], { encoding: "utf8", maxBuffer: 20_000_000, stdio: ["ignore", "pipe", "pipe"] });
 }
 
+// Every package is released on its own version, so a version increase is the
+// release request. A published file may only change together with such an
+// increase; otherwise the change would never reach npm.
 export function validateReleaseChanges(repoRoot, baseRef) {
-  const { root, manifest } = workspaceVersions(repoRoot);
-  const previousRoot = JSON.parse(git(repoRoot, ["show", `${baseRef}:package.json`]));
-  const comparison = compareExactStableVersions(root.version, previousRoot.version);
-  if (comparison < 0) throw new Error("Refusing release batch downgrade");
-  if (comparison === 0) return;
-  const selected = releaseEntries(repoRoot);
-  if (manifest.release?.baseCommit !== baseRef) throw new Error("Release selection base does not match the verified comparison");
-  const bumped = [];
+  const { manifest } = workspaceVersions(repoRoot);
   const previousFiles = new Set(git(repoRoot, ["ls-tree", "-r", "--name-only", baseRef]).trim().split(/\r?\n/));
   for (const entry of manifest.packages) {
-    if (!previousFiles.has(`${entry.path}/package.json`)) {
-      // An initial stable version is a release candidate even without a prior
-      // package version; the exact selection check below must include it.
-      bumped.push(entry.id);
-      continue;
-    }
+    // A package added after the comparison base has no previous version and
+    // publishes its initial version when its first tag is created.
+    if (!previousFiles.has(`${entry.path}/package.json`)) continue;
     const previous = JSON.parse(git(repoRoot, ["show", `${baseRef}:${entry.path}/package.json`]));
     const change = compareExactStableVersions(entry.version, previous.version);
     if (change < 0) throw new Error(`Refusing npm version downgrade: ${entry.id}`);
-    if (change > 0) bumped.push(entry.id);
-    if (!selected.some((item) => item.id === entry.id)) {
-      const current = readJson(join(repoRoot, entry.path, "package.json"));
-      // Check both published source lists before metadata so removing a files
-      // entry cannot hide a changed or deleted source from the comparison base.
-      const sources = [...new Set([...(previous.files ?? []), ...(current.files ?? [])])]
-        .filter((file) => typeof file === "string" && file.endsWith(".ts")
-          && (previousFiles.has(`${entry.path}/${file}`) || existsSync(join(repoRoot, entry.path, file))));
-      const files = new Set([...sources, "package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"]);
-      if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.add("core.ts");
-      for (const file of files) {
-        if (!previousFiles.has(`${entry.path}/${file}`) || !existsSync(join(repoRoot, entry.path, file))
-          || git(repoRoot, ["show", `${baseRef}:${entry.path}/${file}`]) !== readFileSync(join(repoRoot, entry.path, file), "utf8")) {
-          throw new Error(`Unselected published package changed: ${entry.id}/${file}`);
-        }
+    if (change > 0) continue;
+    const current = readJson(join(repoRoot, entry.path, "package.json"));
+    // Check both published source lists before metadata so removing a files
+    // entry cannot hide a changed or deleted source from the comparison base.
+    const sources = [...new Set([...(previous.files ?? []), ...(current.files ?? [])])]
+      .filter((file) => typeof file === "string" && file.endsWith(".ts")
+        && (previousFiles.has(`${entry.path}/${file}`) || existsSync(join(repoRoot, entry.path, file))));
+    const files = new Set([...sources, "package.json", "index.ts", "LICENSE", "README.md", "README.zh-CN.md", "MAINTENANCE.md"]);
+    if (previousFiles.has(`${entry.path}/core.ts`) || existsSync(join(repoRoot, entry.path, "core.ts"))) files.add("core.ts");
+    for (const file of files) {
+      if (!previousFiles.has(`${entry.path}/${file}`) || !existsSync(join(repoRoot, entry.path, file))
+        || git(repoRoot, ["show", `${baseRef}:${entry.path}/${file}`]) !== readFileSync(join(repoRoot, entry.path, file), "utf8")) {
+        throw new Error(`Published package changed without a version bump: ${entry.id}/${file}`);
       }
     }
   }
-  if (!equal([...bumped].sort(), selected.map((entry) => entry.id).sort())) throw new Error("Release selection must exactly match independently bumped packages");
 }
 
 export function loadCheckScope(repoRoot, baseRef) {

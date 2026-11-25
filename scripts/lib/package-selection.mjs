@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { readJson, HEX40 } from "./files.mjs";
+import { readJson } from "./files.mjs";
 import { isExactStableVersion } from "./semver.mjs";
 
 export function selectEntries(entries, ids) {
@@ -36,12 +36,14 @@ export function maintenancePackageIds(plan) {
   ])];
 }
 
+// The private root is maintenance-only: its version never identifies a release.
+// Every package is released on its own `<packageName>@<version>` tag.
 export function workspaceVersions(repoRoot) {
   const root = readJson(join(repoRoot, "package.json"));
   const manifest = readJson(join(repoRoot, "maintenance/manifest.json"));
   const lock = readJson(join(repoRoot, "package-lock.json"));
-  if (root.private !== true || !isExactStableVersion(root.version)) throw new Error("Invalid private release-batch root");
-  if (lock.version !== root.version || lock.packages?.[""]?.version !== root.version) throw new Error("Release-batch lockfile version mismatch");
+  if (root.private !== true || !isExactStableVersion(root.version)) throw new Error("Invalid private workspace root");
+  if (lock.version !== root.version || lock.packages?.[""]?.version !== root.version) throw new Error("Root lockfile version mismatch");
   for (const entry of manifest.packages) {
     const pkg = readJson(join(repoRoot, entry.path, "package.json"));
     if (!isExactStableVersion(entry.version) || pkg.version !== entry.version || pkg.name !== entry.packageName
@@ -50,18 +52,4 @@ export function workspaceVersions(repoRoot) {
     }
   }
   return { root, manifest };
-}
-
-// Root version/tag identifies a GitHub release batch, not every npm version.
-// Existing uniform releases remain readable; independent releases require an
-// explicit, immutable selection in the protected maintenance manifest.
-export function releaseEntries(repoRoot) {
-  const { root, manifest } = workspaceVersions(repoRoot);
-  const release = manifest.release;
-  if (release === undefined) {
-    if (manifest.packages.some((entry) => entry.version !== root.version)) throw new Error("Independent package versions require an explicit release selection");
-    return manifest.packages;
-  }
-  if (release.version !== root.version || !HEX40.test(release.baseCommit ?? "") || !Array.isArray(release.packageIds)) throw new Error("Invalid release batch version/base");
-  return selectEntries(manifest.packages, release.packageIds);
 }

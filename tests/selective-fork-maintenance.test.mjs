@@ -266,7 +266,7 @@ test("owner decision notification includes version delta, rationale and files wi
   const pending = await completion({ status: "fork-decision-required", forkReviews: [report] }, "success");
   assert.equal(pending.title, "需你决定"); assert.equal(pending.needsDecision, true); assert.equal(pending.failed, undefined);
   assert.match(pending.reason, /0\.1\.1 → 0\.1\.2/); assert.match(pending.reason, /core\.ts/); assert.match(pending.reason, /fork-review-amox-pi-sync\.json/);
-  const merged = { status: "merged-after-ci", mergeSha: "a".repeat(40), version: "0.1.17", forkReviews: [report] };
+  const merged = { status: "merged-after-ci", mergeSha: "a".repeat(40), packages: [{ name: fork.packageName, version: "0.1.17" }], forkReviews: [report] };
   let queried = 0;
   const api = { request: async path => { queried++; return path.includes("/jobs?") ? { jobs: [] } : { workflow_runs: [{ head_sha: merged.mergeSha, event: "push", head_branch: "main", status: "completed", conclusion: "success", id: 1 }] }; } };
   const failed = await completion(merged, "success", { api });

@@ -31,7 +31,7 @@ pi update --extensions
 
 See each package README for service credentials and configuration.
 
-For source or fixed-tag installation, use Git and run only the required per-extension installers; root `npm ci` is not needed:
+For source installation, or to install one exact release, use Git and run only that extension's installer; root `npm ci` is not needed. Each extension has its own release tag, `<packageName>@<version>`, so check out that tag first (for example `git checkout '@gfgghgftgffg/pi-goal-x-lean@0.1.4'`):
 
 ```bash
 git clone https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git

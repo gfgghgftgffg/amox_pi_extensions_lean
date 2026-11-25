@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import { gunzipSync } from "node:zlib";
 import { isDeepStrictEqual } from "node:util";
 import { setTimeout as delay } from "node:timers/promises";
-import { validateReleaseAssets } from "./release-assets.mjs";
+import { parseReleaseList, validateReleaseAssets } from "./release-assets.mjs";
 import { packageEntries } from "./lib/extension-package.mjs";
 import { readJson } from "./lib/files.mjs";
 import { validateReleaseContext } from "./lib/release-validation.mjs";
@@ -101,12 +101,11 @@ export function publishArchive(path, spawn = spawnSync) {
   }
 }
 
-export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = true, fetchImpl = fetch, publish = publishArchive, log = console.log }) {
+export async function publishNpmArchives({ repoRoot, dir, repository, releases = parseReleaseList(process.env.RELEASES), dryRun = true, fetchImpl = fetch, publish = publishArchive, log = console.log }) {
   const rootPackage = readJson(resolve(repoRoot, "package.json"));
   if (rootPackage.private !== true) throw new Error("Workspace root must remain private");
-  const version = rootPackage.version;
   const entries = packageEntries(repoRoot);
-  const assets = validateReleaseAssets({ repoRoot, dir });
+  const assets = validateReleaseAssets({ repoRoot, dir, releases });
   // Validate every archive and preflight every registry identity before the
   // first write. Known conflicts/first-publication setup cannot half-publish.
   for (const asset of assets) {
@@ -143,7 +142,7 @@ export async function publishNpmArchives({ repoRoot, dir, repository, dryRun = t
     await waitForPublishedArchive({ asset, version: asset.version, fetchImpl, log, timeoutMs: Math.max(0, deadline - Date.now()) });
     log(`Published and registry integrity verified: ${asset.package}@${asset.version}`);
   }
-  return { version, packages: assets.map((asset) => asset.package), dryRun };
+  return { releases: releases.map((release) => release.tag), packages: assets.map((asset) => asset.package), dryRun };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -153,8 +152,9 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       || (args.includes("--publish") && args.includes("--dry-run"))) throw new Error("Usage: node scripts/publish-npm.mjs --assets-dir DIR [--dry-run | --publish]");
     const repoRoot = process.cwd(), dryRun = !args.includes("--publish");
     const headSha = spawnSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).stdout?.trim();
-    const errors = validateReleaseContext({ tag: process.env.RELEASE_TAG, packageVersion: readJson(resolve(repoRoot, "package.json")).version,
-      expectedSha: process.env.EXPECTED_SHA, headSha });
+    const releases = parseReleaseList(process.env.RELEASES);
+    const manifest = readJson(resolve(repoRoot, "maintenance/manifest.json"));
+    const errors = validateReleaseContext({ releases, expectedSha: process.env.EXPECTED_SHA, headSha, packages: manifest.packages });
     if (errors.length) throw new Error(errors.join("; "));
     if (!/^[-\w.]+\/[-\w.]+(?![\s\S])/.test(process.env.GITHUB_REPOSITORY || "")) throw new Error("Missing/invalid repository identity");
     if (!dryRun && (process.env.GITHUB_ACTIONS !== "true" || process.env.GITHUB_REF !== "refs/heads/main"

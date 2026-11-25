@@ -31,7 +31,7 @@ pi update --extensions
 
 服务凭据和配置见各包 README。
 
-需要从源码或固定 tag 安装时，使用 Git，按需执行各扩展的安装脚本；不需要根目录 `npm ci`：
+需要从源码安装，或安装某个精确版本时，使用 Git 并只执行该扩展的安装脚本；不需要根目录 `npm ci`。每个扩展有自己的发布 tag `<包名>@<版本>`，先检出对应 tag（例如 `git checkout '@gfgghgftgffg/pi-goal-x-lean@0.1.4'`）：
 
 ```bash
 git clone https://github.com/gfgghgftgffg/amox_pi_extensions_lean.git

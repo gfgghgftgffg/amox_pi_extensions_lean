@@ -9,7 +9,7 @@ import { validateNpmArchive } from "../scripts/publish-npm.mjs";
 import { releaseFixture } from "./helpers/package-release-fixture.mjs";
 
 test("goal publication verifies both declared helper sources and rejects missing, undeclared or modified helpers", () => {
-  const fixture = releaseFixture({ batchVersion: "9.0.0", versions: { "pi-goal-x-lean": "0.1.0" }, packageIds: ["pi-goal-x-lean"] });
+  const fixture = releaseFixture({ versions: { "pi-goal-x-lean": "0.1.0" } });
   const dir = mkdtempSync(join(tmpdir(), "amox-goal-publication-"));
   try {
     const entry = fixture.manifest.packages.find(item => item.id === "pi-goal-x-lean");

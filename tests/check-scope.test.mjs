@@ -58,54 +58,61 @@ test("contract changes select their owner; shared contract format changes requir
   } finally { f.cleanup(); }
 });
 
-function bumpWeb(f, base) {
-  const root = f.read("package.json"); root.version = "9.0.0"; f.write("package.json", root);
+function bumpWeb(f) {
   const manifest = f.read("maintenance/manifest.json"); manifest.packages.find((entry) => entry.id === web).version = "1.0.1";
-  manifest.release = { version: root.version, baseCommit: base, packageIds: [web] }; f.write("maintenance/manifest.json", manifest);
+  f.write("maintenance/manifest.json", manifest);
   const pkg = f.read(`packages/${web}/package.json`); pkg.version = "1.0.1"; f.write(`packages/${web}/package.json`, pkg);
-  const lock = f.read("package-lock.json"); lock.version = root.version; lock.packages[""].version = root.version; lock.packages[`packages/${web}`].version = pkg.version; f.write("package-lock.json", lock);
+  const lock = f.read("package-lock.json"); lock.packages[`packages/${web}`].version = pkg.version; f.write("package-lock.json", lock);
   const snapshot = f.read("maintenance/tool-contracts.json"); snapshot.lean[pkg.name].version = pkg.version; f.write("maintenance/tool-contracts.json", snapshot);
   f.write(`packages/${web}/index.ts`, readFileSync(join(f.root, `packages/${web}/index.ts`), "utf8") + "\n// fixture change\n");
 }
 
-test("exact-base integration scopes a single independent release and rejects omitted or unversioned package changes", () => {
+test("exact-base integration scopes a single independent release and rejects unversioned published changes", () => {
   const f = releaseFixture();
   try {
-    const base = f.commit(); bumpWeb(f, base);
+    const base = f.commit(); bumpWeb(f);
     assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
     assert.deepEqual(loadCheckScope(f.root, base).packageIds, [web]);
     assert.equal(loadCheckScope(f.root, base).full, false);
     assert.equal(loadCheckScope(f.root, undefined).full, true);
     assert.equal(loadCheckScope(f.root, "0".repeat(40)).full, true);
     const path = `packages/${todo}/README.md`, original = readFileSync(join(f.root, path), "utf8");
-    f.write(path, original + "\nUnselected published change\n");
-    assert.throws(() => loadCheckScope(f.root, base), /Unselected published package changed/);
+    f.write(path, original + "\nPublished change without a bump\n");
+    assert.throws(() => loadCheckScope(f.root, base), /Published package changed without a version bump: rpiv-todo-lean\/README\.md/);
     f.write(path, original);
-    const manifest = f.read("maintenance/manifest.json"); manifest.release.packageIds = [web, sub]; f.write("maintenance/manifest.json", manifest);
-    assert.throws(() => validateReleaseChanges(f.root, base), /exactly match/);
-    manifest.release.packageIds = [web]; manifest.release.baseCommit = "a".repeat(40); f.write("maintenance/manifest.json", manifest);
-    assert.throws(() => validateReleaseChanges(f.root, base), /base/);
+    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
   } finally { f.cleanup(); }
 });
 
-test("release planning binds automatic and manual batches to the same independent version selection", () => {
+test("release planning derives per-package candidates from their own tags, not a repository version", () => {
   const f = releaseFixture();
   try {
-    const base = f.commit(); bumpWeb(f, base);
+    const base = f.commit();
+    f.git(["tag", "v0.1.0"]);
+    bumpWeb(f); f.git(["add", "."]); f.git(["commit", "--quiet", "-m", "bump web"]);
     const script = fileURLToPath(new URL("../scripts/release-plan.mjs", import.meta.url));
-    const invoke = (event) => run(process.execPath, [script, "--run"], { cwd: f.root,
-      env: { ...process.env, GITHUB_EVENT_NAME: event, RELEASE_BEFORE_SHA: base, RELEASE_TAG: "v9.0.0", GITHUB_OUTPUT: "" } });
-    for (const event of ["push", "workflow_dispatch"]) {
-      const result = invoke(event); assert.equal(result.status, 0, result.stderr);
-      assert.match(result.stdout, /should_release=true/); assert.match(result.stdout, /tag=v9\.0\.0/);
-      assert.ok(result.stdout.includes(`base_sha=${base}`));
-    }
-    const manifest = f.read("maintenance/manifest.json"); manifest.release.packageIds = [web, todo]; f.write("maintenance/manifest.json", manifest);
-    assert.notEqual(invoke("push").status, 0); assert.notEqual(invoke("workflow_dispatch").status, 0);
+    const invoke = (event, requestedTag) => run(process.execPath, [script, "--run"], { cwd: f.root,
+      env: { ...process.env, GITHUB_EVENT_NAME: event, RELEASE_BEFORE_SHA: base, RELEASE_TAG: requestedTag ?? "", GITHUB_OUTPUT: "" } });
+    const webTag = `@gfgghgftgffg/${web}@1.0.1`;
+    const push = invoke("push"); assert.equal(push.status, 0, push.stderr);
+    assert.match(push.stdout, /should_release=true/);
+    assert.ok(push.stdout.includes(`"tag":"${webTag}"`), push.stdout);
+    assert.ok(push.stdout.includes(`base_sha=${base}`));
+    const manual = invoke("workflow_dispatch", webTag); assert.equal(manual.status, 0, manual.stderr);
+    assert.match(manual.stdout, /should_release=true/);
+    // After the tag exists this version is released: no candidate, and a manual
+    // request for the same tag is refused.
+    f.git(["tag", webTag]);
+    const released = invoke("push"); assert.equal(released.status, 0, released.stderr);
+    assert.match(released.stdout, /should_release=false/);
+    assert.notEqual(invoke("workflow_dispatch", webTag).status, 0);
+    // Without fetched tags nothing can be planned safely.
+    f.git(["tag", "-d", webTag]); f.git(["tag", "-d", "v0.1.0"]);
+    assert.notEqual(invoke("push").status, 0);
   } finally { f.cleanup(); }
 });
 
-test("new independently versioned packages must be selected when the release base predates them", () => {
+test("a package added after the comparison base is exempt from the previous-version check", () => {
   const f = releaseFixture();
   try {
     f.commit();
@@ -118,34 +125,24 @@ test("new independently versioned packages must be selected when the release bas
     f.git(["add", "."]); f.git(["commit", "--quiet", "-m", "base without sync"]);
     const base = f.git(["rev-parse", "HEAD"]);
     f.git(["checkout", "HEAD~1", "--", "."]);
-    // A normal push with an unchanged root version is not a release batch.
-    assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
-    const root = f.read("package.json"); root.version = "9.0.0"; f.write("package.json", root);
-    const lock = f.read("package-lock.json"); lock.version = root.version; lock.packages[""].version = root.version;
-    lock.packages[sync.path].version = "0.1.0"; f.write("package-lock.json", lock);
-    const pkg = f.read(`${sync.path}/package.json`); pkg.version = "0.1.0"; f.write(`${sync.path}/package.json`, pkg);
-    const manifest = f.read("maintenance/manifest.json"); manifest.packages.find((entry) => entry.id === sync.id).version = pkg.version;
-    manifest.release = { version: root.version, baseCommit: base, packageIds: [sync.id] }; f.write("maintenance/manifest.json", manifest);
     assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
     assert.equal(loadCheckScope(f.root, base).full, true);
-    manifest.release.packageIds = [web]; f.write("maintenance/manifest.json", manifest);
-    assert.throws(() => validateReleaseChanges(f.root, base), /exactly match/);
   } finally { f.cleanup(); }
 });
 
 test("unselected core.ts cannot be changed, removed or newly added", () => {
   const f = releaseFixture();
   try {
-    const base = f.commit(); bumpWeb(f, base);
+    const base = f.commit(); bumpWeb(f);
     const path = "packages/amox-pi-sync/core.ts", original = readFileSync(join(f.root, path), "utf8");
     f.write(path, original + "\n// unselected change\n");
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/core\.ts/);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Published package changed without a version bump: amox-pi-sync\/core\.ts/);
     f.git(["rm", "-f", path]);
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: amox-pi-sync\/core\.ts/);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Published package changed without a version bump: amox-pi-sync\/core\.ts/);
     f.write(path, original);
     assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
     f.write(`packages/${todo}/core.ts`, "// newly added published source\n");
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: rpiv-todo-lean\/core\.ts/);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Published package changed without a version bump: rpiv-todo-lean\/core\.ts/);
   } finally { f.cleanup(); }
 });
 
@@ -155,10 +152,10 @@ for (const helper of ["integration.ts", "delegation.ts"]) test(`unselected goal 
     for (const file of ["integration.ts", "delegation.ts"]) {
       f.write(`packages/${goal}/${file}`, readFileSync(new URL(`../packages/${goal}/${file}`, import.meta.url), "utf8"));
     }
-    const base = f.commit(); bumpWeb(f, base);
+    const base = f.commit(); bumpWeb(f);
     assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
     const path = `packages/${goal}/${helper}`, original = readFileSync(join(f.root, path), "utf8");
-    const changed = new RegExp(`Unselected published package changed: ${goal}/${helper.replace(".", "\\.")}$`);
+    const changed = new RegExp(`Published package changed without a version bump: ${goal}/${helper.replace(".", "\\.")}$`);
     f.write(path, original + "\n// unselected helper change\n");
     assert.throws(() => validateReleaseChanges(f.root, base), changed);
     const pkg = f.read(`packages/${goal}/package.json`), previous = structuredClone(pkg);
@@ -174,13 +171,13 @@ for (const helper of ["integration.ts", "delegation.ts"]) test(`unselected goal 
 test("unselected published TypeScript additions are checked without protecting arbitrary source files", () => {
   const f = releaseFixture(), goal = "pi-goal-x-lean";
   try {
-    const base = f.commit(); bumpWeb(f, base);
+    const base = f.commit(); bumpWeb(f);
     const helper = "support.ts", path = `packages/${goal}/${helper}`;
     f.write(path, "// not yet published\n");
     f.write(`packages/${goal}/tests/fixtures/private.ts`, "// unpublished fixture\n");
     assert.doesNotThrow(() => validateReleaseChanges(f.root, base));
     const pkg = f.read(`packages/${goal}/package.json`); pkg.files.push(helper); f.write(`packages/${goal}/package.json`, pkg);
-    assert.throws(() => validateReleaseChanges(f.root, base), /Unselected published package changed: pi-goal-x-lean\/support\.ts$/);
+    assert.throws(() => validateReleaseChanges(f.root, base), /Published package changed without a version bump: pi-goal-x-lean\/support\.ts$/);
   } finally { f.cleanup(); }
 });
 
@@ -233,7 +230,6 @@ test("goal/subagents daily gate captures and checks the ABI pair without expandi
   const { mkdirSync, rmSync, writeFileSync } = await import("node:fs");
   const { stageVersions } = await import("../scripts/local-maintenance.mjs");
   const { createCheckGate, protectedBaseline, validateLocalChanges } = await import("../scripts/lib/local-checks.mjs");
-  const { releaseEntries } = await import("../scripts/lib/package-selection.mjs");
   for (const selected of goalSubagentsPair) await t.test(selected, async () => {
     const f = releaseFixture(), scratch = `${f.root}-checks`;
     mkdirSync(scratch);
@@ -269,7 +265,7 @@ test("goal/subagents daily gate captures and checks the ABI pair without expandi
           return { ok: true };
         } });
       assert.deepEqual(staged.packageIds, [selected]);
-      assert.deepEqual(staged.manifest.release.packageIds, [selected]);
+      assert.deepEqual(staged.releases.map(release => release.id), [selected]);
       assert.deepEqual(loadCheckScope(f.root, base).packageIds, goalSubagentsPair);
       assert.equal(loadCheckScope(f.root, base).full, false);
       for (const workspace of workspaces.filter(workspace => workspace.id !== selected)) {
@@ -282,7 +278,7 @@ test("goal/subagents daily gate captures and checks the ABI pair without expandi
       const siblingSource = `packages/${sibling}/${sibling === goal ? "delegation.ts" : "index.ts"}`;
       const originalSource = readFileSync(join(f.root, siblingSource), "utf8");
       f.write(siblingSource, originalSource + "\n// unselected ABI repair\n");
-      assert.throws(() => loadCheckScope(f.root, base), /Unselected published package changed/);
+      assert.throws(() => loadCheckScope(f.root, base), /Published package changed without a version bump/);
       f.write(siblingSource, originalSource);
 
       f.write("maintenance/agent-review.md", "# Exact upstream source review\n");
@@ -313,7 +309,8 @@ test("goal/subagents daily gate captures and checks the ABI pair without expandi
       const passed = await gate.check(summary);
       assert.equal(passed.ok, true); assert.equal(passed.sha, candidate); assert.equal(gate.verified(), candidate);
       assert.deepEqual(calls.slice(1), checkCommands(loadCheckScope(f.root, base)));
-      assert.deepEqual(releaseEntries(f.root).map(entry => entry.id), [selected], "validation never adds a publish target");
+      assert.equal(staged.releases.length, 1, "one package tag is published");
+      assert.match(staged.releases[0].tag, new RegExp(`^@gfgghgftgffg/${selected}@1\\.0\\.1$`));
       assert.equal(f.git(["diff", "--name-only", base, "--", `packages/${sibling}`]), "", "sibling source, version and docs stay untouched");
     } finally { f.cleanup(); rmSync(scratch, { recursive: true, force: true }); }
   });

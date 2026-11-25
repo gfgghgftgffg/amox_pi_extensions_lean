@@ -55,7 +55,7 @@ async function baseCompletion(state, serviceResult, { api, now = Date.now, wait 
   if (state.status === "fork-skipped") return { title: "上游已审查", reason: "sync 上游变化仅涉及舍弃功能或无需移植的内容；未升版、未发布。" };
   if (state.status === "no-update") return { title: "无更新", reason: "未发现上游更新，未调用模型" };
   if (state.status === "pending-maintenance-pr") return { title: "跳过", reason: "已有待处理维护 PR，本次未调用模型" };
-  if (state.status !== "merged-after-ci" || !/^[a-f0-9]{40}$/.test(state.mergeSha || "") || !/^\d+\.\d+\.\d+$/.test(state.version || "")) return { title: "未发布", reason: "未确认发布完成", failed: true };
+  if (state.status !== "merged-after-ci" || !/^[a-f0-9]{40}$/.test(state.mergeSha || "") || !Array.isArray(state.packages) || !state.packages.length) return { title: "未发布", reason: "未确认发布完成", failed: true };
   const deadline = now() + timeoutMs;
   while (now() < deadline) {
     try {
@@ -66,7 +66,7 @@ async function baseCompletion(state, serviceResult, { api, now = Date.now, wait 
         if (run.conclusion !== "success") return { title: "发布失败", reason: "维护 PR 已合并，但 Release 未成功", failed: true, link };
         const { jobs } = await api.request(`/actions/runs/${run.id}/jobs?per_page=100`);
         const published = jobs.some(j => j.name === "Publish verified archives to npm (OIDC, no package hooks)" && j.conclusion === "success");
-        return published ? { title: "发布成功", reason: "Release 和 npm 发布 job 已成功（包含归档及 registry 验证）", link: `https://github.com/${repo}/releases/tag/v${state.version}` }
+        return published ? { title: "发布成功", reason: "Release 和 npm 发布 job 已成功（包含归档及 registry 验证）", link }
           : { title: "未发布", reason: "Release 未完成 npm 发布", failed: true, link };
       }
     } catch { /* Retry only read-only status checks; never rerun maintenance or publication. */ }
@@ -97,7 +97,7 @@ export async function send(config, state, result, fetchImpl = fetch, exec = exec
   const packages = (Array.isArray(state.packages) ? state.packages : []).filter(item =>
     /^@gfgghgftgffg\/(?:pi-web-access-lean|rpiv-todo-lean|pi-subagents-lean|pi-goal-x-lean|amox-pi-sync|amox-high-level)$/.test(item?.name ?? "")
     && /^\d+\.\d+\.\d+$/.test(item?.version ?? "")).slice(0, 5).map(item => `${item.name}@${item.version}`);
-  const fullMessage = [result.reason, /^\d+\.\d+\.\d+$/.test(state.version || "") ? `发布批次：${state.version}` : undefined, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
+  const fullMessage = [result.reason, ...packages, safeLink(state.pr), safeLink(state.ci), result.link].filter(Boolean).join("\n");
   let message = fullMessage;
   if (Buffer.byteLength(message, "utf8") > 3800) {
     const suffix = "\n（通知已截短，详见维护状态目录内的完整审查报告。）";

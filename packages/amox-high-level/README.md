@@ -1,5 +1,7 @@
 # amox-high-level
 
+[简体中文](README.zh-CN.md)
+
 High-level summary cards for Pi: turn a long reply into a compact card you can revisit, without adding it to the next turn's context.
 
 This project is a maintained derivative of [z472421519/pi-high-level](https://github.com/z472421519/pi-high-level). The original design and implementation are by z472421519; this version adds summary modes, thinking-level selection, history browsing, and a pi-starline status menu.

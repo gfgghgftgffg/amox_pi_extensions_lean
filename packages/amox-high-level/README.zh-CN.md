@@ -1,5 +1,7 @@
 # amox-high-level
 
+[English](README.md)
+
 为 Pi 提供高层总结卡片：把长回复压缩成一张可回看的卡片，同时不把摘要带进下一轮上下文。
 
 本项目基于 [z472421519/pi-high-level](https://github.com/z472421519/pi-high-level) 维护。原始设计与实现归 z472421519；本版本增加总结模式、思考等级、历史浏览和 pi-starline 状态菜单。

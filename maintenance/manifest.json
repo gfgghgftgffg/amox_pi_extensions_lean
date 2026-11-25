@@ -56,7 +56,7 @@
       "id": "pi-goal-x-lean",
       "path": "packages/pi-goal-x-lean",
       "packageName": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "entry": "index.ts",
       "maintenanceMode": "original-facade",
       "sourceFiles": [
@@ -66,10 +66,10 @@
       ],
       "upstreamPackage": "pi-goal-x",
       "upstreamEntry": "extensions/goal.ts",
-      "upstreamVersion": "0.34.2",
+      "upstreamVersion": "0.35.1",
       "upstreamRepository": "https://github.com/tmonk/pi-goal-x.git",
       "upstreamSource": "npm",
-      "upstreamRef": "npm:pi-goal-x@0.34.2",
+      "upstreamRef": "npm:pi-goal-x@0.35.1",
       "registeredTools": [
         "get_goal",
         "create_goal",
@@ -101,10 +101,10 @@
     }
   ],
   "release": {
-    "version": "0.1.42",
-    "baseCommit": "7044cb0813f1f22bdf77edc6535826f1f836e988",
+    "version": "0.1.43",
+    "baseCommit": "2a363b8b071c93414dfc542da953737e7579715e",
     "packageIds": [
-      "amox-pi-sync"
+      "pi-goal-x-lean"
     ]
   }
 }

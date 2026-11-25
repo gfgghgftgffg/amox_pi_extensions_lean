@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 import type { EntryRenderOptions, ExtensionAPI, ExtensionContext, Theme } from "@earendil-works/pi-coding-agent";
 import { visibleWidth } from "@earendil-works/pi-tui";
-import { HIGH_LEVEL_ENTRY, type HighLevelCard } from "../core.ts";
+import { DEFAULT_SUMMARY_PROMPT, HIGH_LEVEL_ENTRY, type HighLevelCard } from "../core.ts";
 import extension from "../index.ts";
 
 type Handler = (event: never, ctx: ExtensionContext) => Promise<unknown> | unknown;
@@ -448,6 +448,46 @@ test(
 		);
 		assert.equal(ctx.calls, 1);
 		assert.equal((settled as { entries: { data: HighLevelCard }[] }).entries[0]?.data.trigger, "auto");
+	}),
+);
+
+test(
+	"session startup creates the default config and backfills the prompt in legacy configs",
+	withTempAgentDir(async (dir) => {
+		const { handlers } = install();
+		const ctx = context({ mode: "tui" });
+		const file = path.join(dir, "pi-high-level.json");
+		const start = () => handlers.get("session_start")?.({ reason: "startup" } as never, ctx);
+		await start();
+		assert.equal(JSON.parse(fs.readFileSync(file, "utf8")).prompt, DEFAULT_SUMMARY_PROMPT);
+
+		const legacy = { model: "auto", auto: { enabled: true, minChars: 700 }, fallbackMenu: false };
+		fs.writeFileSync(file, JSON.stringify(legacy));
+		await start();
+		assert.deepEqual(JSON.parse(fs.readFileSync(file, "utf8")), { ...legacy, prompt: DEFAULT_SUMMARY_PROMPT });
+	}),
+);
+
+test(
+	"summaries read prompt edits from JSON and settings can reset them",
+	withTempAgentDir(async (dir) => {
+		const { handlers, commands } = install();
+		const ctx = context({ mode: "tui" });
+		const file = path.join(dir, "pi-high-level.json");
+		const custom = { prompt: "Extract the key decision.\n\n{{answer}}\n" };
+		const original = JSON.stringify(custom);
+		fs.writeFileSync(file, original);
+		await handlers.get("session_start")?.({ reason: "startup" } as never, ctx);
+		assert.equal(fs.readFileSync(file, "utf8"), original);
+
+		fs.writeFileSync(file, JSON.stringify({ ...custom, prompt: "Summarize the next step.\n\n{{answer}}" }));
+		await commands.get("hl")?.handler("", ctx);
+		assert.match(ctx.streamCalls[0]?.prompt ?? "", /^Summarize the next step\./);
+
+		const choices = ["Prompt: inline custom", "Reset to built-in prompt", "Done"];
+		(ctx.ui as any).select = async () => choices.shift();
+		await commands.get("hl-settings")?.handler("", ctx);
+		assert.equal(JSON.parse(fs.readFileSync(file, "utf8")).prompt, DEFAULT_SUMMARY_PROMPT);
 	}),
 );
 

@@ -103,8 +103,8 @@ export interface HighLevelConfig {
 	mode: SummaryMode;
 	timeoutMs: number;
 	auto: AutoSummaryConfig;
-	/** Inline replacement for the built-in summary instructions. */
-	prompt?: string;
+	/** Summary instructions saved in pi-high-level.json. */
+	prompt: string;
 	/** Use Pi's native select menus when pi-starline is unavailable. */
 	fallbackMenu: boolean;
 }
@@ -142,6 +142,7 @@ export function defaultConfig(): HighLevelConfig {
 			minChars: DEFAULT_AUTO_MIN_CHARS,
 			minLines: DEFAULT_AUTO_MIN_LINES,
 		},
+		prompt: DEFAULT_SUMMARY_PROMPT,
 		fallbackMenu: true,
 	};
 }
@@ -381,13 +382,13 @@ export function clipAnswer(answer: string): { text: string; clipped: boolean } {
 	return clipText(answer, ANSWER_LIMIT);
 }
 
-export const BUILTIN_SUMMARY_INSTRUCTIONS = [
+export const DEFAULT_SUMMARY_PROMPT = [
 	"Summarize the assistant's final answer at a high level.",
 	"Write 3 to 5 concise lines or bullets in the answer's language.",
 	"Focus on the conclusion, key decision/trade-off, and concrete change or next step.",
 	"Do not repeat intermediate steps, code blocks, or long file lists.",
 	"Do not add a title or preamble.",
-];
+].join("\n");
 
 interface SummarySource {
 	rawQuestion: string;
@@ -425,12 +426,8 @@ export function buildSummaryPrompt(
 	template?: string,
 ): string {
 	const source = summarySource(input);
-	const custom = template?.trim() ?? "";
-	if (!custom) {
-		return appendExchange([...BUILTIN_SUMMARY_INSTRUCTIONS], source).join("\n");
-	}
-
-	const bounded = custom.length > MAX_PROMPT_CHARS ? custom.slice(0, MAX_PROMPT_CHARS) : custom;
+	const instructions = template?.trim() || DEFAULT_SUMMARY_PROMPT;
+	const bounded = instructions.slice(0, MAX_PROMPT_CHARS);
 	const hasQuestion = bounded.includes("{{question}}");
 	const hasAnswer = bounded.includes("{{answer}}");
 	const filled = bounded.replaceAll("{{question}}", source.safeQuestion).replaceAll("{{answer}}", source.safeAnswer);

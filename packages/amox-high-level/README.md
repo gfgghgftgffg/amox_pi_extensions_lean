@@ -145,7 +145,7 @@ All settings share `~/.pi/agent/pi-high-level.json`. Set `PI_CODING_AGENT_DIR` t
 - `mode`: one of `manual`, `auto`, `minChars`, `minLines`.
 - `timeoutMs`: clamped to 3–120 seconds.
 - `auto.minChars` / `auto.minLines`: thresholds used by the selected mode.
-- `prompt`: optional inline replacement for the built-in instructions.
+- `prompt`: summary instructions. If the file or prompt is missing, or the prompt is blank, the extension writes the built-in text on startup. Existing custom prompts are preserved.
 - `fallbackMenu`: use Pi's native select menus when pi-starline is unavailable. Defaults to `true`.
 
 Configs written with the old `auto.enabled` field are migrated to `mode` automatically.
@@ -178,6 +178,8 @@ With pi-starline installed, the `HL` status pill opens a bubble with the current
 Without pi-starline, the same actions are available through Pi's native menus. Set `fallbackMenu` to `false` to disable the native fallback; commands then show information only.
 
 ## Custom prompt
+
+Edit `prompt` in `pi-high-level.json` and save the file. The next summary reads the saved prompt. To restore the built-in text in the file, choose **Prompt → Reset to built-in prompt** in `/hl-settings`.
 
 The built-in instructions are:
 

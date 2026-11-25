@@ -145,7 +145,7 @@ approaches and recommend one, with the main trade-off. +hl
 - `mode`：`manual`、`auto`、`minChars`、`minLines`。
 - `timeoutMs`：限制在 3–120 秒。
 - `auto.minChars` / `auto.minLines`：当前模式使用的阈值。
-- `prompt`：可选的内联总结指令。
+- `prompt`：总结指令。首次启动时，如果文件不存在，或 `prompt` 缺失或为空，扩展会写入内置文本。已有的自定义指令会保留。
 - `fallbackMenu`：没有 pi-starline 时是否使用 Pi 原生菜单，默认 `true`。
 
 旧配置中的 `auto.enabled` 会自动迁移为 `mode`。
@@ -178,6 +178,8 @@ pi --hl-model auto --hl-auto 1200c --hl-thinking low
 没有 pi-starline 时，通过 Pi 原生菜单提供相同操作。把 `fallbackMenu` 设为 `false` 可关闭原生回退菜单；此时相关命令只显示信息。
 
 ## 自定义 Prompt
+
+直接修改 `pi-high-level.json` 中的 `prompt` 并保存，下次生成总结时就会读取。要把内置文本写回文件，可以在 `/hl-settings` 中选择 **Prompt → Reset to built-in prompt**。
 
 内置指令为：
 

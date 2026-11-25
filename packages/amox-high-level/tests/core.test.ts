@@ -128,7 +128,7 @@ test("normalizeConfig keeps an inline prompt, bounds it, and ignores legacy prom
 	assert.equal(cfg.model, undefined);
 	assert.equal(cfg.timeoutMs, 3_000);
 	assert.equal("promptFile" in cfg, false);
-	assert.equal(normalizeConfig({ prompt: "  " }).prompt, undefined);
+	assert.equal(normalizeConfig({ prompt: "  " }).prompt, defaultConfig().prompt);
 	assert.equal(normalizeConfig({ prompt: "x".repeat(9_000) }).prompt?.length, 8_000);
 });
 

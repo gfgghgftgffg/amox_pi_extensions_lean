@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -21,7 +22,7 @@ import {
 } from "@earendil-works/pi-tui";
 import {
 	type BranchEntryLike,
-	BUILTIN_SUMMARY_INSTRUCTIONS,
+	DEFAULT_SUMMARY_PROMPT,
 	buildSummaryPrompt,
 	type ChatMessage,
 	collectHighLevelHistory,
@@ -120,32 +121,42 @@ function resolveConfigPath(): string {
 	return path.join(dir, "pi-high-level.json");
 }
 
-function loadConfig(): HighLevelConfig {
+function writeConfig(filePath: string, payload: Record<string, unknown> | HighLevelConfig): void {
+	fs.mkdirSync(path.dirname(filePath), { recursive: true });
+	const temporary = `${filePath}.${randomUUID()}.tmp`;
 	try {
-		return normalizeConfig(JSON.parse(fs.readFileSync(resolveConfigPath(), "utf8")));
-	} catch {
-		return defaultConfig();
+		fs.writeFileSync(temporary, `${JSON.stringify(payload, null, 2)}\n`, { mode: 0o600 });
+		fs.renameSync(temporary, filePath);
+	} finally {
+		fs.rmSync(temporary, { force: true });
 	}
 }
 
-function saveConfig(config: HighLevelConfig): boolean {
+function loadConfig(ctx?: ExtensionContext): HighLevelConfig {
+	const filePath = resolveConfigPath();
+	let raw: Record<string, unknown> | undefined;
 	try {
-		const filePath = resolveConfigPath();
-		fs.mkdirSync(path.dirname(filePath), { recursive: true });
-		const payload: Record<string, unknown> = {
-			...(config.model ? { model: config.model } : {}),
-			thinking: config.thinking,
-			mode: config.mode,
-			timeoutMs: config.timeoutMs,
-			auto: config.auto,
-			fallbackMenu: config.fallbackMenu,
-			...(config.prompt ? { prompt: config.prompt } : {}),
-		};
-		fs.writeFileSync(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-		return true;
-	} catch {
-		return false;
+		const parsed = JSON.parse(fs.readFileSync(filePath, "utf8"));
+		if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+			throw new Error("expected a JSON object");
+		}
+		raw = parsed;
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
+			ctx?.ui.notify(`Could not read ${filePath}: ${String(error)}`, "warning");
+			return defaultConfig();
+		}
 	}
+
+	const config = normalizeConfig(raw);
+	if (ctx && !(typeof raw?.prompt === "string" && raw.prompt.trim())) {
+		try {
+			writeConfig(filePath, raw ? { ...raw, prompt: config.prompt } : config);
+		} catch (error) {
+			ctx.ui.notify(`Could not write the default prompt to ${filePath}: ${String(error)}`, "warning");
+		}
+	}
+	return config;
 }
 
 function markdownTheme(theme: Theme): MarkdownTheme {
@@ -366,8 +377,11 @@ export default function (pi: ExtensionAPI) {
 
 	function updateConfig(ctx: ExtensionContext, next: HighLevelConfig, success: string): boolean {
 		const normalized = normalizeConfig(next);
-		if (!saveConfig(normalized)) {
-			ctx.ui.notify("Could not save high-level settings", "error");
+		const filePath = resolveConfigPath();
+		try {
+			writeConfig(filePath, normalized);
+		} catch (error) {
+			ctx.ui.notify(`Could not save ${filePath}: ${String(error)}`, "error");
 			return false;
 		}
 		config = normalized;
@@ -399,6 +413,7 @@ export default function (pi: ExtensionAPI) {
 		}
 
 		const cfg = effectiveConfig();
+		const prompt = loadConfig(ctx).prompt;
 		const model = resolveModel(ctx, cfg.model);
 		if (!model) {
 			ctx.ui.notify(
@@ -430,7 +445,7 @@ export default function (pi: ExtensionAPI) {
 					messages: [
 						{
 							role: "user",
-							content: [{ type: "text", text: buildSummaryPrompt(exchange, cfg.prompt) }],
+							content: [{ type: "text", text: buildSummaryPrompt(exchange, prompt) }],
 							timestamp: startedAt,
 						},
 					],
@@ -872,23 +887,23 @@ export default function (pi: ExtensionAPI) {
 
 	async function editPrompt(ctx: ExtensionContext): Promise<void> {
 		const picked = await selectChoice(ctx, "High-level prompt", [
-			{ value: "builtin", label: "Use built-in prompt" },
+			{ value: "builtin", label: "Reset to built-in prompt" },
 			{ value: "inline", label: "Edit inline prompt" },
 			{ value: "back", label: "Back" },
 		]);
 		if (picked === "builtin") {
-			updateConfig(ctx, { ...config, prompt: undefined }, "High-level prompt reset to built-in");
+			updateConfig(ctx, { ...config, prompt: DEFAULT_SUMMARY_PROMPT }, "High-level prompt reset to built-in");
 			return;
 		}
 		if (picked !== "inline") return;
 		const prompt = await ctx.ui.editor(
 			"High-level inline prompt · {{question}} and {{answer}} are optional",
-			config.prompt ?? BUILTIN_SUMMARY_INSTRUCTIONS.join("\n"),
+			config.prompt,
 		);
 		if (prompt === undefined) return;
 		updateConfig(
 			ctx,
-			{ ...config, prompt: prompt.trim() || undefined },
+			{ ...config, prompt: prompt.trim() || DEFAULT_SUMMARY_PROMPT },
 			prompt.trim() ? "High-level inline prompt saved" : "High-level prompt reset to built-in",
 		);
 	}
@@ -898,6 +913,7 @@ export default function (pi: ExtensionAPI) {
 			ctx.ui.notify("High-level settings require interactive mode; edit pi-high-level.json instead", "warning");
 			return;
 		}
+		config = loadConfig(ctx);
 		if (!menuAPI(ctx) && !config.fallbackMenu) {
 			ctx.ui.notify(
 				"High-level menus are disabled (fallbackMenu is off); edit pi-high-level.json instead",
@@ -913,7 +929,7 @@ export default function (pi: ExtensionAPI) {
 				{ value: "chars", label: `Minimal characters: ${config.auto.minChars}` },
 				{ value: "lines", label: `Minimal lines: ${config.auto.minLines}` },
 				{ value: "timeout", label: `Timeout: ${Math.round(config.timeoutMs / 1000)}s` },
-				{ value: "prompt", label: `Prompt: ${config.prompt ? "inline custom" : "built-in"}` },
+				{ value: "prompt", label: `Prompt: ${config.prompt === DEFAULT_SUMMARY_PROMPT ? "built-in" : "inline custom"}` },
 				{ value: "fallback", label: `Fallback menu: ${config.fallbackMenu ? "On" : "Off"}` },
 				{ value: "done", label: "Done" },
 			];
@@ -950,7 +966,7 @@ export default function (pi: ExtensionAPI) {
 	});
 
 	pi.on("session_start", (_event, ctx) => {
-		config = loadConfig();
+		config = loadConfig(ctx);
 		tracker.reset();
 		summarizing = false;
 		pillAnchor = undefined;

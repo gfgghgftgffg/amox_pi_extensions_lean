@@ -8,7 +8,7 @@
   "upstream": {
     "pi-goal-x": {
       "package": "pi-goal-x",
-      "version": "0.34.2",
+      "version": "0.35.1",
       "entry": "node_modules/pi-goal-x/extensions/goal.ts",
       "registeredTools": [
         "get_goal",
@@ -1291,7 +1291,7 @@
   "lean": {
     "@gfgghgftgffg/pi-goal-x-lean": {
       "package": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.2",
+      "version": "0.1.3",
       "entry": "packages/pi-goal-x-lean/index.ts",
       "registeredTools": [
         "get_goal",

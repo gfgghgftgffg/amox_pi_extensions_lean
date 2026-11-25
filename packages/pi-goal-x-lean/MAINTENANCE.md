@@ -2,7 +2,7 @@
 
 Keep this file in English.
 
-The original facade depends on exact `pi-goal-x@0.34.2`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
+The original facade depends on exact `pi-goal-x@0.35.1`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
 
 ## Retained behavior
 
@@ -41,6 +41,13 @@ If a subagents manager is present without a compatible v1 service, the goal faca
 ## Upstream snapshot limitation
 
 Both the original and facade entrypoints retain the old objective after an external in-place edit and `/goal-refresh`, observed on 0.34.1 and again in the staged 0.34.2 check. Shutdown can overwrite the edit (observed on 0.34.1). Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
+
+## Review: 0.34.2 → 0.35.1
+
+- Exact SHA-512 npm snapshots in `sources.json`; no bundled changelog. The upstream manifests retain the Pi/typebox peers and Node floor. The facade still imports `goal.ts`, `goal-context.ts` and `goal-session-safety.ts`; `goal.ts` still exposes `_goalCore`, with `state.goal` now a `GoalSessionState` getter. `GoalRuntime` resolves `scheduler.claim` at delivery, and both `schedule` and `claim` still gate dispatch after the scheduler-rules extraction. Delegated sessions still register only the context filter. No wrapper code or sibling package needs to change.
+- Core, task and drafting registrations retain their schemas, call defaults, argument preparation and the fixed task-setting-dependent profile. `get_goal` still separates model-facing `content[].text`, `details.goal` and the successful page's `details.page` (`content`, `nextCursor`, `totalChars`); the terminal renderer is separate. `update_goal` still dispatches to the same action classes, with blocked and paused flows extracted to `goal-update-flows.ts` and completion still audited.
+- Upstream splits the core, settings, ledger, storage, and UI internals; do not restore `goal-settings.ts` or `widgets/dialog-scaffold.ts`. Layer precedence is still environment > project > global > defaults. `locale` and `PI_GOAL_LOCALE` affect UI lookup only; `i18n/locales.ts` ships no translation catalogs. Task confirmation now truncates the key-hint footer to fit, through the shared choice dialog; audit interruption still defaults to continuing work. The extracted snapshot still uses directory mtime and `/goal-refresh` still invalidates and rereads in the same order. Retain the parity regression.
+- Only this publication is staged. Unpublished web and todo Git heads are excluded. Sync remains unchanged with no fork delta to port. No unrelated regression tests added; existing tests cover the facade and joint subagents ABI.
 
 ## Review: 0.34.1 → 0.34.2
 

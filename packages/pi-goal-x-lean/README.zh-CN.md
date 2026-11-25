@@ -32,6 +32,8 @@ pi update --extensions
 
 遇到不可重试的服务商错误，或用尽配置的网络重试次数后，目标会暂停。修复问题后使用 `/goal-resume [文本]`；附带的文本会发送给 Agent。
 
+修改已有目标请使用 `/goal-tweak`。直接编辑目标文件后，即使执行 `/goal-refresh`，上游快照也可能仍保留旧目标。
+
 ## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->

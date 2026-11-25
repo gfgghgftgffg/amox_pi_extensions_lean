@@ -54,6 +54,17 @@ Update a local installation with `git pull --ff-only` and its installer. For a n
 - [Maintenance-host deployment](docs/local-scheduler.md)
 - [npm publishing setup](docs/npm-publishing.md)
 
+## Contributors
+
+- gfgghgftgffg — maintenance, packaging and integration
+- z472421519 — original `pi-high-level` design and implementation
+- kunkun9527 — lean wrappers and lean guide
+- MuratAitov — original `pi-sync`
+- tmonk — original `pi-goal-x`
+- tintinweb — original `pi-subagents`
+- juicesharp — original `rpiv-todo`
+- nicobailon — original `pi-web-access`
+
 ## Sources
 
 Based on kunkun9527's [web](https://github.com/kunkun9527/pi-web-access-lean), [todo](https://github.com/kunkun9527/rpiv-todo-lean) and [subagent](https://github.com/kunkun9527/pi-subagents-lean) wrappers and the [lean guide](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md). Upstream implementations are dependencies, not copied code.

@@ -54,6 +54,17 @@ goal 可单独使用；联用 subagents 时安装或更新两个 npm 包。详�
 - [维护主机部署](docs/local-scheduler.md)
 - [npm 发布配置](docs/npm-publishing.zh-CN.md)
 
+## 贡献者
+
+- gfgghgftgffg — 维护、打包和集成
+- z472421519 — `pi-high-level` 原始设计与实现
+- kunkun9527 — lean 包装和 lean 指南
+- MuratAitov — 原始 `pi-sync`
+- tmonk — 原始 `pi-goal-x`
+- tintinweb — 原始 `pi-subagents`
+- juicesharp — 原始 `rpiv-todo`
+- nicobailon — 原始 `pi-web-access`
+
 ## 来源
 
 基于 kunkun9527 的 [web](https://github.com/kunkun9527/pi-web-access-lean)、[todo](https://github.com/kunkun9527/rpiv-todo-lean)、[subagent](https://github.com/kunkun9527/pi-subagents-lean) 包装和 [lean 指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md)。上游实现以依赖引入，不复制源码。

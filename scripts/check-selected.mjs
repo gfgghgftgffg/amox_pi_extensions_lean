@@ -1,12 +1,11 @@
 #!/usr/bin/env node
-import { selectEntries, parsePackageIds, workspaceVersions, releaseEntries } from "./lib/package-selection.mjs";
+import { selectEntries, parsePackageIds, workspaceVersions } from "./lib/package-selection.mjs";
 import { run } from "./lib/process.mjs";
 
 try {
   const args = process.argv.slice(2), ids = parsePackageIds(args);
   if (args.length !== (ids ? 2 : 0)) throw new Error("Usage: node scripts/check-selected.mjs [--packages id,id]");
   const { manifest } = workspaceVersions(process.cwd());
-  releaseEntries(process.cwd());
   const selected = selectEntries(manifest.packages, ids);
   const commands = ids === undefined ? [["npm", ["run", "check"]]]
     : selected.map((entry) => ["npm", ["run", "check", "--workspace", entry.path]]);

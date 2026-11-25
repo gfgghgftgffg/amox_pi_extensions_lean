@@ -19,13 +19,14 @@ test("npm publication validates actual packs, preflights all identities and reco
   const fixture = releaseFixture(), root = fixture.root;
   const dir = mkdtempSync(join(tmpdir(), "amox-npm-publish-test-"));
   try {
-    const version = readJson(join(root, "package.json")).version, entries = packageEntries(root);
+    const entries = packageEntries(root);
+    const releases = entries.map((entry) => ({ id: entry.id, package: entry.packageName, version: entry.version, tag: `${entry.packageName}@${entry.version}` }));
     const files = entries.map((entry) => {
       const packed = packExtension(root, entry, dir), bytes = readFileSync(packed.archive);
-      return { package: entry.packageName, filename: packed.filename,
+      return { package: entry.packageName, version: entry.version, filename: packed.filename,
         sha256: createHash("sha256").update(bytes).digest("hex"), integrity: `sha512-${createHash("sha512").update(bytes).digest("base64")}` };
     });
-    writeFileSync(join(dir, "assets.json"), JSON.stringify({ version, files }));
+    writeFileSync(join(dir, "assets.json"), JSON.stringify({ schemaVersion: 3, files }));
     const states = new Map(), calls = [], publishes = [];
     let mode = "normal", failAt = null, delayVisibility = false;
     const fetchImpl = async (url, options) => {
@@ -37,21 +38,22 @@ test("npm publication validates actual packs, preflights all identities and reco
       if (mode === "network-error") throw new Error("private response text must not appear");
       if (mode === "initial") return new Response(null, { status: 404 });
       const visible = !delayVisibility || publishes.length === files.length;
-      const data = requested ? (visible ? states.get(name) : undefined) : { name, "dist-tags": { latest: mode === "downgrade" ? "99.0.0" : mode === "stale-tag" ? "0.0.1" : version } };
+      const expected = files.find((file) => file.package === name).version;
+      const data = requested ? (visible ? states.get(name) : undefined) : { name, "dist-tags": { latest: mode === "downgrade" ? "99.0.0" : mode === "stale-tag" ? "0.0.1" : expected } };
       return data ? Response.json(data) : new Response(null, { status: 404 });
     };
-    const metadata = (file) => ({ name: file.package, version, dist: { integrity: file.integrity } });
+    const metadata = (file) => ({ name: file.package, version: file.version, dist: { integrity: file.integrity } });
     const publish = async (path) => {
       const file = files.find((file) => join(dir, file.filename) === path); assert.ok(file);
       publishes.push(file.package);
       if (file.package === failAt) throw new Error("ambiguous write outcome");
       states.set(file.package, metadata(file));
     };
-    const run = (dryRun = false) => publishNpmArchives({ repoRoot: root, dir, repository, dryRun, fetchImpl, publish, log: () => {} });
+    const run = (dryRun = false) => publishNpmArchives({ repoRoot: root, dir, repository, releases, dryRun, fetchImpl, publish, log: () => {} });
     const reset = () => { mode = "normal"; failAt = null; delayVisibility = false; states.clear(); calls.length = 0; publishes.length = 0; };
     await t.test("all real archives match their explicit source file sets and package identities", () => {
-      files.forEach((file, i) => assert.equal(validateNpmArchive({ repoRoot: root, entry: entries[i], asset: { ...file, path: join(dir, file.filename) }, version, repository }).name, entries[i].packageName));
-      assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path: join(dir, files[0].filename) }, version, repository: "another/repo" }), /identity/);
+      files.forEach((file, i) => assert.equal(validateNpmArchive({ repoRoot: root, entry: entries[i], asset: { ...file, path: join(dir, file.filename) }, version: file.version, repository }).name, entries[i].packageName));
+      assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path: join(dir, files[0].filename) }, version: files[0].version, repository: "another/repo" }), /identity/);
     });
     await t.test("dry run does not invoke publication", async () => {
       reset(); const result = await run(true); assert.equal(result.dryRun, true); assert.deepEqual(publishes, []); assert.equal(calls.length, files.length * 2);
@@ -91,9 +93,9 @@ test("npm publication validates actual packs, preflights all identities and reco
       try {
         writeFileSync(path, "tampered"); await assert.rejects(run(), /hash mismatch/); assert.equal(calls.length, 0);
         const tar = gunzipSync(bytes); tar[156] = 50; writeFileSync(path, gzipSync(tar));
-        assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path }, version, repository }), /header/);
+        assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path }, version: files[0].version, repository }), /header/);
         const appended = Buffer.concat([gunzipSync(bytes), Buffer.from("unexpected trailing archive")]); writeFileSync(path, gzipSync(appended));
-        assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path }, version, repository }), /trailing/);
+        assert.throws(() => validateNpmArchive({ repoRoot: root, entry: entries[0], asset: { path }, version: files[0].version, repository }), /trailing/);
       } finally { writeFileSync(path, bytes); }
     });
     await t.test("actual npm command disables hooks and HTTP retries and suppresses credential-bearing diagnostics", () => {
@@ -109,8 +111,9 @@ test("npm publication validates actual packs, preflights all identities and reco
     });
     await t.test("real CLI rejects local publication and stale SHA before registry access", () => {
       const sha = spawnSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).stdout.trim();
-      const batchVersion = readJson(join(repoRoot, "package.json")).version;
-      const env = { ...process.env, GITHUB_REPOSITORY: repository, RELEASE_TAG: `v${batchVersion}`, EXPECTED_SHA: sha, GITHUB_ACTIONS: "false", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "", ACTIONS_ID_TOKEN_REQUEST_URL: "" };
+      const manifest = readJson(join(repoRoot, "maintenance/manifest.json"));
+      const planned = [{ id: manifest.packages[0].id, package: manifest.packages[0].packageName, version: manifest.packages[0].version, tag: `${manifest.packages[0].packageName}@${manifest.packages[0].version}` }];
+      const env = { ...process.env, GITHUB_REPOSITORY: repository, RELEASES: JSON.stringify(planned), EXPECTED_SHA: sha, GITHUB_ACTIONS: "false", ACTIONS_ID_TOKEN_REQUEST_TOKEN: "", ACTIONS_ID_TOKEN_REQUEST_URL: "" };
       const invoke = (extra) => spawnSync(process.execPath, ["scripts/publish-npm.mjs", "--assets-dir", dir, "--publish"], { cwd: repoRoot, env: { ...env, ...extra }, encoding: "utf8" });
       const local = invoke({}); assert.equal(local.status, 1); assert.match(local.stderr, /requires.*OIDC/);
       const stale = invoke({ EXPECTED_SHA: "f".repeat(40) }); assert.equal(stale.status, 1); assert.match(stale.stderr, /checkout HEAD/);
@@ -147,7 +150,7 @@ test("post-publish propagation waits use only bounded GETs without accepting con
 });
 
 test("selected manual sync fork verifies core.ts at its own version and still requires initial npm publication", async () => {
-  const fixture = releaseFixture({ batchVersion: "9.0.0", versions: { "amox-pi-sync": "0.1.0" }, packageIds: ["amox-pi-sync"] });
+  const fixture = releaseFixture({ versions: { "amox-pi-sync": "0.1.0" } });
   const dir = mkdtempSync(join(tmpdir(), "amox-sync-npm-test-"));
   try {
     const entry = packageEntries(fixture.root, ["amox-pi-sync"])[0];
@@ -163,9 +166,10 @@ test("selected manual sync fork verifies core.ts at its own version and still re
     writeFileSync(packed.archive, gzipSync(tar));
     assert.throws(() => validate(), /differs.*core\.ts/);
     writeFileSync(packed.archive, bytes);
-    writeFileSync(join(dir, "assets.json"), JSON.stringify({ version: "9.0.0", files: [asset] }));
+    const releases = [{ id: entry.id, package: entry.packageName, version: "0.1.0", tag: `${entry.packageName}@0.1.0` }];
+    writeFileSync(join(dir, "assets.json"), JSON.stringify({ schemaVersion: 3, files: [{ ...asset, version: "0.1.0" }] }));
     let reads = 0, writes = 0;
-    await assert.rejects(publishNpmArchives({ repoRoot: fixture.root, dir, repository, dryRun: false,
+    await assert.rejects(publishNpmArchives({ repoRoot: fixture.root, dir, repository, releases, dryRun: false,
       fetchImpl: async () => { reads++; return new Response(null, { status: 404 }); },
       publish: async () => { writes++; }, log: () => {} }), /Initial npm publication is still required/);
     assert.equal(reads, 2); assert.equal(writes, 0);

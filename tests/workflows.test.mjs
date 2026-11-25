@@ -103,11 +103,14 @@ test("reviewed version bumps auto-release with isolated GitHub-write and npm-OID
   assert.match(plan, /release-plan\.mjs --run/); assert.match(plan, /fetch-depth: 0/);
   assert.match(plan, /ref: \$\{\{ github\.sha \}\}/);
   assert.match(plan, /RELEASE_BEFORE_SHA: \$\{\{ github\.event\.before \}\}/);
+  assert.match(plan, /releases: \$\{\{ steps\.plan\.outputs\.releases \}\}/);
+  assert.doesNotMatch(text, /outputs\.tag\b/, "releases are per package, not one repository tag");
   assert.match(verify, /ref: \$\{\{ github\.sha \}\}/);
   assert.match(verify, /AMOX_CHECK_BASE: \$\{\{ needs\.plan\.outputs\.base_sha \}\}/);
   assert.match(verify, /needs\.plan\.outputs\.should_release == 'true'/);
   assert.match(verify, /os: \[ubuntu-latest, windows-latest, macos-latest\]/);
   assert.match(verify, /create-release\.mjs --verify-only/); assert.match(verify, /release-assets\.mjs --build/);
+  for (const block of [verify, release, npm]) assert.match(block, /RELEASES: \$\{\{ needs\.plan\.outputs\.releases \}\}/);
   assert.doesNotMatch(verify, /secrets\./);
   assert.match(release, /environment: release/); assert.match(release, /contents: write/);
   assert.match(release, /ref: \$\{\{ github\.sha \}\}/); assert.match(release, /create-release\.mjs --assets-dir/);
@@ -202,7 +205,7 @@ test("publication docs describe availability checks and first-publication setup 
   assert.match(npmEnglish, /publication does not update personal installations/);
   assert.match(npmChinese, /发布不更新个人安装/);
   for (const doc of [npmEnglish, npmChinese]) assert.match(doc, /Re-run failed jobs/);
-  assert.match(workflow("release.yml"), /Unreleased tag vX\.Y\.Z/);
+  assert.match(workflow("release.yml"), /Unreleased package tag <package>@X\.Y\.Z/);
   assert.doesNotMatch(workflow("release.yml"), /Initial\/retry manual release/);
   for (const entry of JSON.parse(read("maintenance/manifest.json")).packages) {
     const doc = read(`${entry.path}/MAINTENANCE.md`);

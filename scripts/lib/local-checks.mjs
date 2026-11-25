@@ -3,8 +3,9 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { adapterWritable, assertRegularPath, fileInventory, jsonText, lfText, readJson } from "./files.mjs";
 import { releaseSummaryBlock } from "./release-validation.mjs";
+import { packageTag } from "./release-tags.mjs";
 import { failureExcerpt, sandboxRun } from "./local-sandbox.mjs";
-import { maintenancePackageIds } from "./package-selection.mjs";
+import { maintenancePackageIds, selectEntries } from "./package-selection.mjs";
 import { checkCommands, loadCheckScope } from "./check-scope.mjs";
 import { assertForkPolicy } from "./fork-review.mjs";
 import { gitReadHttpError } from "./remote-errors.mjs";
@@ -100,15 +101,17 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
     },
     async check(summary, signal) {
       verifiedSha = undefined;
-      const version = readJson(join(repo, "package.json")).version;
-      const block = releaseSummaryBlock({ version, summary });
+      const packageIds = selectEntries(manifest.packages.filter((entry) => entry.maintenanceMode !== "manual-fork"), maintenancePackageIds(plan)).map((entry) => entry.id);
+      if (!packageIds.length) throw new Error("No package release is staged; nothing to publish");
+      const releases = manifest.packages.filter((entry) => packageIds.includes(entry.id))
+        .map((entry) => ({ id: entry.id, package: entry.packageName, version: entry.version, tag: packageTag(entry.packageName, entry.version) }));
+      const blocks = releases.map((release) => releaseSummaryBlock({ tag: release.tag, summary }));
       if (!existsSync(join(repo, "maintenance/agent-review.md"))) throw new Error("Write the source review first");
       validateForkPort(repo, manifest, plan, baseline);
       validateLocalChanges(repo, manifest, baseline, generated, plan);
       const logs = join(scratch, `checks-${++attempt}`); mkdirSync(logs, { recursive: true });
       const snapshot = join(scratch, "tool-contracts.json");
       writeFileSync(snapshot, readFileSync(join(repo, "maintenance/tool-contracts.json")));
-      const packageIds = manifest.release?.packageIds ?? maintenancePackageIds(plan);
       const captureScope = loadCheckScope(repo, baseCommit);
       const captureArgs = captureScope.full ? ["run", "contracts"] : ["run", "contracts", "--", "--packages", captureScope.packageIds.join(",")];
       const capture = await execute({ repo, scratch, command: "npm", args: captureArgs, signal,
@@ -122,7 +125,7 @@ export function createCheckGate({ repo, scratch, manifest, plan, baseCommit, bas
       writeFileSync(join(repo, "maintenance/manifest.json"), jsonText(manifest));
       generated.set("maintenance/manifest.json", jsonText(manifest));
       measureDocs(repo, manifest, packageIds);
-      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\nRelease after verified merge: v${version}\n\n${block}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
+      const report = `# Local upstream maintenance\n\nBase: ${baseCommit}\n${releases.map((release) => `Release after verified merge: ${release.tag}`).join("\n")}\n\n${blocks.join("\n\n")}\n\nSource review: [agent-review.md](agent-review.md).\n\nThe local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.\n`;
       writeFileSync(join(repo, "maintenance/update-report.md"), report); generated.set("maintenance/update-report.md", report);
       validateLocalChanges(repo, manifest, baseline, generated, plan);
       const sha = checkpoint(repo);

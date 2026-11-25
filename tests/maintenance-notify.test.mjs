@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { completion, loadConfig, send } from "../scripts/notify-maintenance.mjs";
 
-const sha = "a".repeat(40), state = { status: "merged-after-ci", mergeSha: sha, version: "0.1.10" };
+const sha = "a".repeat(40), state = { status: "merged-after-ci", mergeSha: sha, packages: [{ name: "@gfgghgftgffg/pi-goal-x-lean", version: "0.1.4" }] };
 const run = { id: 1, head_sha: sha, event: "push", head_branch: "main", status: "completed", conclusion: "success", html_url: "https://github.com/gfgghgftgffg/amox_pi_extensions_lean/actions/runs/1" };
 const api = { request: async path => path.includes("/jobs?") ? { jobs: [{ name: "Publish verified archives to npm (OIDC, no package hooks)", conclusion: "success" }] } : { workflow_runs: [run] } };
 
@@ -35,7 +35,6 @@ test("private ntfy config and a single authenticated POST, without redirects or 
       posts++; assert.equal(url, "https://ntfy.example.com/"); assert.equal(options.redirect, "manual");
       assert.equal(options.headers.authorization, "Bearer fake-private-token"); assert.doesNotMatch(options.body, /fake-private-token/);
       const payload = JSON.parse(options.body);
-      assert.match(payload.message, /发布批次：9\.0\.0/);
       assert.match(payload.message, /pi-web-access-lean@1\.2\.4/);
       assert.doesNotMatch(payload.message, /rpiv-todo-lean|pi-subagents-lean/);
       return new Response("{}", { status: 200 });
@@ -69,7 +68,6 @@ test("Hermes transport sends to both targets, tolerates one failure and rejects 
       assert.deepEqual(calls[index][1].slice(0, 5), ["exec", "hermes", "hermes", "send", "--to"]);
       assert.equal(calls[index][1][5], target);
       assert.equal(calls[index][2].env.XDG_RUNTIME_DIR, expectedRuntime);
-      assert.match(calls[index][1].at(-1), /发布批次：9\.0\.0/);
       for (const pkg of packages) assert.ok(calls[index][1].at(-1).includes(`${pkg.name}@${pkg.version}`));
     }
     const okOnly = (command, args) => { if (args[5] === "qqbot") throw Object.assign(new Error("down"), { status: 1, stderr: "cannot connect to Podman socket" }); return ""; };

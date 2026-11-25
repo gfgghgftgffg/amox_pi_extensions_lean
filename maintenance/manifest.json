@@ -117,12 +117,5 @@
       "toolContract": false,
       "registeredTools": []
     }
-  ],
-  "release": {
-    "version": "0.1.43",
-    "baseCommit": "2a363b8b071c93414dfc542da953737e7579715e",
-    "packageIds": [
-      "pi-goal-x-lean"
-    ]
-  }
+  ]
 }

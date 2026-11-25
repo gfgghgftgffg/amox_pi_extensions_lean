@@ -2,13 +2,13 @@
 
 [English](npm-publishing.md)
 
-仓库包含六个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将本批选中、已验证的 GitHub Release 归档发布到公共 npm。各包实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准。新包须先完成下述首次发布配置，再使用 OIDC 发布。
+仓库包含六个独立扩展包。[Release](../.github/workflows/release.yml) 通过 OIDC 将各包发布中已验证的归档发布到公共 npm。各包实际可用性以对应 Release 的 npm job 和公共 npm 元数据为准。新包须先完成下述首次发布配置，再使用 OIDC 发布。
 
 ## 按包独立发布
 
-每个 npm 包独立维护版本。根 private 包版本和 GitHub `vX.Y.Z` tag 仅标识发布批次，不是五个 npm 包的统一版本。受保护的 `maintenance/manifest.json` release 选择记录批次版本、精确 base 和包 ID；只给选中的包升版、打包和发布，未变化的包保持版本，不查询 registry 或重新上传。`assets.json` 分别记录每个归档的包版本。
+每个 npm 包独立维护版本，也拥有自己的 GitHub Release，tag 为 `<包名>@<版本>`。根 private 包固定为 `0.0.0`，不标识发布。当前包版本高于该包上一个发布 tag 时才会成为发布候选；从未有包 tag 的包以最新的旧版 `vX.Y.Z` 批次 tag 作为基线。没有变化的包不打包、不查询 registry、不重新上传。`assets.json` 分别记录每个归档的包版本。
 
-本地检查、精确 PR head 三平台 CI 和独立 Release 验收共用受影响范围。发布批次由 Release 唯一验证合并 SHA，普通 main-push CI 不再重复跑同一矩阵；非发布 main 更新仍运行 CI。共享代码或依赖变化扩大验收，不会自动扩大 npm 发布选择。
+本地检查、精确 PR head 三平台 CI 和独立 Release 验收共用受影响范围。存在发布候选时，Release 唯一验证合并 SHA，普通 main-push CI 不再重复跑同一矩阵；非发布 main 更新仍运行 CI。共享代码或依赖变化扩大验收，不会自动发布没有升版的包。
 
 ## 发布配置
 
@@ -30,7 +30,7 @@
 
 OIDC 发布脚本在任何上传前都会拒绝 registry 中不存在的包，不能自行完成新包首发。
 
-1. 将新包纳入受保护的 release 选择，从对应 GitHub Release 获取已验证的归档与 `assets.json`。核对包身份、版本、源码 SHA 和哈希，不重新打包工作树。将 `ARCHIVE` 设为已验证的 `.tgz` 路径。
+1. 没有发布 tag 的包，在 push 引入或递增其版本时才会发布；也可以用带包 tag 的手动 Release 直接指定。从该 Release 获取已验证的归档。核对包身份、版本、源码 SHA 和哈希，不重新打包工作树。将 `ARCHIVE` 设为已验证的 `.tgz` 路径。
 2. 维护者通过交互式 npm 认证和 2FA，将该已验证归档发布一次：
 
    ```bash
@@ -38,15 +38,15 @@ OIDC 发布脚本在任何上传前都会拒绝 registry 中不存在的包，�
    ```
 
    确认公共 registry 的版本、`dist.integrity` 和 `latest` 与已验证归档一致。上传结果不明时先检查 registry，再决定是否重试。
-3. 在 `@gfgghgftgffg/pi-goal-x-lean` 的 npm 设置中，按上表添加独立 Trusted Publisher。registry 验证通过后，才重跑原 Release 失败的 npm job；它会跳过内容一致的 goal 归档，继续其它选中包。跳过不代表已验证 OIDC 信任：连接的首次成功 OIDC 发布须在连接的两天窗口内，使用下一个经审查的 goal 版本完成。
+3. 在 `@gfgghgftgffg/pi-goal-x-lean` 的 npm 设置中，按上表添加独立 Trusted Publisher。registry 验证通过后，才重跑原 Release 失败的 npm job；它会跳过内容一致的 goal 归档，继续其它计划中的包。跳过不代表已验证 OIDC 信任：连接的首次成功 OIDC 发布须在连接的两天窗口内，使用下一个经审查的 goal 版本完成。
 
 ## 失败恢复
 
 每个缺失归档只通过 `--ignore-scripts --fetch-retries=0` 提交一次，再共享十分钟只读 GET 可见性检查。已存在且一致的版本跳过；integrity 冲突或写入结果不明就停止。不盲目重复上传、不覆盖版本、不倒退 `latest`。
 
-先检查精确的 Release 运行和本批选中包的 registry 版本。修复原因后，在 artifact 保留期内（7 天）对同一次运行选择 **Re-run failed jobs**。不要为已有 tag 重新启动完整 Release。artifact 已过期时，使用已验证的 GitHub Release 附件恢复，写入前核对身份和哈希，不重新打包工作树。GitHub Release 成功不能单独证明 npm 发布成功。
+先检查精确的 Release 运行和本次计划包的 registry 版本。修复原因后，在 artifact 保留期内（7 天）对同一次运行选择 **Re-run failed jobs**。不要为已有 tag 重新启动完整 Release。artifact 已过期时，使用已验证的 GitHub Release 附件恢复，写入前核对身份和哈希，不重新打包工作树。GitHub Release 成功不能单独证明 npm 发布成功。
 
-手动 Release 只用于尚未发布且与根目录批次版本、受保护 release 选择一致的 tag；各个选中包分别匹配自身 manifest 版本，不要求等于 tag。回滚不会撤回 npm 版本，修复应发布更高版本。
+手动 Release 填写一个尚未发布的包 tag `<包名>@<版本>`，它必须等于该包当前版本且不旧于上次发布；留空则发布所有已高于上次发布版本的包。每个待发布 tag 都需要 `maintenance/update-report.md` 中同名摘要块。回滚不会撤回 npm 版本，修复应发布更高版本。
 
 ## 新 VPS 检查表
 

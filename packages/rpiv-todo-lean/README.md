@@ -10,7 +10,8 @@ A lighter wrapper for [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rp
 
 - The model sees one `todo` tool: `create`, `update`, `list`, `get`, `delete`, `clear`.
 - If `action` is omitted, a `subject` means create, and an `id` plus a mutable field means update. Anything else is reported by upstream.
-- Fields, validation, persistence and per-session isolation stay on the upstream engine. `/todos` stays available.
+- Fields, validation, persistence and per-session isolation stay on the upstream engine. Set `maxWidgetLines: 0` in the [todo config](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md) to hide the panel on the next repaint without disabling `todo` or `/todos`.
+- In Pi’s fullscreen TUI, left-click the panel heading to collapse or expand it, even with `collapseKey: "off"`. A child session starting work no longer hides the foreground session’s completed rows.
 
 ## Source
 
@@ -79,7 +80,7 @@ Update a local Git installation by pulling the checkout and rerunning its instal
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/rpiv-todo-lean | 277 |
-| @juicesharp/rpiv-todo | 1222 |
+| @juicesharp/rpiv-todo | 1281 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

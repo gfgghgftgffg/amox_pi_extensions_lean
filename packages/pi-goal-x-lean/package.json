@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-goal-x-lean",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "Lean tool metadata over the complete pi-goal-x runtime; preserves goal tools, commands, scheduling and auditing.",
   "license": "MIT",
@@ -47,7 +47,7 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "pi-goal-x": "0.35.1"
+    "pi-goal-x": "0.35.2"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.4.0 <2.0.0",

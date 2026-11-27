@@ -149,7 +149,8 @@ if (scenario === "contracts") {
     assert.equal(restored.id, expected.id);
     assert.equal(restored.status, "paused");
     assert.equal(restored.objective, expected.objective);
-    assert.deepEqual(restored.taskList, expected.taskList);
+    // File parsing can retain undefined properties that the persisted snapshot omits.
+    assert.deepEqual(json(restored.taskList), json(expected.taskList));
     assert.equal(restored.pauseReason, expected.pauseReason);
   } finally { await host.close(); }
 } else if (scenario === "refresh-external-edit-upstream-parity") {

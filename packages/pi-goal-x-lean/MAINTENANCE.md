@@ -38,15 +38,17 @@ If a subagents manager is present without a compatible v1 service, the goal faca
 - Goal tasks are persistent milestones; `todo` remains an independent current-turn list, with no bidirectional synchronization. Do not claim complete delegated token accounting or silently enable `strictExecutionContract`.
 - Upstream auditing excludes project extensions by default. Enabling `auditorProjectResources` broadens resource discovery; a read-only audit policy is not an OS sandbox.
 
-## Upstream snapshot limitation
+## Upstream snapshot behavior
 
-Both the original and facade entrypoints retain the old objective after an external in-place edit and `/goal-refresh`, observed on 0.34.1 and again in the staged 0.34.2 check. Shutdown can overwrite the edit (observed on 0.34.1). Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
+Ordinary reads can use a cached pool snapshot. In 0.34.1 and 0.34.2 even `/goal-refresh` retained the old objective after an in-place edit; shutdown could overwrite the edit (observed on 0.34.1). The explicit command now forces a rescan in 0.35.2 (see below); this does not add file watching or change ordinary cached reads. Keep the upstream-parity regression.
 
 ## Review: 0.35.1 → 0.35.2
 
 - Compared the exact SHA-512-recorded npm publication pair in `sources.json`, not remote HEAD `2b8f6d50ee7d647a161c2644a160fc4dc88d1517`. No bundled changelog. The published entry, Pi/typebox peers and Node floor are unchanged.
 - `goal-core-tools.ts`, `goal-drafting-tools.ts` and `goal-events.ts` make their internal core types module-local; none is imported by the facade. `goal.ts` still registers the same tool groups and exposes `_goalCore`; `goal-tool-names.ts` keeps the seven registrations and the task-setting-dependent profile. Core tool fields, call defaults and result envelope are unchanged: `get_goal` returns model-facing text and separate `details.goal` / successful `details.page`, not terminal-rendered text or a body.
-- `goal-context.ts` and `goal-session-safety.ts` retain the delegated filter-only contract. Scheduler `schedule` / `claim` remain available at the existing interception points. The storage snapshot still relies on directory mtime; keep the external-edit parity test and `/goal-tweak` guidance. No adapter or engine copy, restored modules, or new upstream-only tests; run joint subagents validation on the existing ABI.
+- `goal-context.ts` and `goal-session-safety.ts` retain the delegated filter-only contract. Scheduler `schedule` / `claim` remain available at the existing interception points. `goal-commands.ts` defers loading the status, recovery, settings and controls modules until their commands run.
+- `/goal-refresh` now uses `storage/goal-files.ts::refreshActiveGoalPool` to clear the listing and file-parse caches, bypass the persisted snapshot, rebuild it and reconcile the focused goal. Its report compares pool revisions and effective settings; an objective edit need not increment the revision. The ordinary snapshot path still uses directory metadata. In the real host parity check both original and lean returned the edited goal in `details.goal.objective` and tool text, retaining paused status.
+- The lifecycle regression compares the complete persisted task list across session reopen. File parsing can include optional properties set to `undefined`, which the JSON snapshot omits.
 
 ## Review: 0.34.2 → 0.35.1
 

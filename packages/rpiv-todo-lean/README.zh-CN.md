@@ -10,7 +10,8 @@
 
 - 模型只看到一个 `todo` 工具：`create`、`update`、`list`、`get`、`delete`、`clear`。
 - 省略 `action` 时，带 `subject` 按创建处理，带 `id` 和可改字段按更新处理。其余情况由上游报错。
-- 字段、校验、持久化和按会话隔离仍在上游引擎里。`/todos` 仍可用。
+- 字段、校验、持久化和按会话隔离仍由上游引擎处理。在 [todo 配置](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md)中设 `maxWidgetLines: 0`，下次重绘时隐藏面板，不影响 `todo` 或 `/todos`。
+- 在 Pi 的全屏 TUI 中，左键点击标题可折叠或展开面板，即使 `collapseKey` 设为 `"off"`。子会话开始工作时，不会再隐藏前台会话已完成的任务行。
 
 ## 来源
 
@@ -79,7 +80,7 @@ node scripts/install-extension.mjs rpiv-todo-lean
 | Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/rpiv-todo-lean | 277 |
-| @juicesharp/rpiv-todo | 1222 |
+| @juicesharp/rpiv-todo | 1281 |
 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->

@@ -14,9 +14,9 @@
 
 ## 锁定的上游版本
 
-- `@juicesharp/rpiv-todo@2.15.0`（精确固定；`dependencies`；此前为 2.13.9）。
-- `@juicesharp/rpiv-i18n@2.15.0`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
-- 上游 2.15.0 自带传递依赖 `@juicesharp/rpiv-config@^2.15.0`（此前为 ^2.13.9；由 npm 解析，不显式固定）。
+- `@juicesharp/rpiv-todo@2.16.0`（精确固定；`dependencies`）。
+- `@juicesharp/rpiv-i18n@2.16.0`（精确固定；上游仍为可选 peer，保留安装以维持本地化 UI）。
+- 两者依赖 `@juicesharp/rpiv-config@^2.16.0`（此前为 ^2.15.0；由 npm 解析，不显式固定）。
 - Pi 宿主 peer：`@earendil-works/pi-ai`、`@earendil-works/pi-coding-agent`、`@earendil-works/pi-tui`
   均为 `>=1.1.0`，`typebox` 为 `*`。
 - 开发/测试依赖：Pi 1.1.0、typebox 1.3.36、jiti 2.7.0、TypeScript 7.0.2
@@ -235,6 +235,12 @@
 - 本次没有引擎 before/after／CHANGELOG；todo/i18n 稳定版仍为 2.15.0 /
   `ce6d3530410812ca504ec294995581a52170f9e1`，不采用或声称审查远端
   `1a4add9dbe61597059a93dd9200bf25d51238659`。本包不升版；check 的实际选定范围与审计结果以输出为准。
+
+## 本次审查：2.15.0 → 2.16.0
+
+- `sources.json` 提供两个 npm 发布对应的精确 Git 源码（todo 与相关 i18n）：`ce6d3530410812ca504ec294995581a52170f9e1` → `a410e921cdfb883cea421aad5ebc480a5a06b763`，不采用远端 `7c669d0837cd08497dc34c53a7a17fdfa1a949ee`。lean 作者未变。i18n 的 2.16.0 日志无行为条目；`package.json` 的 SDK 与 `/loader` 导出和 `loader.ts` 的注册签名不变，两个包的 `rpiv-config` 范围同步提升。
+- `tool/types.ts` 用本地 TypeBox 枚举解决 Pi 1.5 的静态类型兼容，JSON 枚举形态不变；新增 `action` 注解，不增删 action、字段或改调用默认值。门面仍复制后压缩 schema，继续用现有简短说明告知 action，并先委派上游参数预处理。`todo.ts` 仍执行 reducer 并持久化 `rpiv-todo-state`；响应含模型文本 `content[].text` 和快照 `details`，与卡片、面板或 `/todos` 通知的渲染文本分开。
+- `config.ts` 使 `maxWidgetLines: 0` 在重绘时隐藏面板，默认仍为 12；`todo-overlay.ts` 在宿主派发鼠标事件时只消费标题行的无修饰左键点击，独立于折叠快捷键。隐藏最后的完成项会调用 `update()` 注销面板；`index.ts` 的非 RPC 上游 `agent_start` 按 `sid(ctx)` 限定为前台会话，RPC 路径已经按会话查找自己的 overlay。私有字段、快照替换点、注册方法和命令委派仍兼容。无需复制引擎、修改门面或移植上游 UI 测试。
 
 ## 升级步骤
 

@@ -2,7 +2,7 @@
 
 Keep this file in English.
 
-The original facade depends on exact `pi-goal-x@0.35.1`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
+The original facade depends on exact `pi-goal-x@0.35.2`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
 
 ## Retained behavior
 
@@ -41,6 +41,12 @@ If a subagents manager is present without a compatible v1 service, the goal faca
 ## Upstream snapshot limitation
 
 Both the original and facade entrypoints retain the old objective after an external in-place edit and `/goal-refresh`, observed on 0.34.1 and again in the staged 0.34.2 check. Shutdown can overwrite the edit (observed on 0.34.1). Keep the upstream-parity regression, do not fork the storage engine to hide it, and revise the limitation when upstream fixes it. Prefer `/goal-tweak`.
+
+## Review: 0.35.1 → 0.35.2
+
+- Compared the exact SHA-512-recorded npm publication pair in `sources.json`, not remote HEAD `2b8f6d50ee7d647a161c2644a160fc4dc88d1517`. No bundled changelog. The published entry, Pi/typebox peers and Node floor are unchanged.
+- `goal-core-tools.ts`, `goal-drafting-tools.ts` and `goal-events.ts` make their internal core types module-local; none is imported by the facade. `goal.ts` still registers the same tool groups and exposes `_goalCore`; `goal-tool-names.ts` keeps the seven registrations and the task-setting-dependent profile. Core tool fields, call defaults and result envelope are unchanged: `get_goal` returns model-facing text and separate `details.goal` / successful `details.page`, not terminal-rendered text or a body.
+- `goal-context.ts` and `goal-session-safety.ts` retain the delegated filter-only contract. Scheduler `schedule` / `claim` remain available at the existing interception points. The storage snapshot still relies on directory mtime; keep the external-edit parity test and `/goal-tweak` guidance. No adapter or engine copy, restored modules, or new upstream-only tests; run joint subagents validation on the existing ABI.
 
 ## Review: 0.34.2 → 0.35.1
 

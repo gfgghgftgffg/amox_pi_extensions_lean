@@ -32,7 +32,7 @@ Confirm the plan to start. Use `/goal-direct` for direct creation, `/sisyphus` f
 
 If a provider error cannot be retried, or a configured network-retry limit is exhausted, the goal pauses. Fix the provider issue, then use `/goal-resume [text]`; optional text is sent to the agent.
 
-Use `/goal-tweak` to change an existing objective. An in-place edit to a goal file can leave the old objective in the upstream snapshot even after `/goal-refresh`.
+Use `/goal-tweak` to change an existing objective. `/goal-refresh` reloads saved state and settings, but an in-place edit to a goal file can still leave the old objective in the upstream snapshot.
 
 ## Context footprint (character proxy)
 

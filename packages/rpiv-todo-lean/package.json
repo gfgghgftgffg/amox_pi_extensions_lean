@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/rpiv-todo-lean",
-  "version": "0.1.15",
+  "version": "0.1.16",
   "type": "module",
   "description": "A lighter wrapper for @juicesharp/rpiv-todo: tasks and dependencies remain, with about 77% less tool text on the first call.",
   "license": "MIT",
@@ -46,8 +46,8 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
-    "@juicesharp/rpiv-i18n": "2.15.0",
-    "@juicesharp/rpiv-todo": "2.15.0"
+    "@juicesharp/rpiv-i18n": "2.16.0",
+    "@juicesharp/rpiv-todo": "2.16.0"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=1.1.0",

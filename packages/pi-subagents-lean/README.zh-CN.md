@@ -83,15 +83,15 @@ node scripts/install-extension.mjs pi-subagents-lean
 
 带过改动、后来被删掉的 worktree 不能重新打开；干净的 worktree 会在主 checkout 里打开。后台任务结束时通知父会话。配置了 `allowed_subagents` 的 Agent 共享默认最多 10 个运行中嵌套子 Agent 的限制，超限派生会失败，不会排队；顶层和 workflow Agent 不受此限制。通过 `/agents → Settings → Max nested concurrency` 配置（`0` 表示不限）。Agent 文件、workflow、worktree 和 `subagents.json` 见[上游文档](https://github.com/tintinweb/pi-subagents)；集成使用它的[事件](https://github.com/tintinweb/pi-subagents#events)和 [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md)。生命周期事件也覆盖嵌套及 workflow Agent；RPC 快照可报告待送达通知和仍在收尾的后代，workflow 总线结果与截断的通知文本相互独立。RPC stop 默认最多等待 5 秒，让被停止的 Agent 及其后代完成收尾。[Workflow 脚本与兼容性文档](https://github.com/tintinweb/pi-subagents/blob/master/docs/workflows.md)说明 `agent({ schema })` 的严格 draft-07 校验及失败诊断。改了 Agent 定义、发现范围或 trust 设置后重新加载。行为说明在[更新日志](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md)。
 
-## 注册工具文本（字符代理）
+## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
-| 包 | 全部注册工具（字符代理） |
+| Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 273 |
 | @tintinweb/pi-subagents | 8832 |
 
-统计全部已注册工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。
+Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 开发

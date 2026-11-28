@@ -83,15 +83,15 @@ Upstream discovers built-in and custom agents in global, workspace and project d
 
 A removed worktree that held changes cannot be reopened; a clean one reopens in the main checkout. Background tasks notify the parent when they finish. Agents with `allowed_subagents` share a default limit of 10 running nested children; excess nested spawns fail instead of queuing. Top-level and workflow agents are outside this limit. Configure it through `/agents → Settings → Max nested concurrency` (`0` means unlimited). Agent files, workflows, worktrees and `subagents.json` are documented [upstream](https://github.com/tintinweb/pi-subagents); integrations use its [events](https://github.com/tintinweb/pi-subagents#events) and [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Lifecycle events cover nested and workflow agents as well as top-level ones; RPC snapshots can report pending notifications and settling descendants, and workflow bus results are separate from the truncated notification text. RPC stop waits up to 5 seconds by default for the stopped agent and its descendants to settle. [workflow authoring and compatibility](https://github.com/tintinweb/pi-subagents/blob/master/docs/workflows.md) cover strict draft-07 `agent({ schema })` validation and failure diagnostics. Reload after changing agent definitions, discovery or trust settings. Behavior notes are in the [changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md).
 
-## Registered tool text (character proxy)
+## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | All registered tools (character proxy) |
+| Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/pi-subagents-lean | 273 |
 | @tintinweb/pi-subagents | 8832 |
 
-Counts every registered tool declaration. Fixed ceil(characters / 4); not provider billing tokens.
+Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Development

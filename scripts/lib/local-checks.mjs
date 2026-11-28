@@ -62,19 +62,18 @@ export function measureDocs(repo, manifest, packageIds = manifest.packages.map((
       const path = join(repo, entry.path, file);
       let text = readFileSync(path, "utf8");
       const visible = entry.modelVisibleMetrics === true;
-      const title = file === "README.md"
-        ? visible ? "## Model-visible tool text (character proxy)" : "## Registered tool text (character proxy)"
-        : visible ? "## 模型可见工具文本（字符代理）" : "## 注册工具文本（字符代理）";
-      const header = file === "README.md"
-        ? visible ? "| Package | Model-visible tools (character proxy) |" : "| Package | All registered tools (character proxy) |"
-        : visible ? "| 包 | 模型可见工具（字符代理） |" : "| 包 | 全部注册工具（字符代理） |";
-      const note = file === "README.md"
-        ? visible
-          ? "Counts only tool declarations sent to the model. Fixed ceil(characters / 4); not provider billing tokens."
-          : "Counts every registered tool declaration. Fixed ceil(characters / 4); not provider billing tokens."
-        : visible
+      const chinese = file !== "README.md";
+      const title = visible
+        ? chinese ? "## 模型可见工具文本（字符代理）" : "## Model-visible tool text (character proxy)"
+        : chinese ? "## 上下文占用（字符代理）" : "## Context footprint (character proxy)";
+      const header = visible
+        ? chinese ? "| 包 | 模型可见工具（字符代理） |" : "| Package | Model-visible tools (character proxy) |"
+        : "| Package | Registered character proxy |";
+      const note = visible
+        ? chinese
           ? "只统计发给模型的工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。"
-          : "统计全部已注册工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。";
+          : "Counts only tool declarations sent to the model. Fixed ceil(characters / 4); not provider billing tokens."
+        : "Fixed ceil(characters / 4), not provider billing tokens.";
       const leanTokens = visible ? lean.totals.modelVisibleProxyTokens ?? lean.totals.registeredProxyTokens : lean.totals.registeredProxyTokens;
       const upstreamTokens = visible ? upstream.totals.modelVisibleProxyTokens ?? upstream.totals.registeredProxyTokens : upstream.totals.registeredProxyTokens;
       const section = `${title}\n\n<!-- amox-measurement:start -->\n${header}\n| --- | ---: |\n| ${entry.packageName} | ${leanTokens} |\n| ${entry.upstreamPackage} | ${upstreamTokens} |\n\n${note}\n<!-- amox-measurement:end -->\n\n`;

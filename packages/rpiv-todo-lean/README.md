@@ -74,15 +74,15 @@ node scripts/install-extension.mjs rpiv-todo-lean
 
 Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `rpiv-todo` wrapper alongside it.
 
-## Registered tool text (character proxy)
+## Context footprint (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | All registered tools (character proxy) |
+| Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/rpiv-todo-lean | 277 |
 | @juicesharp/rpiv-todo | 1281 |
 
-Counts every registered tool declaration. Fixed ceil(characters / 4); not provider billing tokens.
+Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Development

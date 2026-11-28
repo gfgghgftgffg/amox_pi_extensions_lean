@@ -74,15 +74,15 @@ node scripts/install-extension.mjs rpiv-todo-lean
 
 本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。请勿同时加载其它 `rpiv-todo` 包装扩展。
 
-## 注册工具文本（字符代理）
+## 上下文占用（字符代理）
 
 <!-- amox-measurement:start -->
-| 包 | 全部注册工具（字符代理） |
+| Package | Registered character proxy |
 | --- | ---: |
 | @gfgghgftgffg/rpiv-todo-lean | 277 |
 | @juicesharp/rpiv-todo | 1281 |
 
-统计全部已注册工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。
+Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## 开发

@@ -13,6 +13,7 @@
 - 关闭任务跟踪时，`set_goal_tasks` 和 `update_goal_task` 不再路由或展示，起草提示要求省略 tasks。
 - 起草、执行和暂停阶段按需追加提示；暂停目标只提示读取和生命周期操作。
 - 微调 `pi-goal-x-lean` 与 `pi-subagents-lean` 以互相适配：子会话只过滤继承的目标上下文，不安装目标工具、命令或调度器；活动目标下启动的后台 Agent/workflow 交回结果前，阻止自动续跑和完成验收。
+- 搭配 `rpiv-todo-lean` 0.1.17 或更新版本时，活跃目标会隐藏所属终端会话的 Todo 面板。Autoresearch 关闭时，执行 `/goal-pause` 即可恢复 Todo。其他会话仍可看到自己的 Todo 面板。
 
 ## 来源
 

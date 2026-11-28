@@ -12,6 +12,7 @@ A lighter wrapper for [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rp
 - If `action` is omitted, a `subject` means create, and an `id` plus a mutable field means update. Anything else is reported by upstream.
 - Fields, validation, persistence and per-session isolation stay on the upstream engine. Set `maxWidgetLines: 0` in the [todo config](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md) to hide the panel on the next repaint without disabling `todo` or `/todos`.
 - In Pi’s fullscreen TUI, left-click the panel heading to collapse or expand it, even with `collapseKey: "off"`. A child session starting work no longer hides the foreground session’s completed rows.
+- In Pi’s terminal UI, Todo hides while Autoresearch mode is active or while the current session owns an active Goal. Pausing the Goal or using `/autoresearch off` restores Todo once both workflows are inactive. Goal integration requires `pi-goal-x-lean` 0.1.7 or newer.
 
 ## Source
 

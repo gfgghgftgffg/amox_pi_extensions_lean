@@ -12,6 +12,7 @@
 - 省略 `action` 时，带 `subject` 按创建处理，带 `id` 和可改字段按更新处理。其余情况由上游报错。
 - 字段、校验、持久化和按会话隔离仍由上游引擎处理。在 [todo 配置](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md)中设 `maxWidgetLines: 0`，下次重绘时隐藏面板，不影响 `todo` 或 `/todos`。
 - 在 Pi 的全屏 TUI 中，左键点击标题可折叠或展开面板，即使 `collapseKey` 设为 `"off"`。子会话开始工作时，不会再隐藏前台会话已完成的任务行。
+- 在 Pi 终端中，Autoresearch 启用或当前会话拥有活跃目标时，Todo 面板会隐藏。暂停目标或执行 `/autoresearch off` 后，两者都不再活跃时，Todo 会恢复显示。目标联动需要 `pi-goal-x-lean` 0.1.7 或更新版本。
 
 ## 来源
 

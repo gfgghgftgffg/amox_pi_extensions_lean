@@ -25,6 +25,43 @@ function decorateWithCollapsedDisplay<T extends CollapsedDisplayTool>(tool: T): 
 		: tool;
 }
 
+const GOAL_ACTIVITY_QUERY = "amox:goal-activity:v1";
+const AUTORESEARCH_TOOLS = ["init_experiment", "run_experiment", "log_experiment"];
+
+function isTodoPanelSuppressed(pi: ExtensionAPI, ctx: ExtensionContext): boolean {
+	const activeTools = pi.getActiveTools();
+	if (AUTORESEARCH_TOOLS.every((name) => activeTools.includes(name))) return true;
+
+	let activeGoal = false;
+	pi.events.emit(GOAL_ACTIVITY_QUERY, {
+		sessionId: ctx.sessionManager.getSessionId(),
+		reportActive: () => { activeGoal = true; },
+	});
+	return activeGoal;
+}
+
+function withTodoPanelVisibility(pi: ExtensionAPI, ctx: ExtensionContext): ExtensionContext {
+	const ui = ctx.ui;
+	const setWidget: ExtensionUIContext["setWidget"] = (key, content, options) => {
+		if (typeof content !== "function") return ui.setWidget(key, content, options);
+		if (key !== "rpiv-todos") return ui.setWidget(key, content, options);
+
+		return ui.setWidget(key, (tui, theme) => {
+			const widget = content(tui, theme);
+			const render = widget.render.bind(widget);
+			widget.render = (width) => isTodoPanelSuppressed(pi, ctx) ? [] : render(width);
+			return widget;
+		}, options);
+	};
+	// Only upstream Todo receives this UI view. Other extensions keep the original UI.
+	const todoUi = new Proxy(ui, {
+		get: (target, property) => property === "setWidget" ? setWidget : Reflect.get(target, property),
+	});
+	return new Proxy(ctx, {
+		get: (target, property) => property === "ui" ? todoUi : Reflect.get(target, property),
+	});
+}
+
 const TOOL_DESCRIPTION = "Required action: create|update|list|get|delete|clear. create subject or tasks[]; update/get/delete id.";
 const PROMPT_SNIPPET = "";
 const PROMPT_GUIDELINES = [
@@ -369,7 +406,10 @@ export default function (pi: ExtensionAPI): void {
 				return (event: string, handler: (event: unknown, ctx: ExtensionContext) => unknown) => {
 					switch (event) {
 						case "session_start":
-							return target.on("session_start", (e, ctx) => handleSessionStart(e, ctx, handler));
+							return target.on("session_start", (e, ctx) => handleSessionStart(e, ctx, (event, sessionCtx) =>
+								handler(event, sessionCtx.mode === "tui" && sessionCtx.hasUI
+									? withTodoPanelVisibility(target, sessionCtx)
+									: sessionCtx)));
 						case "tool_execution_end":
 							return target.on("tool_execution_end", (e, ctx) => handleToolExecutionEnd(e, ctx, handler));
 						case "session_compact":
@@ -390,7 +430,10 @@ export default function (pi: ExtensionAPI): void {
 				return (key: string, shortcut: { description?: string; handler: (ctx: ExtensionContext) => unknown }) => {
 					const wrappedShortcut = {
 						...shortcut,
-						handler: (ctx: ExtensionContext) => handleShortcut(ctx, shortcut.handler),
+						handler: (ctx: ExtensionContext) => handleShortcut(ctx, (sessionCtx) => {
+						if (sessionCtx.mode === "tui" && isTodoPanelSuppressed(target, sessionCtx)) return;
+						return shortcut.handler(sessionCtx);
+					}),
 					};
 					return target.registerShortcut(key as never, wrappedShortcut as never);
 				};

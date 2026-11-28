@@ -5,6 +5,8 @@ Release after verified merge: @gfgghgftgffg/rpiv-todo-lean@0.1.16
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.4
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.5
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.6
+Release after verified merge: @gfgghgftgffg/rpiv-todo-lean@0.1.17
+Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.7
 
 <!-- amox-release-summary:@gfgghgftgffg/rpiv-todo-lean@0.1.16:start -->
 - Todo: Set `maxWidgetLines: 0` to hide the panel on the next repaint while keeping `todo` and `/todos` available. In Pi’s fullscreen TUI, click the heading to collapse or expand it even when the keyboard shortcut is disabled.
@@ -24,6 +26,14 @@ Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.6
 - Goal now requires Pi 1.7 or newer and always uses the on-demand `get_goal` + `goal` surface. The pre-1.7 direct-tool path and its duplicate host tests were removed; the package now targets Pi 1.7.0 or newer.
 - READMEs now report model-visible tool text: 188 character proxy versus 1691 upstream. The subagents adaptation is described as a small compatibility adjustment, with its tracking limits documented. This release publishes only the Goal package.
 <!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.6:end -->
+
+<!-- amox-release-summary:@gfgghgftgffg/rpiv-todo-lean@0.1.17:start -->
+- In Pi’s terminal UI, Todo hides while Autoresearch tools are enabled or while an active Goal belongs to the current session. Todo reappears when you pause the Goal or turn off Autoresearch, provided the other workflow is also inactive. Goal integration requires `pi-goal-x-lean` 0.1.7 or newer.
+<!-- amox-release-summary:@gfgghgftgffg/rpiv-todo-lean@0.1.17:end -->
+
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.7:start -->
+- Report whether the current terminal session owns an active Goal so `rpiv-todo-lean` can hide its panel. Paused Goals and Goals owned by another session leave Todo visible.
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.7:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

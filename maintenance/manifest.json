@@ -25,7 +25,7 @@
       "id": "rpiv-todo-lean",
       "path": "packages/rpiv-todo-lean",
       "packageName": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.16",
+      "version": "0.1.17",
       "entry": "index.ts",
       "upstreamPackage": "@juicesharp/rpiv-todo",
       "upstreamVersion": "2.16.0",
@@ -56,7 +56,7 @@
       "id": "pi-goal-x-lean",
       "path": "packages/pi-goal-x-lean",
       "packageName": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "entry": "index.ts",
       "maintenanceMode": "original-facade",
       "sourceFiles": [

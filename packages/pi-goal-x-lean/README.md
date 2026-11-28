@@ -13,6 +13,7 @@ A lighter wrapper for [`pi-goal-x`](https://github.com/tmonk/pi-goal-x). Goal cr
 - With task tracking off, `set_goal_tasks` and `update_goal_task` are not routed or shown, and draft guidance omits tasks.
 - Draft, active and paused stages add only the hints they need; paused goals are not prompted to plan tasks.
 - Minor adjustments to `pi-goal-x-lean` and `pi-subagents-lean` keep them compatible: child sessions only filter inherited goal context and install no goal tools, commands or scheduler. While a goal is active, tracked background Agent/workflow results hold automatic continuation and completion until they are returned.
+- With `rpiv-todo-lean` 0.1.17 or newer installed, an active Goal hides the Todo panel in the terminal session that owns it. `/goal-pause` lets Todo reappear when Autoresearch is off. Other sessions can still see their Todo panel.
 
 ## Source
 

@@ -6,6 +6,8 @@ import { filterGoalSessionContext, isDelegatedGoalSession } from "pi-goal-x/exte
 import { isSubagentChild } from "./integration.ts";
 import { createDelegationGuard } from "./delegation.ts";
 
+const GOAL_ACTIVITY_QUERY = "amox:goal-activity:v1";
+
 const DESCRIPTIONS: Record<string, string> = {
   create_goal: "Create and focus a persistent goal only at the user's request. mode=sisyphus follows ordered steps; token_budget caps lifetime spending, not context.",
   get_goal: "Read goal summary; section=objective|tasks|history pages full details with cursor. task_id selects a task; verbose returns full legacy output.",
@@ -49,8 +51,22 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
     const originals = new Map<string, RegisteredTool>();
     let sessionId: string | undefined;
     const delegation = createDelegationGuard(pi, { currentSessionId: () => sessionId });
-    pi.on("session_start", (_event, ctx) => { sessionId = ctx.sessionManager.getSessionId(); });
-    pi.on("session_shutdown", () => { sessionId = undefined; });
+    let unsubscribeGoalActivity: (() => void) | undefined;
+    pi.on("session_start", (_event, ctx) => {
+      sessionId = ctx.sessionManager.getSessionId();
+      if (ctx.mode !== "tui") return;
+      unsubscribeGoalActivity = pi.events.on(GOAL_ACTIVITY_QUERY, (data) => {
+        const query = data as { sessionId?: string; reportActive?: () => void } | undefined;
+        if (!query || query.sessionId !== sessionId || typeof query.reportActive !== "function") return;
+        const goal = core.state.goal;
+        if (goal?.status === "active" && goal.scheduler?.owner === sessionId) query.reportActive();
+      });
+    });
+    pi.on("session_shutdown", () => {
+      unsubscribeGoalActivity?.();
+      unsubscribeGoalActivity = undefined;
+      sessionId = undefined;
+    });
     upstream(new Proxy(pi, {
       get(target, property) {
         if (property === "registerTool") return (tool: RegisteredTool) => {
@@ -72,7 +88,7 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
         return typeof member === "function" ? member.bind(target) : member;
       },
     }));
-    const core = (pi as unknown as { _goalCore: { state: { goal: { status: string } | null } } })._goalCore;
+    const core = (pi as unknown as { _goalCore: { state: { goal: { status: string; scheduler?: { owner: string } } | null } } })._goalCore;
     if (!delegation.attach(core)) {
       throw new Error("pi-goal-x-lean: upstream goal scheduler integration is unavailable; review the pinned runtime before enabling goal continuation.");
     }

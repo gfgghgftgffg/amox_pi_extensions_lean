@@ -1313,7 +1313,7 @@
   "lean": {
     "@gfgghgftgffg/pi-goal-x-lean": {
       "package": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.6",
+      "version": "0.1.7",
       "entry": "packages/pi-goal-x-lean/index.ts",
       "registeredTools": [
         "get_goal",
@@ -1984,7 +1984,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.16",
+      "version": "0.1.17",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

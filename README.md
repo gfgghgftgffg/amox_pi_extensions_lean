@@ -2,7 +2,7 @@
 
 [简体中文](README.zh-CN.md)
 
-Six independently installable Pi extensions for search, task management, subagents, persistent goals, data sync and high-level summaries. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **84.5%** less registered tool text across the four lean wrappers; the sync and high-level packages are excluded.
+Six independently installable Pi extensions for search, task management, subagents, persistent goals, data sync and high-level summaries. The lean wrappers shorten tool descriptions and schemas while retaining upstream execution. By character count, the current [tool snapshot](maintenance/tool-contracts.json) shows about **83.9%** less registered tool text across the four lean wrappers; the sync and high-level packages are excluded.
 
 | Extension | Tool | Purpose |
 | --- | --- | --- |
@@ -17,7 +17,7 @@ Minor adaptations let subagents and goal-x work together; see the [integration n
 
 ## Installation
 
-Supports Linux, macOS and Windows. Requires Pi `>=1.1.0`, Node `>=22.19.0` and npm; `pi-goal-x-lean` requires Pi `>=1.4.0 <2.0.0`, `amox-pi-sync` also needs Git and working SSH authentication, and `amox-high-level` requires Pi `>=1.6.0`. Install only the packages you need, without version pins:
+Supports Linux, macOS and Windows. Requires Pi `>=1.1.0`, Node `>=22.19.0` and npm; `pi-goal-x-lean` requires Pi `>=1.7.0 <2.0.0`, `amox-pi-sync` also needs Git and working SSH authentication, and `amox-high-level` requires Pi `>=1.6.0`. Install only the packages you need, without version pins:
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean

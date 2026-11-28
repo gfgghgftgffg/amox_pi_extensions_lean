@@ -1,4 +1,3 @@
-import { VERSION } from "@earendil-works/pi-coding-agent";
 import { registerRouter, registerStageGuidance } from "./router.ts";
 import type { ExtensionAPI, ToolDefinition } from "@earendil-works/pi-coding-agent";
 import goal from "pi-goal-x/extensions/goal.ts";
@@ -47,8 +46,6 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
       registerGoalContext(pi, (messages) => filterGoalSessionContext(messages, true));
       return;
     }
-    const [major, minor] = VERSION.split(".").map((part) => Number.parseInt(part, 10) || 0);
-    const modern = major === 1 && minor >= 7;
     const originals = new Map<string, RegisteredTool>();
     let sessionId: string | undefined;
     const delegation = createDelegationGuard(pi, { currentSessionId: () => sessionId });
@@ -59,7 +56,7 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
         if (property === "registerTool") return (tool: RegisteredTool) => {
           // New upstream tools stay functional and unmodified until reviewed.
           if (!Object.hasOwn(DESCRIPTIONS, tool.name)) return target.registerTool(tool);
-          if (modern) originals.set(tool.name, tool);
+          originals.set(tool.name, tool);
           const parameters = JSON.parse(JSON.stringify(tool.parameters));
           stripDescriptions(parameters);
           return target.registerTool(delegation.wrapGoalTool({
@@ -68,7 +65,7 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
             parameters,
             promptSnippet: "",
             // Upstream policy, validation, execution mode and renderers survive.
-            // On 1.7 the router hides routed declarations; get_goal stays direct.
+            // The router hides routed declarations; get_goal stays direct.
           }));
         };
         const member = Reflect.get(target, property, target);
@@ -79,10 +76,8 @@ export function createGoalFacade(upstream: Upstream = goal): Upstream {
     if (!delegation.attach(core)) {
       throw new Error("pi-goal-x-lean: upstream goal scheduler integration is unavailable; review the pinned runtime before enabling goal continuation.");
     }
-    if (modern) {
-      registerRouter(pi, originals);
-      registerStageGuidance(pi, core);
-    }
+    registerRouter(pi, originals);
+    registerStageGuidance(pi, core);
   };
 }
 

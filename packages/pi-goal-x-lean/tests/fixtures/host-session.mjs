@@ -13,9 +13,9 @@ export const initialProfile = goalNames;
 
 // These are actual SDK resources, extension loading, runtime binding and contexts.
 // No alternate Type shim or fake ExtensionAPI is involved in integration checks.
-export async function openHost(paths, { sessionManager, hostVersions = ["1.4.0", "1.5.2"], sessionOptions = {} } = {}) {
+export async function openHost(paths, { sessionManager, sessionOptions = {} } = {}) {
   const host = await import(pathToFileURL(resolveHostModulePath({ requireFrom: import.meta.url })).href);
-  assert.ok(hostVersions.includes(host.VERSION), `tested Pi SDK runtime pin: ${host.VERSION}`);
+  assert.equal(host.VERSION, "1.7.0", `tested Pi SDK runtime pin: ${host.VERSION}`);
   const cwd = process.cwd(), agentDir = process.env.PI_CODING_AGENT_DIR;
   const settingsManager = host.SettingsManager.create(cwd, agentDir);
   const loader = new host.DefaultResourceLoader({

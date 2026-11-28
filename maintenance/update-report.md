@@ -4,6 +4,7 @@ Base: a6517d99b3d97dcd838be77b8bd2defc7a6d5dc4
 Release after verified merge: @gfgghgftgffg/rpiv-todo-lean@0.1.16
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.4
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.5
+Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.6
 
 <!-- amox-release-summary:@gfgghgftgffg/rpiv-todo-lean@0.1.16:start -->
 - Todo: Set `maxWidgetLines: 0` to hide the panel on the next repaint while keeping `todo` and `/todos` available. In Pi’s fullscreen TUI, click the heading to collapse or expand it even when the keyboard shortcut is disabled.
@@ -18,6 +19,11 @@ Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.5
 - Pi 1.7 exposes `get_goal` and `goal`. The router offers per-operation help for all seven original operations and adds guidance when drafting or executing a goal.
 - Older supported Pi hosts continue to use the direct Goal tools.
 <!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.5:end -->
+
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.6:start -->
+- Goal now requires Pi 1.7 or newer and always uses the on-demand `get_goal` + `goal` surface. The pre-1.7 direct-tool path and its duplicate host tests were removed.
+- READMEs now report model-visible tool text: 188 character proxy versus 1691 upstream. The subagents adaptation is described as a small compatibility adjustment, with its tracking limits documented.
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.6:end -->
 
 Source review: [agent-review.md](agent-review.md).
 

@@ -1,5 +1,11 @@
 # Source review
 
+## Goal 0.1.6 Pi 1.7-only facade
+
+- Removed the `VERSION` gate and pre-1.7 direct-tool branch from the Goal facade. The `goal` router and stage guidance are now always installed; the package peer floor is Pi 1.7.0.
+- Updated the host harness to require Pi 1.7.0, removed the duplicate `PI_GOAL_TEST_HOST_17` worker run, and dropped the unused `hostVersions` option. Contract capture now invokes `prepareLoadout` and records `visible` plus `modelVisibleProxyTokens`; the Goal README reports the model-visible 188 proxy instead of the all-registered 1380.
+- No engine code was copied or changed. Full typecheck, package tests, repository tests, contract check and the isolated production install remain the verification gates.
+
 ## Todo 2.16.0 and goal 0.35.2
 
 - Todo/i18n: compared the supplied `ce6d3530410812ca504ec294995581a52170f9e1` → `a410e921cdfb883cea421aad5ebc480a5a06b763` Git publication sources and changelogs, not unpublished monorepo HEAD. The manifests retain the optional i18n peer and both move the transitive config range to `^2.16.0`; i18n's loader/exports remain compatible. `tool/types.ts` replaces Pi's `StringEnum` with a local TypeBox helper and documents the required `action`; the wire enum, parameters and call defaults stay the same. The lean description already covers the requirement and its schema copy still removes annotations. The model text and replay `details` are separate from rendering.

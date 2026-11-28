@@ -61,9 +61,24 @@ export function measureDocs(repo, manifest, packageIds = manifest.packages.map((
     for (const file of ["README.md", "README.zh-CN.md"]) {
       const path = join(repo, entry.path, file);
       let text = readFileSync(path, "utf8");
-      const title = file === "README.md" ? "## Context footprint (character proxy)" : "## 上下文占用（字符代理）";
-      const section = `${title}\n\n<!-- amox-measurement:start -->\n| Package | Registered character proxy |\n| --- | ---: |\n| ${entry.packageName} | ${lean.totals.registeredProxyTokens} |\n| ${entry.upstreamPackage} | ${upstream.totals.registeredProxyTokens} |\n\nFixed ceil(characters / 4), not provider billing tokens.\n<!-- amox-measurement:end -->\n\n`;
-      const start = text.search(file === "README.md" ? /^## (Context|Token|Prompt|Measured).*$/mi : /^## 上下文占用.*$/m);
+      const visible = entry.modelVisibleMetrics === true;
+      const title = file === "README.md"
+        ? visible ? "## Model-visible tool text (character proxy)" : "## Registered tool text (character proxy)"
+        : visible ? "## 模型可见工具文本（字符代理）" : "## 注册工具文本（字符代理）";
+      const header = file === "README.md"
+        ? visible ? "| Package | Model-visible tools (character proxy) |" : "| Package | All registered tools (character proxy) |"
+        : visible ? "| 包 | 模型可见工具（字符代理） |" : "| 包 | 全部注册工具（字符代理） |";
+      const note = file === "README.md"
+        ? visible
+          ? "Counts only tool declarations sent to the model. Fixed ceil(characters / 4); not provider billing tokens."
+          : "Counts every registered tool declaration. Fixed ceil(characters / 4); not provider billing tokens."
+        : visible
+          ? "只统计发给模型的工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。"
+          : "统计全部已注册工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。";
+      const leanTokens = visible ? lean.totals.modelVisibleProxyTokens ?? lean.totals.registeredProxyTokens : lean.totals.registeredProxyTokens;
+      const upstreamTokens = visible ? upstream.totals.modelVisibleProxyTokens ?? upstream.totals.registeredProxyTokens : upstream.totals.registeredProxyTokens;
+      const section = `${title}\n\n<!-- amox-measurement:start -->\n${header}\n| --- | ---: |\n| ${entry.packageName} | ${leanTokens} |\n| ${entry.upstreamPackage} | ${upstreamTokens} |\n\n${note}\n<!-- amox-measurement:end -->\n\n`;
+      const start = text.search(file === "README.md" ? /^## (Context|Token|Prompt|Measured|Registered|Model-visible).*$/mi : /^## (?:上下文占用|注册工具文本|模型可见工具文本).*$/m);
       const next = start < 0 ? -1 : text.indexOf("\n## ", start + 3);
       text = start < 0 ? `${text.trimEnd()}\n\n${section}` : text.slice(0, start) + section + (next < 0 ? "" : text.slice(next + 1));
       writeFileSync(path, text);

@@ -1,6 +1,6 @@
 {
   "name": "@gfgghgftgffg/pi-goal-x-lean",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "description": "Lean tool metadata over the complete pi-goal-x runtime; preserves goal tools, commands, scheduling and auditing.",
   "license": "MIT",
@@ -51,9 +51,9 @@
     "pi-goal-x": "0.35.2"
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": ">=1.4.0 <2.0.0",
-    "@earendil-works/pi-coding-agent": ">=1.4.0 <2.0.0",
-    "@earendil-works/pi-tui": ">=1.4.0 <2.0.0",
+    "@earendil-works/pi-ai": ">=1.7.0 <2.0.0",
+    "@earendil-works/pi-coding-agent": ">=1.7.0 <2.0.0",
+    "@earendil-works/pi-tui": ">=1.7.0 <2.0.0",
     "typebox": "^1.3.11"
   },
   "pi": {

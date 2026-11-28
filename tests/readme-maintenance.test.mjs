@@ -33,13 +33,15 @@ test("daily measurements refresh both languages without adding version metadata"
     measureDocs(repo, next);
     for (const file of files) assert.equal(readFileSync(join(repo, file), "utf8"), readFileSync(join(root, file), "utf8"), file);
     const snapshot = JSON.parse(readFileSync(join(repo, "maintenance/tool-contracts.json"), "utf8"));
-    const entry = next.packages[0];
-    snapshot.lean[entry.packageName].totals.registeredProxyTokens += 1;
+    const entry = next.packages.find((item) => item.modelVisibleMetrics) ?? next.packages[0];
+    const totals = snapshot.lean[entry.packageName].totals;
+    const metric = entry.modelVisibleMetrics ? "modelVisibleProxyTokens" : "registeredProxyTokens";
+    totals[metric] += 1;
     writeFileSync(join(repo, "maintenance/tool-contracts.json"), JSON.stringify(snapshot));
     measureDocs(repo, next);
     for (const file of ["README.md", "README.zh-CN.md"]) {
       assert.ok(readFileSync(join(repo, entry.path, file), "utf8").includes(
-        `| ${entry.packageName} | ${snapshot.lean[entry.packageName].totals.registeredProxyTokens} |`));
+        `| ${entry.packageName} | ${totals[metric]} |`));
     }
   } finally { rmSync(repo, { recursive: true, force: true }); }
 });

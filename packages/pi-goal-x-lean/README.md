@@ -1,207 +1,111 @@
-# pi-goal-x-lean
+# @gfgghgftgffg/pi-goal-x-lean
 
 [简体中文](README.zh-CN.md)
 
-A lean facade over [pi-goal-x](https://github.com/tmonk/pi-goal-x). It keeps the upstream engine as an exact dependency, trims the model-facing goal tool surface, and coordinates persistent goals with [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) through `pi-subagents-lean`.
+## Advantage
 
-## Overview
-
-Goal runs a persistent task loop: the model creates a goal, plans tasks, works through them, records evidence and completes an audited result. This package does not reimplement that loop. It wraps the upstream runtime, forwards its commands, UI, settings, storage and scheduler, and changes only what the model sees plus a small delegation guard.
-
-The wrapper has three responsibilities:
-
-- On Pi 1.7 and later, declare `get_goal` directly and expose the other six operations through one `goal` dispatcher.
-- Shorten tool descriptions and remove schema annotation text without dropping parameter constraints or upstream behavior.
-- Keep goals in the parent session and hold automatic continuation or completion while tracked Agent and workflow results are pending.
+A lighter wrapper for [`pi-goal-x`](https://github.com/tmonk/pi-goal-x). Goal creation, tasks, questionnaires, auditing and all commands are retained; on Pi 1.7 the first request carries only `get_goal` and `goal`, about 188 character-proxy units of model-visible tool text versus 1691 upstream — roughly 89% less.
 
 ## Features
 
-- **All seven operations preserved**: `create_goal`, `get_goal`, `update_goal`, `set_goal_tasks`, `update_goal_task`, `goal_questionnaire` and `propose_goal_draft` keep their upstream names, validation, events, confirmations, auditing, renderers and result envelopes.
-- **On-demand tool surface on Pi 1.7+**: the model sees only `get_goal` and `goal`. The six routed operations remain active and callable, but are hidden from the tool declarations sent to the provider.
-- **Direct tools on older Pi hosts**: Pi 1.4 through 1.6 skip the router and keep the seven shortened direct tools.
-- **Per-operation help**: `goal` with `op: "help"` returns the operation index; adding a topic expands its description, guidelines, JSON schema and an example.
-- **Task-aware behavior**: when task tracking is disabled, `set_goal_tasks` and `update_goal_task` are not routed or advertised, and draft guidance says to omit tasks.
-- **Stage guidance**: the system prompt gains only the draft, lifecycle or task hint needed for the current phase. Paused goals are not prompted to plan or update tasks.
-- **Subagents coordination**: child sessions only filter inherited goal context, while the parent session owns the goal and waits for background delegation results.
-- **Pass-through by default**: unknown upstream tools and unmodified `ExtensionAPI` calls keep their original objects and behavior.
+- The seven operations `create_goal`, `get_goal`, `update_goal`, `set_goal_tasks`, `update_goal_task`, `goal_questionnaire` and `propose_goal_draft` still run upstream. Validation, confirmations, auditing, commands, UI, settings and goal-file formats are unchanged.
+- `get_goal` reads state directly. The other operations go through `goal`: pass the operation in `op` and a JSON object string in `input`. `goal` with `help` expands one operation's parameters and example. The six routed operations stay active but are not sent to the model.
+- With task tracking off, `set_goal_tasks` and `update_goal_task` are not routed or shown, and draft guidance omits tasks.
+- Draft, active and paused stages add only the hints they need; paused goals are not prompted to plan tasks.
+- Minor adjustments to `pi-goal-x-lean` and `pi-subagents-lean` keep them compatible: child sessions only filter inherited goal context and install no goal tools, commands or scheduler. While a goal is active, tracked background Agent/workflow results hold automatic continuation and completion until they are returned.
 
-## Tool surface
+## Source
 
-### Pi 1.7 and later
+This package is the repository's original facade over [`pi-goal-x`](https://github.com/tmonk/pi-goal-x); it does not copy the engine. The upstream engine is tmonk/pi-goal-x, and both are MIT. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
 
-Two goal tools are declared to the model:
+## Usage
 
-| Tool | Role |
-| --- | --- |
-| `get_goal` | Direct, read-only access to goal state, tasks and history pages. It stays declared so a stopped turn can still read the goal. |
-| `goal` | Model-only, sequential dispatcher for all seven operations. `prepareLoadout` hides the other six declarations without changing the active tool set. |
-
-Call the dispatcher with an operation name and a JSON-encoded input string:
+### Start a goal
 
 ```text
-goal({ op: "help", input: "update_goal_task" })
-goal({ op: "update_goal", input: "{\"status\":\"paused\",\"reason\":\"Waiting for a decision\"}" })
+/goal Add CSV export to reports, with tests and usage documentation.
 ```
 
-`get_goal` can be called directly or through the dispatcher. Routed writes execute the original tool through Pi's `ctx.executeTool()`, preserving content, `details`, `terminate` and error status. Pi aggregates nested usage onto the dispatcher call; the wrapper does not copy it again.
+Confirm the plan to start. `/goal-direct` creates immediately, `/sisyphus` drafts an ordered goal, and `/sisyphus-direct` creates one directly. `/goal-tweak` revises the objective or budget; `/goal-pause` and `/goal-resume` pause or continue.
 
-Errors are returned to the model as errors, not as successful wrapper text. Unknown operations, operations unavailable in the current profile, invalid JSON and non-object input all fail explicitly. The terminal shows a routed call as one `goal` record; direct `get_goal` calls keep their original presentation.
+### Tool calls
 
-### Pi 1.4 through 1.6
+Read state:
 
-The router and stage guidance are not installed. The seven upstream tools are registered directly with shortened descriptions and schemas, matching the older host's tool-declaration model.
+```json
+{ "op": "get_goal", "input": "{\"section\":\"tasks\"}" }
+```
 
-### Disabled task tracking
+`get_goal` may also be called directly. Update a goal:
 
-The active goal profile is fixed apart from the task setting. When tasks are disabled, upstream does not activate `set_goal_tasks` or `update_goal_task`; the router rejects both operations and help stops listing them. Draft guidance instructs the model to omit tasks. Upstream may still derive tasks from a numbered draft objective, which is existing engine behavior.
+```json
+{ "op": "update_goal", "input": "{\"status\":\"paused\",\"reason\":\"Waiting for a decision\"}" }
+```
+
+See every parameter for one operation:
+
+```json
+{ "op": "help", "input": "update_goal_task" }
+```
+
+`op` is the operation name and `input` is a JSON object string. Unknown operations, invalid JSON and non-object input are returned as errors.
+
+### Common commands
+
+| Command | Purpose |
+| --- | --- |
+| `/goal [objective]` | Draft a goal; start after confirmation |
+| `/goal-direct <objective>` | Create a goal immediately |
+| `/sisyphus [objective]` | Draft an ordered goal with per-step done criteria |
+| `/goal-tweak <change>` | Revise the objective or token budget |
+| `/goal-pause` / `/goal-resume [text]` | Pause or continue |
+| `/goal-status [verbose\|health]` | Read-only dashboard with storage and runtime checks |
+| `/goal-refresh` | Re-read goal files, settings and ledger |
+| `/goal-settings` | Goal settings and controls |
+
+The remaining commands (`/goal-list`, `/goal-focus`, `/goal-unfocus`, `/goal-clear`, `/goal-cancel`, `/goal-recovery`) are covered in the [upstream guide](https://github.com/tmonk/pi-goal-x#readme).
 
 ## Installation
 
-Requires Pi `>=1.4.0 <2.0.0` and Node `>=22.19.0`. Install without a version pin:
+Requires Pi 1.7.0 or newer. This is a public npm package; install without a version pin:
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-goal-x-lean
 pi update --extensions
 ```
 
-Goal works on its own. For subagents coordination, also install:
+For subagents integration, also install or update [`pi-subagents-lean`](../pi-subagents-lean/README.md):
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-subagents-lean
 ```
 
-Keep one source per extension. Do not load upstream `pi-goal-x` separately; this package already depends on the exact upstream runtime.
+For a Git fallback, run from the repository checkout:
 
-From a Git checkout, use `node scripts/install-extension.mjs pi-goal-x-lean`.
-
-## Usage
-
-Start a guided goal with an objective and acceptance criteria:
-
-```text
-/goal Add CSV export to reports, with tests and usage documentation.
+```bash
+node scripts/install-extension.mjs pi-goal-x-lean
 ```
 
-Review and confirm the plan to begin execution. The model can then ask drafting questions, propose a draft, set a task tree, record progress and complete the goal with evidence.
+Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load upstream `pi-goal-x` or another goal wrapper alongside it.
 
-### Commands
+## Configuration and limits
 
-| Command | Purpose |
-| --- | --- |
-| `/goal [objective]` | Start a guided goal draft with confirmation. |
-| `/goal-direct <objective>` | Create a goal immediately. |
-| `/sisyphus [objective]` | Draft an ordered, persistent goal with per-step done criteria. |
-| `/sisyphus-direct <objective>` | Create an ordered goal immediately. |
-| `/goal-tweak <change>` | Revise the objective or token budget with confirmation. |
-| `/goal-pause` | Pause the goal and stop the current turn. |
-| `/goal-resume [text]` | Continue now, renew the autonomous-run allowance and optionally send text to the agent. |
-| `/goal-clear` | Archive the current goal after confirmation. |
-| `/goal-list` | List open goals in the project. |
-| `/goal-status [verbose\|health]` | Show the read-only dashboard, with optional detail or storage/runtime checks. |
-| `/goal-focus` / `/goal-unfocus` | Choose the goal for this session or detach from it. |
-| `/goal-refresh` | Re-read goal files, settings and ledger caches. |
-| `/goal-recovery [repair]` | Inspect malformed data, stale locks and orphaned snapshots; repair requires confirmation and keeps a backup. |
-| `/goal-settings [controls]` | Open goal settings, or the command/key/pause-order controls. |
-| `/goal-cancel` | Cancel the current draft without creating a goal. |
+- After editing a goal file outside Pi, use `/goal-refresh` to rescan; ordinary reads may still use a cached snapshot.
+- A non-retryable provider error, or an exhausted network-retry limit, pauses the goal. Fix the problem and use `/goal-resume [text]`.
+- Goal tasks are persistent milestones in the goal record; the separate `todo` list is not synchronized with them.
+- The subagents link tracks only work launched under an active goal through `subagent`, `Agent` and `SubagentWorkflow`. Do not combine a result read and an Agent `resume` in one batch. Holds cover the whole parent session, have no timeout or recovery scheduler, and are not restored after reload. CLI workflows, mentions, external RPC and work started before the goal became active are not tracked.
 
-See the [upstream guide](https://github.com/tmonk/pi-goal-x#readme) for the full command and setting reference.
-
-### Drafting and revisions
-
-`goal_questionnaire` asks a batch of drafting questions and `propose_goal_draft` opens confirmation. The mode comes from the user-started draft; the draft tool does not choose `sisyphus` on its own. A task-list confirmation ends the turn and resumes after the user confirms.
-
-Use `/goal-tweak` to revise an objective with the agent. After editing a goal file outside Pi, run `/goal-refresh` to force a rescan and reconcile the focused goal; ordinary reads may still use a cached snapshot.
-
-### Provider failures
-
-If a provider error is not retryable, or the configured network-retry limit is exhausted, the goal pauses. Fix the provider problem and use `/goal-resume [text]`. The optional text is forwarded to the agent before the goal resumes.
-
-### Goal tasks and todo
-
-Goal tasks are persistent milestones inside the goal record. The separate `todo` extension tracks the current turn and is not synchronized with goal tasks in either direction.
-
-## Subagents integration
-
-The combination has two separate guarantees.
-
-### Goal ownership stays in the parent
-
-`pi-subagents-lean` publishes a read-only `context.v1` service backed by the real subagents runner's `AsyncLocalStorage`. This package uses it to detect a child session. A child registers only the upstream goal-context filter: it does not install goal tools, commands, the router, stage guidance or a scheduler. The parent session keeps goal ownership. Role models, tool permissions and Task Router rules are unchanged, and the router is not enabled automatically.
-
-If a subagents manager is loaded without a compatible `context.v1` service, the goal facade raises a compatibility error instead of guessing from environment markers. Upgrade `pi-subagents-lean` rather than loading only the upstream subagents extension.
-
-### Background work holds the goal
-
-While a goal is active, tracked launches through `subagent` (`run` or `workflow`), the native `Agent` tool and `SubagentWorkflow` create a hold. The hold blocks automatic goal continuation and `update_goal(status=complete)` until the parent receives a completion notification or successfully reads the full terminal result.
-
-- Holds cover the whole parent session. Pending work blocks unrelated next steps and other goals too, and switching or creating a goal does not clear a hold.
-- A workflow stays pending between stages even when no child Agent is running. A delayed notification extends the wait. Merely finishing background execution does not release a hold.
-- Failed or stopped terminal results release that run's hold, but do not make the goal audit successful.
-- Concurrent result reads and Agent `resume` calls are rejected. Read the result first, then resume in a separate tool batch. This covers handle and ID aliases that may resolve to the same Agent.
-- Resume reuses the Agent ID, so a notification must also match the current launch's tool-use marker. Notifications still marked `queued` or `running` do not release a hold, and an old notification never proves that a new run finished.
-- Untracked entry points include CLI-launched workflows, mentions, external RPC, other extensions' dispatch paths and work started before the goal became active. Holds live only in the current parent session's memory and are not rebuilt after reload or restoration.
-
-Native subagent notifications are retained rather than rewritten as `pi-goal:wake`. Parent turns woken by those notifications are outside the goal's `maxAutonomousRuns` allowance. Upstream strict mode's wait/wake protocol remains available but is not this guard's default path.
-
-On Pi 1.7, enabling Goal adds 196 tokens to the ordinary first request body, measured with the `gpt-4o` tokenizer against an installed baseline of 1248. Draft and execution prompts add a small stage-specific hint. Per-help and read/task/draft totals are recorded in the [measurement note](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/goal-tools-design.zh-CN.md).
-
-## Context footprint (character proxy)
+## Model-visible tool text (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | Registered character proxy |
+| Package | Model-visible tools (character proxy) |
 | --- | ---: |
-| @gfgghgftgffg/pi-goal-x-lean | 1297 |
+| @gfgghgftgffg/pi-goal-x-lean | 188 |
 | pi-goal-x | 1691 |
 
-Fixed ceil(characters / 4), not provider billing tokens.
+Counts only tool declarations sent to the model. Fixed ceil(characters / 4); not provider billing tokens.
 <!-- amox-measurement:end -->
-
-## Limits and failure modes
-
-- The delegation guard depends on upstream's private `_goalCore.scheduler.schedule/claim` seam and subagents task IDs, result headers and notification markers. If the scheduler seam is missing, the facade refuses to load rather than running without the completion guard.
-- The guard adds no timeout, polling, wake-up or recovery scheduler. Stalled or paused tasks, lost notifications or result consumption through an untracked path can leave a hold pending indefinitely. `/goal-resume` and changing goals do not clear holds.
-- The Agent result tool cannot read workflow IDs, so a lost workflow notification cannot be compensated for through result reads.
-- Holds are conservative: any tracked pending work blocks completion and automatic continuation for the whole parent session, reducing autonomous progress while it waits.
-- The guard does not stop running tasks, block normal user input or prevent the parent from using tools in the current turn. Partial notifications can wake the parent to handle results while remaining holds still block final completion.
-- Goal auditing excludes project extensions by default. Enabling `auditorProjectResources` broadens resource discovery; the read-only audit policy is not an OS sandbox.
-
-## Files
-
-| File | Role |
-| --- | --- |
-| `index.ts` | Facade over the upstream extension: tool metadata, proxy forwarding, child-session branch and delegation guard wiring. |
-| `router.ts` | Pi 1.7 `goal` dispatcher, loadout hiding, help topics and stage guidance. |
-| `delegation.ts` | Background Agent/workflow holds, result/resume conflict checks and the completion gate. |
-| `integration.ts` | Read-only bridge to the `pi-subagents-lean` `context.v1` child-context service. |
 
 ## Development
 
-Run the package checks from this directory:
-
-```bash
-npm test
-npm run typecheck
-npm run check
-```
-
-Pi 1.7 host scenarios are explicit. Point the test at the installed host entry:
-
-```bash
-PI_GOAL_TEST_HOST_17=/path/to/pi-1.7/dist/index.js npm test
-```
-
-The provider measurement uses the repository script:
-
-```bash
-/home/ubuntu/miniforge3/envs/codex/bin/python scripts/measure-goal-provider.py
-```
-
-## Further reading
-
-- [pi-goal-x upstream](https://github.com/tmonk/pi-goal-x)
-- [@tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents)
-- [Goal tool design and measurements](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/goal-tools-design.zh-CN.md)
-
-## Maintenance
-
-See [MAINTENANCE.md](MAINTENANCE.md) for integration scope, concurrency limits, side effects and upgrade checks.
+See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.

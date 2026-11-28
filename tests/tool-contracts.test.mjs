@@ -24,6 +24,7 @@ test("every recorded tool has consistent char accounting and a proxy token count
       assert.ok(tool.description.length > 0, `${record.package}/${tool.name} has no description`);
       assert.ok(Object.keys(tool.parameters).length > 0, `${record.package}/${tool.name} has no schema`);
       assert.ok(Array.isArray(tool.promptGuidelines));
+      assert.equal(typeof tool.visible, "boolean");
       const { description, schema, snippet, guidelines, total } = tool.chars;
       assert.equal(description, tool.description.length);
       assert.equal(schema, JSON.stringify(tool.parameters).length);
@@ -40,13 +41,17 @@ test("every recorded tool has consistent char accounting and a proxy token count
       record.totals.activeProxyTokens,
       record.tools.reduce((sum, tool) => sum + (tool.active ? tool.proxyTokens : 0), 0),
     );
+    assert.equal(
+      record.totals.modelVisibleProxyTokens,
+      record.tools.reduce((sum, tool) => sum + (tool.visible ? tool.proxyTokens : 0), 0),
+    );
   }
 });
 
 test("lean facades are smaller than their pinned upstream engines", () => {
   assert.deepEqual(
     Object.values(snapshot.lean).map((record) => record.tools.map((tool) => tool.name)).flat().sort(),
-    ["create_goal", "get_goal", "goal_questionnaire", "propose_goal_draft",
+    ["create_goal", "get_goal", "goal", "goal_questionnaire", "propose_goal_draft",
       "set_goal_tasks", "subagent", "todo", "update_goal", "update_goal_task", "web_access"],
   );
   for (const [id, record] of Object.entries(snapshot.lean)) {
@@ -59,6 +64,10 @@ test("lean facades are smaller than their pinned upstream engines", () => {
     assert.ok(
       record.totals.activeProxyTokens < upstream.totals.activeProxyTokens,
       `${id} is not smaller than the active ${record.upstreamPackage} surface`,
+    );
+    assert.ok(
+      record.totals.modelVisibleProxyTokens < upstream.totals.modelVisibleProxyTokens,
+      `${id} is not smaller than the model-visible ${record.upstreamPackage} surface`,
     );
   }
 });

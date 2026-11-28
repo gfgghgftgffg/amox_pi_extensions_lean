@@ -1,6 +1,6 @@
 // Host-discovery checks: load all monorepo entrypoints in ONE real
 // isolated Pi SDK session and prove that (a) the three existing facades and
-// seven goal tools are registered, (b) upstream engines are not discovered as extra extensions, and
+// the on-demand goal surface are registered, (b) upstream engines are not discovered as extra extensions, and
 // (c) the upstream ext: selector identity (used by the Task Router) still
 // resolves to the expected names.
 import assert from "node:assert/strict";
@@ -21,7 +21,7 @@ const manifest = JSON.parse(readFileSync(join(repoRoot, "maintenance/manifest.js
 const entryPaths = manifest.packages.map((entry) => resolve(repoRoot, entry.path, entry.entry));
 const goalTools = ["get_goal", "create_goal", "update_goal", "set_goal_tasks", "update_goal_task",
   "goal_questionnaire", "propose_goal_draft"];
-const expectedTools = ["web_access", "todo", "subagent", ...goalTools];
+const expectedTools = ["web_access", "todo", "subagent", ...goalTools, "goal"];
 const expectedActiveTools = expectedTools;
 const upstreamToolNames = [
   "web_search",
@@ -35,7 +35,7 @@ const upstreamToolNames = [
   "SubagentWorkflow",
 ];
 
-test("one host session loads the existing facades, sync and seven goal tools without extra upstream engines", async () => {
+test("one host session loads the existing facades, sync and the on-demand goal surface without extra upstream engines", async () => {
   const env = createIsolatedEnvironment({ prefix: "amox-host-discovery-" });
   const previousEnv = {
     PI_CODING_AGENT_DIR: process.env.PI_CODING_AGENT_DIR,
@@ -69,7 +69,7 @@ test("one host session loads the existing facades, sync and seven goal tools wit
     assert.deepEqual([...result.loadedPaths].sort(), [...entryPaths].sort(), "only the declared monorepo entrypoints load");
     assert.deepEqual(result.tools.map((tool) => tool.name), expectedTools);
     assert.deepEqual(result.tools.filter(tool => tool.active).map(tool => tool.name), expectedActiveTools,
-      "old facades remain active; goal advertises its fixed task-enabled profile");
+      "old facades remain active; goal advertises the dispatcher and its fixed task-enabled profile");
     assert.equal(result.tools.some(tool => /goal2/i.test(tool.name)), false);
     assert.ok(result.tools.every((tool) => tool.source !== "builtin"), "facades must not be built-in tools");
     for (const upstreamName of upstreamToolNames) {

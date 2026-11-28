@@ -32,7 +32,7 @@ await modelRuntime.setRuntimeApiKey("fixture", "test");
 const paths = [scenario === "audit-hold" ? fileURLToPath(new URL("./auditor.ts", import.meta.url)) : facadePath];
 const outcomes = [];
 const open = async sessionManager => {
-  const opened = await openHost(paths, { hostVersions: ["1.7.0"], sessionManager,
+  const opened = await openHost(paths, { sessionManager,
     sessionOptions: { modelRuntime, model: modelRuntime.getModel("fixture", "goal-test") } });
   opened.session.subscribe(event => {
     if (event.type === "tool_execution_end" && !event.parentToolCallId) outcomes.push(event);

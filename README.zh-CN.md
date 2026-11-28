@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-六个可独立安装的 Pi 扩展，涵盖搜索、任务管理、子 Agent、持久目标、数据同步和高层总结。lean 包精简工具描述和 schema，保留上游执行能力。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，四个 lean 包已注册的工具文本合计减少约 **84.5%**；同步包和高层总结包不计入统计。
+六个可独立安装的 Pi 扩展，涵盖搜索、任务管理、子 Agent、持久目标、数据同步和高层总结。lean 包精简工具描述和 schema，保留上游执行能力。按当前[工具快照](maintenance/tool-contracts.json)的字符数估算，四个 lean 包已注册的工具文本合计减少约 **83.9%**；同步包和高层总结包不计入统计。
 
 | 扩展 | 工具 | 用途 |
 | --- | --- | --- |
@@ -17,7 +17,7 @@
 
 ## 安装
 
-支持 Linux、macOS 和 Windows，需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm；`pi-goal-x-lean` 需要 Pi `>=1.4.0 <2.0.0`，`amox-pi-sync` 还需要 Git 和可用的 SSH 认证，`amox-high-level` 需要 Pi `>=1.6.0`。按需安装，不固定版本：
+支持 Linux、macOS 和 Windows，需要 Pi `>=1.1.0`、Node `>=22.19.0` 和 npm；`pi-goal-x-lean` 需要 Pi `>=1.7.0 <2.0.0`，`amox-pi-sync` 还需要 Git 和可用的 SSH 认证，`amox-high-level` 需要 Pi `>=1.6.0`。按需安装，不固定版本：
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean

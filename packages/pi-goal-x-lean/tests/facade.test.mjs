@@ -97,7 +97,7 @@ test("facade compresses known metadata while preserving upstream contracts and f
     assert.equal(capture.setActiveTools(["read", "todo", "create_goal"]), "forwarded");
   };
   createGoalFacade(upstream)(pi);
-  assert.deepEqual(registered.map(tool => tool.name), names);
+  assert.deepEqual(registered.map(tool => tool.name), [...names, "goal"]);
   assert.equal(pi._goalCore, core, "the upstream core seam passes through the proxy");
   const upstreamCalls = calls.filter(([method, , callback]) => method !== "on" || callback === hook);
   assert.deepEqual(upstreamCalls, [["on", "session_start", hook], ["registerCommand", "goal", command],
@@ -143,12 +143,14 @@ test("a missing upstream scheduler seam fails explicitly instead of losing the d
 test("unknown upstream tools pass through by reference, including metadata and registration result", () => {
   const unknown = { name: "future_goal_tool", description: "Keep this", parameters: annotatedSchema(),
     promptSnippet: "Keep this too", execute() {} };
-  const token = {};
+  const token = {}, registered = [];
   createGoalFacade(withCore(pi => assert.equal(pi.registerTool(unknown), token)))({
-    on() {}, registerTool(tool) { assert.equal(tool, unknown); return token; },
+    on() {}, registerTool(tool) { registered.push(tool); return token; },
   });
+  assert.equal(registered[0], unknown);
   assert.deepEqual(unknown.parameters, annotatedSchema());
   assert.equal(unknown.promptSnippet, "Keep this too");
+  assert.equal(registered[1].name, "goal");
 });
 
 

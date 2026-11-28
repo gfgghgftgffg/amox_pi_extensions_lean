@@ -9,7 +9,10 @@ import { Agent } from "@earendil-works/pi-agent-core";
 import { createAssistantMessageEventStream } from "@earendil-works/pi-ai";
 import { Type } from "typebox";
 
-const jiti = createJiti(import.meta.url, { moduleCache: true });
+const jiti = createJiti(import.meta.url, {
+  moduleCache: true,
+  alias: { "@earendil-works/pi-ai": fileURLToPath(new URL("./fixtures/pi-ai.mjs", import.meta.url)) },
+});
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const { createDelegationGuard } = await jiti.import(join(root, "pi-goal-x-lean/delegation.ts"));
 const upstream = fileURLToPath(new URL("../../../node_modules/", import.meta.url));

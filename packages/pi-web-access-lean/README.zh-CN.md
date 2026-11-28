@@ -88,15 +88,15 @@ Provider、凭据、搜索路由和抓取选项沿用上游的 `web-search.json`
 本地 PDF 直读仅提取 Markdown，不支持上游结构化 `extract` 模式；远端 PDF 由上游处理。
 `web_access` 始终直接注册，上游的动态工具加载设置不会延迟或移除这个入口。
 
-## 上下文占用（字符代理）
+## 注册工具文本（字符代理）
 
 <!-- amox-measurement:start -->
-| Package | Registered character proxy |
+| 包 | 全部注册工具（字符代理） |
 | --- | ---: |
 | @gfgghgftgffg/pi-web-access-lean | 149 |
 | pi-web-access | 1110 |
 
-Fixed ceil(characters / 4), not provider billing tokens.
+统计全部已注册工具声明；固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token。
 <!-- amox-measurement:end -->
 
 ## 开发

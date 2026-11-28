@@ -162,6 +162,7 @@ function totals(tools) {
   return {
     registeredProxyTokens: tools.reduce((sum, tool) => sum + tool.proxyTokens, 0),
     activeProxyTokens: tools.reduce((sum, tool) => sum + (tool.active ? tool.proxyTokens : 0), 0),
+    modelVisibleProxyTokens: tools.reduce((sum, tool) => sum + (tool.visible ? tool.proxyTokens : 0), 0),
   };
 }
 

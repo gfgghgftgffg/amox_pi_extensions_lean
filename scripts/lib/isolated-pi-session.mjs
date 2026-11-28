@@ -126,10 +126,11 @@ function contractChars({ description, promptSnippet, promptGuidelines, parameter
 }
 
 /** Build the deterministic, host-independent contract for one tool. */
-export function toolContract(tool, { active, substitutions = [] }) {
+export function toolContract(tool, { active, visible = active, substitutions = [] }) {
   let contract = {
     name: tool.name,
     active,
+    visible,
     source: tool.sourceInfo?.source ?? "extension",
     description: typeof tool.description === "string" ? tool.description : "",
     promptSnippet: typeof tool.promptSnippet === "string" ? tool.promptSnippet : "",
@@ -204,12 +205,28 @@ export async function loadExtensionContracts({
       [env.cwd, "<cwd>"],
       [env.home, "<home>"],
     ];
-    const tools = session
+    const extensionTools = session
       .getAllTools()
       // Isolated sessions always carry Pi's built-in tools (read/bash/...);
       // contract capture only records tools registered by loaded extensions.
-      .filter((tool) => tool.sourceInfo?.source !== "builtin")
-      .map((tool) => toolContract(tool, { active: active.has(tool.name), substitutions }));
+      .filter((tool) => tool.sourceInfo?.source !== "builtin");
+    const hidden = new Set();
+    const declared = extensionTools.map((tool) => ({ name: tool.name }));
+    const definitions = (extensionsResult.extensions ?? []).flatMap((extension) =>
+      [...(extension.tools?.values?.() ?? [])].map((registration) => registration.definition).filter(Boolean));
+    for (const definition of definitions) {
+      if (typeof definition.prepareLoadout !== "function") continue;
+      const changes = definition.prepareLoadout({
+        declared, callable: declared, registered: declared,
+        getExposure: () => "model", getNamespace: () => undefined, getPromptGuidelines: () => [],
+      });
+      for (const name of changes?.hiddenDeclarations ?? []) hidden.add(name);
+    }
+    const tools = extensionTools.map((tool) => toolContract(tool, {
+      active: active.has(tool.name),
+      visible: active.has(tool.name) && !hidden.has(tool.name),
+      substitutions,
+    }));
     const loadedPaths = (extensionsResult.extensions ?? []).map((extension) => extension.path ?? extension.name ?? "unknown");
     return {
       tools,

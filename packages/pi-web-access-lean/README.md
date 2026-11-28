@@ -91,15 +91,15 @@ Direct local PDF access extracts Markdown only, not upstream's structured `extra
 use upstream handling. `web_access` stays registered directly: upstream dynamic tool-loading settings
 do not defer or remove this entrypoint.
 
-## Context footprint (character proxy)
+## Registered tool text (character proxy)
 
 <!-- amox-measurement:start -->
-| Package | Registered character proxy |
+| Package | All registered tools (character proxy) |
 | --- | ---: |
 | @gfgghgftgffg/pi-web-access-lean | 149 |
 | pi-web-access | 1110 |
 
-Fixed ceil(characters / 4), not provider billing tokens.
+Counts every registered tool declaration. Fixed ceil(characters / 4); not provider billing tokens.
 <!-- amox-measurement:end -->
 
 ## Development

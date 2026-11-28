@@ -51,8 +51,8 @@ if (scenario === "contracts") {
   } finally { await upstream.close(); }
   const facade = await openHost([facadePath]);
   try {
-    assert.deepEqual([...facade.extensions[0].tools.keys()], goalNames);
-    assert.ok(!facade.extensions[0].tools.has("goal"), "Pi 1.4 keeps the seven direct lean tools");
+    assert.deepEqual([...facade.extensions[0].tools.keys()], [...goalNames, "goal"]);
+    assert.equal(facade.tool("goal").exposure, "model-only");
     assert.equal(facade.tool("get_goal").description, "Read goal summary; section=objective|tasks|history pages full details with cursor. task_id selects a task; verbose returns full legacy output.");
     facade.profile(initialProfile);
     let before = 0, after = 0;

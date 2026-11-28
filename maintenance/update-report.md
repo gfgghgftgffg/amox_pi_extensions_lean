@@ -22,7 +22,7 @@ Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.6
 
 <!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.6:start -->
 - Goal now requires Pi 1.7 or newer and always uses the on-demand `get_goal` + `goal` surface. The pre-1.7 direct-tool path and its duplicate host tests were removed; the package now targets Pi 1.7.0 or newer.
-- READMEs now report model-visible tool text: 188 character proxy versus 1691 upstream. The subagents adaptation is described as a small compatibility adjustment, with its tracking limits documented.
+- READMEs now report model-visible tool text: 188 character proxy versus 1691 upstream. The subagents adaptation is described as a small compatibility adjustment, with its tracking limits documented. This release publishes only the Goal package.
 <!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.6:end -->
 
 Source review: [agent-review.md](agent-review.md).

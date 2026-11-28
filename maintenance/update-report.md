@@ -13,6 +13,11 @@ Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.4
 - Update to pi-goal-x 0.35.2. `/goal-refresh` now rescans goal files and picks up external edits to the active goal. The seven-tool interface and parent-session ownership are preserved.
 <!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.4:end -->
 
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.5:start -->
+- Pi 1.7 exposes `get_goal` and `goal`. The router offers per-operation help for all seven original operations and adds guidance when drafting or executing a goal.
+- Older supported Pi hosts continue to use the direct Goal tools.
+<!-- amox-release-summary:@gfgghgftgffg/pi-goal-x-lean@0.1.5:end -->
+
 Source review: [agent-review.md](agent-review.md).
 
 The local gate runs real tests, contracts, standalone production installs and both dependency audits. Upstream advisory findings are recorded as warnings, not release blockers. Three-platform CI and fixed-host merge acceptance remain required; this report alone is not a cross-platform attestation.

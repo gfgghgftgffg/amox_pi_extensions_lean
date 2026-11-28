@@ -3,6 +3,7 @@
 Base: a6517d99b3d97dcd838be77b8bd2defc7a6d5dc4
 Release after verified merge: @gfgghgftgffg/rpiv-todo-lean@0.1.16
 Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.4
+Release after verified merge: @gfgghgftgffg/pi-goal-x-lean@0.1.5
 
 <!-- amox-release-summary:@gfgghgftgffg/rpiv-todo-lean@0.1.16:start -->
 - Todo: Set `maxWidgetLines: 0` to hide the panel on the next repaint while keeping `todo` and `/todos` available. In Pi’s fullscreen TUI, click the heading to collapse or expand it even when the keyboard shortcut is disabled.

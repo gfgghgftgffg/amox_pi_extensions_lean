@@ -68,3 +68,25 @@ for (const [name, flags] of [
   test(`${name} worker installs only a context filter and never accesses the parent goal pool`, { timeout: 130_000 },
     () => runScenario("worker-scenario.mjs", name, flags));
 }
+
+// Use a separate override so npm test can exercise both generations in one run.
+const host17 = process.env.PI_GOAL_TEST_HOST_17;
+const host17Options = { skip: !host17 && "set PI_GOAL_TEST_HOST_17 to the installed Pi 1.7 dist/index.js", timeout: 130_000 };
+for (const scenario of ["draft-history", "audit-hold", "disabled-tasks", "router-errors", "op-parity", "stage-guidance"]) {
+  test(`Pi 1.7 visible goal facade: ${scenario}`, host17Options, () => runScenario("visible-goal.mjs", scenario, {
+    PI_CODING_AGENT_MODULE: host17,
+    ...(scenario === "disabled-tasks" && { PI_GOAL_DISABLE_TASKS: "true" }),
+  }));
+}
+test("Pi 1.7 draft guidance omits task instructions when tasks are disabled", host17Options,
+  () => runScenario("visible-goal.mjs", "stage-guidance", {
+    PI_CODING_AGENT_MODULE: host17, PI_GOAL_DISABLE_TASKS: "true",
+  }));
+for (const [name, flags] of [
+  ["CHILD", { PI_SUBAGENT_CHILD: "1" }],
+  ["DEPTH", { PI_SUBAGENT_DEPTH: "2" }],
+  ["SERVICE", {}],
+]) {
+  test(`Pi 1.7 ${name} worker installs only a context filter`, host17Options,
+    () => runScenario("worker-scenario.mjs", name, { PI_CODING_AGENT_MODULE: host17, ...flags }));
+}

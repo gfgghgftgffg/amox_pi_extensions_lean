@@ -39,7 +39,7 @@ for (const object of [fs, fs.promises]) {
 syncBuiltinESMExports();
 try {
   const { openHost, facadePath } = await import("./host-session.mjs");
-  const host = await openHost([facadePath]);
+  const host = await openHost([facadePath], { hostVersions: ["1.4.0", "1.5.2", "1.7.0"] });
   try {
     const extension = host.extensions[0];
     assert.equal(extension.tools.size, 0);

@@ -8,7 +8,7 @@ const goal = manifest.packages.find(entry => entry.id === "pi-goal-x-lean");
 
 test("original goal facade declares and permits only its maintained source files", () => {
   assert.equal(goal.maintenanceMode, "original-facade");
-  assert.deepEqual(goal.sourceFiles, ["index.ts", "integration.ts", "delegation.ts"]);
+  assert.deepEqual(goal.sourceFiles, ["index.ts", "router.ts", "integration.ts", "delegation.ts"]);
   for (const file of goal.sourceFiles) assert.equal(adapterWritable(`${goal.path}/${file}`, manifest), true, file);
   for (const file of ["unknown.ts", "helpers/unknown.ts", "tests/fixtures/auditor.ts", "tests/fixtures/upstream.mjs", "scripts/update.mjs", "package.json", "tsconfig.json"]) {
     assert.equal(adapterWritable(`${goal.path}/${file}`, manifest), false, file);

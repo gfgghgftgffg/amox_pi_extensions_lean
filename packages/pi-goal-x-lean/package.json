@@ -32,6 +32,7 @@
   "files": [
     "index.ts",
     "integration.ts",
+    "router.ts",
     "delegation.ts",
     "README.md",
     "README.zh-CN.md",

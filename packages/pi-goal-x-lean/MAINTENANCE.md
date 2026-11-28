@@ -2,15 +2,17 @@
 
 Keep this file in English.
 
-The original facade depends on exact `pi-goal-x@0.35.2`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`).
+The original facade depends on exact `pi-goal-x@0.35.2`; it does not copy the engine. The published package has no npm publication `gitHead`, so maintenance reviews exact npm tarballs with SHA-512 integrity, not an inferred Git commit. There is no external lean-author repository. Pi development verification uses 1.4.0 and 1.7.0; supported hosts must satisfy upstream peers (`>=1.4.0 <2.0.0`). `router.ts` is a declared published source and must stay in `sourceFiles`, `package.json` `files`, and the archive validator.
 
 ## Retained behavior
 
 Keep all seven upstream tool names, schemas except description annotations, prompt guidelines, lifecycle hooks, commands, shortcuts, renderers and the fixed task-setting-dependent tool profile. Draft-state gating belongs to execution, not changing tool visibility. Do not suppress `setActiveTools`, collapse names or truncate goal context: stopped-turn gates, progress classification, drafting, live-tail retention and provider-cache placement depend on them. Unknown new tools pass through unchanged until reviewed.
 
+On Pi 1.7+, the model declares only `get_goal` and the `goal` dispatcher. `prepareLoadout` hides the other six upstream declarations while leaving them active and callable; `goal` executes all seven operations through `ctx.executeTool()`, preserving content, details, `terminate` and error status. The nested usage is aggregated by Pi and must not be copied onto the wrapper. `get_goal` remains directly declared for stopped turns. Pi 1.4-1.6 bypass the router and keep the seven direct lean tools. Stage guidance adds only the draft/lifecycle/task hints needed for the current phase; task hints disappear when `disableTasks` removes those tools.
+
 ## Integration contracts
 
-The optional `@gfgghgftgffg/pi-subagents-lean.context.v1` global service supplies the actual dist runner's AsyncLocalStorage child flag. Never copy child-context state, resolve an undeclared neighboring dependency or temporarily mutate `process.env`. A child registers only upstream goal-context filtering. Test the actual Pi loader and dist child-context identity; environment-marker tests alone are insufficient.
+The optional `@gfgghgftgffg/pi-subagents-lean.context.v1` global service supplies the actual dist runner's AsyncLocalStorage child flag. Never copy child-context state, resolve an undeclared neighboring dependency or temporarily mutate `process.env`. A child registers only upstream goal-context filtering, never the router or stage guidance. Test the actual Pi loader and dist child-context identity on both the pinned old host and 1.7; environment-marker tests alone are insufficient.
 
 ## Subagents and workflow integration boundaries
 
@@ -67,4 +69,14 @@ Ordinary reads can use a cached pool snapshot. In 0.34.1 and 0.34.2 even `/goal-
 
 ## Verification
 
-Run package type/functional tests, mixed-host discovery, fresh tool contracts and independent production installation. Integration cases cover child ownership, profile preservation, task evidence/batches, audit rejection/acceptance and notification-versus-continuation ordering without real model calls. All test homes, settings and goal pools are isolated. Tests do not justify an assertion that every upstream model/UI path was exercised.
+Run package type/functional tests, mixed-host discovery, fresh tool contracts and independent production installation. Integration cases cover child ownership, profile preservation, task evidence/batches, audit rejection/acceptance, routed errors, task disablement, draft/stage guidance, seven-operation parity and notification-versus-continuation ordering without real model calls. All test homes, settings and goal pools are isolated. Tests do not justify an assertion that every upstream model/UI path was exercised.
+
+Pi 1.7 host checks are explicit; the local 1.4 host remains the default regression target:
+
+```bash
+PI_GOAL_TEST_HOST_17=/home/ubuntu/.pi/agent/install/releases/1.7.0/node_modules/@earendil-works/pi-coding-agent/dist/index.js \
+  npm test --workspace @gfgghgftgffg/pi-goal-x-lean
+python3 scripts/measure-goal-provider.py  # use an interpreter with tiktoken==0.12.0
+```
+
+The measurement fixture is `tests/fixtures/provider-baseline.json`, captured from the installed lean facade before the router change. It uses `tiktoken==0.12.0` with `gpt-4o`; the script counts tokens in canonicalized request JSON from a loopback provider with scripted responses and auto-confirmation.

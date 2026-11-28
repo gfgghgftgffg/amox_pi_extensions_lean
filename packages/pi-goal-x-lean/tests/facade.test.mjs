@@ -8,6 +8,7 @@ const jiti = createJiti(import.meta.url, {
   alias: { "pi-goal-x/extensions/goal.ts": fileURLToPath(new URL("./fixtures/upstream.mjs", import.meta.url)) },
 });
 const { createGoalFacade } = await jiti.import(fileURLToPath(new URL("../index.ts", import.meta.url)));
+const { registerRouter, registerStageGuidance } = await jiti.import(fileURLToPath(new URL("../router.ts", import.meta.url)));
 const names = ["create_goal", "get_goal", "update_goal", "set_goal_tasks", "update_goal_task",
   "goal_questionnaire", "propose_goal_draft"];
 const makeCore = () => ({ state: { goal: null }, scheduler: { schedule() {}, claim() { return null; } } });
@@ -148,4 +149,104 @@ test("unknown upstream tools pass through by reference, including metadata and r
   });
   assert.deepEqual(unknown.parameters, annotatedSchema());
   assert.equal(unknown.promptSnippet, "Keep this too");
+});
+
+
+const routerTools = () => new Map(names.map(name => [name, {
+  name, description: `${name} upstream description`, promptSnippet: `${name} snippet`,
+  promptGuidelines: [`${name} guideline`], parameters: { type: "object", properties: {} },
+}]));
+
+test("Pi 1.7 router executes nested tools, forwards errors and termination, and strips aggregated usage", async () => {
+  const originals = routerTools(), registered = [];
+  registerRouter({ on() {}, registerTool(tool) { registered.push(tool); }, getActiveTools: () => [...names, "goal"] }, originals);
+  const router = registered[0];
+  assert.equal(router.name, "goal");
+  assert.equal(router.exposure, "model-only");
+  assert.equal(router.executionMode, "sequential");
+  assert.deepEqual(router.prepareLoadout({ declared: [...names, "goal"].map(name => ({ name })) }).hiddenDeclarations,
+    names.filter(name => name !== "get_goal"));
+  assert.doesNotMatch(router.prepareLoadout({ declared: [...names, "goal"].map(name => ({ name })) }).descriptions.goal, /get_goal,/);
+
+  const calls = [];
+  const ctx = {
+    tools: [...names, "goal"].map(name => ({ name })),
+    async executeTool(name, args, options) {
+      calls.push([name, args, options]);
+      return { toolCall: { id: "nested", name, arguments: args }, isError: false,
+        result: { content: [{ type: "text", text: "original result" }], details: { goal: { id: "fixture" } },
+          terminate: true, usage: { input: 7, output: 3, cacheRead: 0, cacheWrite: 0, totalTokens: 10 } } };
+    },
+  };
+  const result = await router.execute("call", { op: "create_goal", input: '{"objective":"fixture"}' },
+    new AbortController().signal, () => {}, ctx);
+  assert.deepEqual(result, { content: [{ type: "text", text: "original result" }], details: { goal: { id: "fixture" } },
+    terminate: true, isError: false });
+  assert.equal(calls[0][0], "create_goal");
+  assert.deepEqual(calls[0][1], { objective: "fixture" });
+
+  ctx.executeTool = async (name, args) => ({ toolCall: { id: "nested", name, arguments: args }, isError: true,
+    result: { content: [{ type: "text", text: "upstream rejected" }], details: { reason: "fixture" }, isError: true } });
+  const failed = await router.execute("call", { op: "update_goal", input: '{"status":"paused"}' },
+    new AbortController().signal, () => {}, ctx);
+  assert.equal(failed.isError, true);
+  assert.equal(failed.content[0].text, "upstream rejected");
+  assert.deepEqual(failed.details, { reason: "fixture" });
+
+  const help = await router.execute("call", { op: "help", input: "update_goal_task" },
+    new AbortController().signal, () => {}, ctx);
+  assert.match(help.content[0].text, /update_goal_task upstream description/);
+  assert.match(help.content[0].text, /Example: goal\(/);
+  const directHelp = await router.execute("call", { op: "help", input: "get_goal" },
+    new AbortController().signal, () => {}, ctx);
+  assert.match(directHelp.content[0].text, /Example: get_goal\(/);
+
+  ctx.tools = [...names.filter(name => !["set_goal_tasks", "update_goal_task"].includes(name)), "goal"].map(name => ({ name }));
+  await assert.rejects(router.execute("call", { op: "set_goal_tasks", input: '{"tasks":[]}' },
+    new AbortController().signal, () => {}, ctx), /Unknown or unavailable goal operation/);
+  await assert.rejects(router.execute("call", { op: "help", input: "set_goal_tasks" },
+    new AbortController().signal, () => {}, ctx), /Unknown or inactive goal help topic/);
+  await assert.rejects(router.execute("call", { op: "create_goal", input: "{" },
+    new AbortController().signal, () => {}, ctx), /Invalid JSON/);
+  ctx.tools = [...names, "goal"].map(name => ({ name }));
+  ctx.executeTool = async (name, args) => ({ toolCall: { id: "nested", name, arguments: args }, isError: false,
+    result: { content: [{ type: "text", text: "read result" }], details: { goal: { id: "fixture" } } } });
+  const routedRead = await router.execute("call", { op: "get_goal", input: "{}" },
+    new AbortController().signal, () => {}, ctx);
+  assert.equal(routedRead.isError, false);
+  assert.equal(routedRead.content[0].text, "read result");
+});
+
+test("Pi 1.7 stage guidance reflects draft, lifecycle and task availability without rewriting history", async () => {
+  let handler, active = [...names, "goal"];
+  const pi = { on(name, value) { assert.equal(name, "before_agent_start"); handler = value; }, getActiveTools: () => active };
+  const core = { state: { goal: null } }, branch = [];
+  registerStageGuidance(pi, core);
+  const guidance = async () => {
+    const event = { systemPromptOptions: { sections: {} } };
+    await handler(event, { sessionManager: { getBranch: () => branch } });
+    return event.systemPromptOptions.sections.goal_operations;
+  };
+  assert.equal(await guidance(), undefined, "no section without a goal or draft");
+  branch.push({ type: "custom", customType: "pi-goal-draft", data: { mode: "goal" } });
+  let text = await guidance();
+  assert.match(text, /Draft:/);
+  assert.match(text, /propose_goal_draft to open confirmation/);
+  assert.doesNotMatch(text, /Task tracking is disabled/);
+  active = ["create_goal", "get_goal", "update_goal", "goal_questionnaire", "propose_goal_draft", "goal"];
+  assert.match(await guidance(), /Task tracking is disabled; omit tasks/);
+  branch.push({ type: "custom", customType: "pi-goal-draft", data: { mode: "goal", clearedAt: "2026-01-01" } });
+  active = [...names, "goal"];
+  core.state.goal = { status: "active" };
+  text = await guidance();
+  assert.match(text, /get_goal directly/);
+  assert.match(text, /goal with op update_goal/);
+  assert.match(text, /confirmation stops the turn/);
+  assert.match(text, /update_goal_task/);
+  core.state.goal = { status: "paused" };
+  text = await guidance();
+  assert.doesNotMatch(text, /set_goal_tasks|update_goal_task/);
+  branch.push({ type: "custom", customType: "unrelated", data: {} });
+  core.state.goal = null;
+  assert.equal(await guidance(), undefined, "tombstoned drafts do not keep guidance alive");
 });

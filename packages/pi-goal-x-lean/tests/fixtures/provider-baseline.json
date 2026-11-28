@@ -1,0 +1,72 @@
+{
+  "metrics": {
+    "names": [
+      "get_goal",
+      "create_goal",
+      "update_goal",
+      "set_goal_tasks",
+      "update_goal_task",
+      "goal_questionnaire",
+      "propose_goal_draft"
+    ],
+    "tools": 1098,
+    "prompt": 147,
+    "bodyDelta": 1248,
+    "plain": 1176,
+    "ordinary": 2424,
+    "goalSurface": 1245,
+    "read": {
+      "perRequest": [
+        2427,
+        2501
+      ],
+      "providerTurns": 2,
+      "toolCalls": 1,
+      "nestedCalls": 0,
+      "cumulative": 4928,
+      "providerRetries": 0,
+      "argumentRetries": 0
+    },
+    "draft": {
+      "perRequest": [
+        2864,
+        3512
+      ],
+      "providerTurns": 2,
+      "toolCalls": 1,
+      "nestedCalls": 0,
+      "cumulative": 6376,
+      "providerRetries": 0,
+      "argumentRetries": 0
+    },
+    "task": {
+      "perRequest": [
+        2864,
+        3513,
+        3632,
+        3736
+      ],
+      "providerTurns": 4,
+      "toolCalls": 3,
+      "nestedCalls": 0,
+      "cumulative": 13745,
+      "providerRetries": 0,
+      "argumentRetries": 0
+    },
+    "taskRetry": {
+      "perRequest": [
+        2864,
+        3513,
+        3632,
+        3751,
+        3855
+      ],
+      "providerTurns": 5,
+      "toolCalls": 4,
+      "nestedCalls": 0,
+      "cumulative": 17615,
+      "providerRetries": 0,
+      "argumentRetries": 1
+    }
+  }
+}

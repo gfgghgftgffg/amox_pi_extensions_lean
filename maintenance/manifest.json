@@ -61,6 +61,7 @@
       "maintenanceMode": "original-facade",
       "sourceFiles": [
         "index.ts",
+        "router.ts",
         "integration.ts",
         "delegation.ts"
       ],

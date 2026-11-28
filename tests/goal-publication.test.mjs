@@ -19,7 +19,7 @@ test("goal publication verifies both declared helper sources and rejects missing
     assert.equal(validate().version, "0.1.0");
     assert.throws(() => validate({ ...entry, maintenanceMode: undefined }), /Unexpected npm archive path/);
     assert.throws(() => validate({ ...entry, sourceFiles: ["index.ts"] }), /Unexpected npm archive path/);
-    for (const file of ["integration.ts", "delegation.ts"]) {
+    for (const file of ["router.ts", "integration.ts", "delegation.ts"]) {
       const tar = gunzipSync(bytes), source = readFileSync(join(fixture.root, entry.path, file));
       const offset = tar.indexOf(source); assert.ok(offset >= 0, file);
       tar[offset] ^= 1; writeFileSync(packed.archive, gzipSync(tar));

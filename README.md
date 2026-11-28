@@ -9,7 +9,7 @@ Six independently installable Pi extensions for search, task management, subagen
 | [pi-web-access-lean](packages/pi-web-access-lean/README.md) | `web_access` | Search, verification, web pages and PDFs |
 | [rpiv-todo-lean](packages/rpiv-todo-lean/README.md) | `todo` | Tasks, dependencies and progress |
 | [pi-subagents-lean](packages/pi-subagents-lean/README.md) | `subagent` | Subagents and workflows |
-| [pi-goal-x-lean](packages/pi-goal-x-lean/README.md) | Original goal tools | Persistent goals, continuation and completion auditing |
+| [pi-goal-x-lean](packages/pi-goal-x-lean/README.md) | `get_goal` + `goal` on Pi 1.7+ | Persistent goals, continuation and completion auditing |
 | [amox-pi-sync](packages/amox-pi-sync/README.md) | No model tools; `/sync-*` commands | Raw agent-data sync over private SSH Git, deletion propagation, orphan-session pruning, backups and diagnostics; configurable sessions/missions |
 | [amox-high-level](packages/amox-high-level/README.md) | No model tools; `/hl-*` commands | Display-only high-level summary cards with summary modes, thinking levels, history and a pi-starline menu |
 

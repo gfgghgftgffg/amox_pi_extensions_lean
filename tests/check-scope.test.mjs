@@ -146,10 +146,10 @@ test("unselected core.ts cannot be changed, removed or newly added", () => {
   } finally { f.cleanup(); }
 });
 
-for (const helper of ["integration.ts", "delegation.ts"]) test(`unselected goal ${helper} is protected even after removal from package files`, () => {
+for (const helper of ["router.ts", "integration.ts", "delegation.ts"]) test(`unselected goal ${helper} is protected even after removal from package files`, () => {
   const f = releaseFixture(), goal = "pi-goal-x-lean";
   try {
-    for (const file of ["integration.ts", "delegation.ts"]) {
+    for (const file of ["router.ts", "integration.ts", "delegation.ts"]) {
       f.write(`packages/${goal}/${file}`, readFileSync(new URL(`../packages/${goal}/${file}`, import.meta.url), "utf8"));
     }
     const base = f.commit(); bumpWeb(f);
@@ -235,7 +235,7 @@ test("goal/subagents daily gate captures and checks the ABI pair without expandi
     mkdirSync(scratch);
     try {
       const goal = goalSubagentsPair[1], sibling = goalSubagentsPair.find(id => id !== selected);
-      for (const helper of ["delegation.ts", "integration.ts"]) {
+      for (const helper of ["router.ts", "delegation.ts", "integration.ts"]) {
         f.write(`packages/${goal}/${helper}`, readFileSync(new URL(`../packages/${goal}/${helper}`, import.meta.url), "utf8"));
       }
       const existingTest = `packages/${selected}/tests/retained.test.mjs`, retained = "// retained regression assertions\n";

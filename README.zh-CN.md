@@ -9,7 +9,7 @@
 | [pi-web-access-lean](packages/pi-web-access-lean/README.zh-CN.md) | `web_access` | 搜索、核实、网页和 PDF |
 | [rpiv-todo-lean](packages/rpiv-todo-lean/README.zh-CN.md) | `todo` | 任务、依赖和进度 |
 | [pi-subagents-lean](packages/pi-subagents-lean/README.zh-CN.md) | `subagent` | 子 Agent 和工作流 |
-| [pi-goal-x-lean](packages/pi-goal-x-lean/README.zh-CN.md) | 原 goal 工具 | 持久目标、自动续跑和完成审计 |
+| [pi-goal-x-lean](packages/pi-goal-x-lean/README.zh-CN.md) | Pi 1.7+ 的 `get_goal` + `goal` | 持久目标、自动续跑和完成审计 |
 | [amox-pi-sync](packages/amox-pi-sync/README.zh-CN.md) | 无模型工具；`/sync-*` 命令 | 私有 SSH Git 原始数据同步、删除传播、孤儿会话清理、备份与诊断；可配置 sessions/missions |
 | [amox-high-level](packages/amox-high-level/README.zh-CN.md) | 无模型工具；`/hl-*` 命令 | 只用于展示的高层总结卡片，支持总结模式、思考等级、历史浏览和 pi-starline 菜单 |
 

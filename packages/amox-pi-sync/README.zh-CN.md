@@ -1,102 +1,106 @@
-# amox-pi-sync
+# @gfgghgftgffg/amox-pi-sync
+
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/amox-pi-sync?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/amox-pi-sync)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**基于私有 SSH Git 仓库的 Pi 原始数据同步扩展——支持路径自选、跨设备删除传播、当前会话树定向清理与孤儿子会话回收。**
 
 [English](README.md)
 
-## 优点
+专注于跨设备原样传输与恢复 Pi 会话数据，不注册任何模型工具，不改写 JSONL 内容，也不合并机器专属配置文件。
 
-通过私有 Git 仓库同步 Pi session，路径可自选。`/delete-session` 删除当前会话及其后代，`/sync-prune` 清理孤儿子代理会话，并把删除同步出去。
+## 核心特性
 
-## 功能
-
-- 默认路径是 `sessions` 和 `missions`，也可以增减其它 agent 数据路径。文件原样传输，不导出 Markdown，不做 JSONL 合并。双方改了同一文件就停止。
-- `/delete-session` 默认预览当前会话及其后代树，切换到新会话后删除选中的文件及快照副本。包括最近修改、改过名的后代和手动 fork，不处理无关孤儿。
-- `/sync-prune` 找出父会话已经不在的子代理会话及其后代，先预览，再把这次删除同步出去。除非打开开关，否则不会在 Push 前自动执行。
-- Pull 只备份即将被替换或删除的文件。
-- 装了 [Starline](https://github.com/Andy8647/pi-starline) 可从状态胶囊操作；没装时同样的动作留在 `/sync-*`。
-
-## 来源
-
-`@gfgghgftgffg/amox-pi-sync` 是 [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync) 的选择性 fork，基于 MIT `pi-sync-suite@0.1.1`（Copyright © 2026 Murat）。来源 ref 为 `npm:pi-sync-suite@0.1.1`。传输用 SSH Git。详见 [MAINTENANCE.md](MAINTENANCE.md)。
-
-## 使用方法
-
-先指向一个私有 SSH Git 仓库。这一步不传文件：
-
-```text
-/sync-setup git@host:owner/private-repo.git
-```
-
-GitHub 使用 `git@github.com:OWNER/REPO.git`。网络连通性由插件外的系统、Git 和 SSH 配置负责。
-
-把本地 session 发出去，再把远端 session 拉回来：
-
-```text
-/sync-push
-/sync-pull
-```
-
-删除当前会话及其全部后代。默认弹出确认框；在 `/sync-settings` 关闭 **Confirm session deletion** 后可直接删除。需要先配置同步，并将 `sessions` 纳入同步路径：
-
-```text
-/delete-session
-```
-
-命令先切换到新会话再删除。执行前请关闭其它正在使用这些会话的 Pi 进程。快照删除先提交到本地仓库；manual/off 模式下用 `/sync-push` 发布，auto 模式沿用自动同步。Git 历史、备份和 `/tmp` 文件不清理。执行前发现新增后代时停止删除，不扩展本次扫描选定的删除范围。
-
-先预览孤儿子代理会话，确认后再删除并同步这次删除：
-
-```text
-/sync-prune
-/sync-prune --yes
-```
-
-没装 [Starline](https://github.com/Andy8647/pi-starline) 时，`/sync-status` 也能打开这些操作。`/sync-settings` 用来改路径，以及是否在 Push 前自动清理孤儿会话。
-
-同步进程被强制终止后，锁文件可能残留，导致 Push、Pull、Prune 或 `/delete-session` 停止。后续写操作仅在锁中记录的 PID 已退出时自动恢复；`/sync-unlock` 可手动执行同一检查，不会删除活跃或格式异常的锁。manual/off 模式也使用同一把写锁，不会只因锁文件过旧就强行接管。
+- **原样字节级同步** — 默认同步 `sessions` 与 `missions`，支持按需增删其他安全的 agent 数据相对路径；文件原样传输，不做 Markdown 转换或 JSONL 语义合并，双端同文件冲突时立即安全中止供人工核查。
+- **跨设备删除传播** — 基于每台设备独立的 `syncedPaths` 基线追踪已同步路径，精准传播本地或远端的删除操作，绝不误删从未同步的本地文件或尚未拉取的远端文件。
+- **`/delete-session` 会话树定向删除** — 默认预览当前会话及其递归后代树（涵盖最近修改、重命名及手动 fork 的子会话），自动切换至全新会话后一并移除本地文件与快照副本，不触碰无关孤儿会话。
+- **`/sync-prune` 孤儿子会话清理** — 自动识别父会话已不存在的 `type#8hex` 子代理会话及其后代，支持条数与体积预览并将清理结果同步至快照仓库（默认手动执行，可按需开启 Push 前自动清理）。
+- **按需增量备份与 Starline 胶囊菜单** — Pull 与恢复操作仅备份即将被覆盖或删除的本地文件；安装 [Starline](https://github.com/Andy8647/pi-starline) 时提供状态栏胶囊气泡交互，未安装时通过 `/sync-*` 命令提供同等完整操作。
 
 ## 安装
 
-需要 Pi `>=1.1.0`、Node `>=22.19.0`、npm、Git 和可用的 SSH 认证。
+需要 Pi `>=1.1.0`、Node.js `>=22.19.0`、npm、Git 以及可用的 SSH 认证。
 
-在本仓库目录执行：
-
-```sh
-node scripts/install-extension.mjs amox-pi-sync
-```
-
-只安装本扩展。不要同时加载原版 `pi-sync-suite`；通过 `pi list` 检查已有来源，自行移除旧来源。若首次 npm 发布尚未完成，使用上述本地安装方式。npm 包可用后可使用：
+推荐直接从 npm 安装（无需锁定版本号）：
 
 ```sh
 pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-## 细节
+如需从单仓本地 checkout 安装（或首次 npm 发布尚未完成时回退使用），在仓库根目录执行：
 
-- 每台设备用 `syncedPaths` 基线记录上次成功 Push 或 Pull 时的路径。Push 会从快照移除基线中本地已消失的路径。Pull 在备份后应用远端删除，并把本地缺失的基线路径保留为待 Push 删除，所以先 Pull 也不会把它们复活。从未同步的本地文件，以及还没 Pull 的远端文件，不会被删除。首次基线是本地路径和快照路径的交集；基线建立前的删除不会自动推断。
-- 定向删除递归跟随父子关系，不依赖名称，也不受十分钟限制。与孤儿清理共用跨设备 basename 匹配和重名歧义保护。旧 runtime 关闭完成后才删除，新扩展实例先执行删除再启动自动 Pull。删除失败会暂停自动同步；排除错误后重新启用同步或 reload。
-- 孤儿清理按父文件 basename 不区分大小写比对，接受 `type#8hex` 这种名字，并级联到后代。最近 10 分钟改过的文件和当前活跃会话会跳过。先预览条数、体积和名称，先提交快照删除，再删本地文件。仓库有未提交修改时拒绝执行。Push 前清理默认关闭。清理失败只警告，不阻断 Push。
-- 网络 Git 操作超时 10 分钟，本地 Git 操作超时 60 秒。被超时或取消终止的进程算失败，即使 Pi 返回 exit code 0。Pull 能快进就快进，否则做干净的三方合并。Push 被非快进拒绝时会 fetch，不 rebase、不 force，整合远端历史并重试一次。
-- Pull 和恢复只备份本次会被替换或删除的本地文件。只新增文件的 Pull 不创建备份。手动创建备份仍是完整的纳管数据快照。
-- Windows 在可用时优先使用原生 OpenSSH（`System32/OpenSSH/ssh.exe`）。Git 强制 `core.autocrlf=false` 和 `core.eol=lf`，快照仓库使用本地 `* -text` 属性。已有的混合换行不会被改写。
+```sh
+node scripts/install-extension.mjs amox-pi-sync
+```
 
-## 设置与界面
+> [!IMPORTANT]
+> 该脚本仅安装本独立扩展。请勿与原版 `pi-sync-suite` 同时加载；启用前请通过 `pi list` 检查已有来源并手动移除旧扩展。
 
-- 设置菜单包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（包含/排除任意安全的 agent 数据相对路径）、**Prune before push**（默认 Off）、**Confirm session deletion**（默认 On，保存在 `amox-pi-sync.json` 的 `confirmSessionDelete` 字段）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）和 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。排除某个路径只停止后续传输，不会仅凭该设置删除已有快照副本。
-- manual/off 启动不访问网络。auto 启动先计算本地 fingerprint，再启动定时器并发起后台拉取，不等待网络完成。`/sync-setup` 只保存配置并停止定时器；已启用 auto 时需 reload 激活。
-- 安装 [Starline](https://github.com/Andy8647/pi-starline) 时，可点击状态胶囊打开详情和操作。状态 key 保留为 `pi-sync`，兼容原 placement；pill bridge 优先于旧 `extensionStatuses.commands`。没有三行 widget。
-- 点击胶囊时，气泡像 Model 一样锚定对应的 Starline cell；设置、子菜单及确认框沿用该锚点。`/sync-status` 使用最近点击的锚点，首次点击前回退居中。文本输入仍使用 Pi 输入框。
-- **Bubble colour** 默认 **Follow pill**（跟随胶囊），也可选择当前主题的 accent、success、warning 或 error 作为边框和选中项颜色；首次点击前使用主题 accent。可选配置 `bubbleColor` 保存为 `pill`、`accent`、`success`、`warning` 或 `error`，修改配色不触发传输。未安装 Starline 时隐藏此选项，由 Pi 渲染原生弹框。
-- 标签与值统一用冒号分隔（如 `Paths: 2 configured`，表示配置了 2 个同步路径），Starline 中的可选操作统一以 `•` 开头。标签、数值和异常使用 Pi 主题色区分，可选操作使用粗体并保留 Starline 自带的选中对比度。删除完成后 State 恢复 Manual、Auto 或 Off，不残留 Delete session；已完成动作只显示在 Last action。传输执行中显示 Push／Pull，另列当前模式，不追加 idle。RPC 和未安装 Starline 时保留纯文本。
+## 使用方法
 
-## 数据与安全
+**1. 绑定私有 SSH Git 仓库（仅保存配置，不立即传输文件）：**
+
+```text
+/sync-setup git@host:owner/private-repo.git
+```
+
+GitHub 仓库请使用 `git@github.com:OWNER/REPO.git` 格式。网络连通性、代理与 SSH 密钥均由系统、Git 和 SSH 自身配置负责。
+
+**2. 推送本地数据与拉取远端更新：**
+
+```text
+/sync-push
+/sync-pull
+```
+
+**3. 定向删除当前会话及其全部后代：**
+
+```text
+/delete-session
+```
+
+需先完成同步配置且将 `sessions` 纳入纳管路径。默认弹出确认框（可在 `/sync-settings` 中关闭 **Confirm session deletion** 跳过确认）。执行前请先关闭其他正在读写这些会话的 Pi 进程：命令会切换至全新会话，等待旧 runtime 收尾关闭后，先在本地快照仓库提交删除再移除本地文件（`manual`/`off` 模式下需执行 `/sync-push` 推送远端，`auto` 模式由后台循环自动同步）。Git 历史、备份目录与 `/tmp` 文件不受影响；若执行前检测到扫描后新增的后代，将立即中止以避免扩大删除范围。
+
+**4. 预览并清理孤儿子代理会话：**
+
+```text
+/sync-prune
+/sync-prune --yes
+```
+
+**5. 状态面板、设置与残留锁恢复：**
+
+- `/sync-status` — 查看当前状态并打开操作菜单（未安装 [Starline](https://github.com/Andy8647/pi-starline) 时同样可用）。
+- `/sync-settings` — 配置同步模式、纳管路径、Push 前清理开关、备份、诊断与备份清理。
+- `/sync-unlock` — 当同步进程被强制终止导致锁文件残留，使 Push、Pull、Prune 或 `/delete-session` 停止时，手动检查并在原记录 PID 已退出的前提下安全清理残留锁（`manual`、`auto`、`off` 下的后续写操作也会自动执行相同检查；绝不清理仍存活或格式损坏的锁，也不会仅凭锁文件时间较久就强行接管）。
+
+## 同步机制与可靠性细节
+
+- **`syncedPaths` 基线传播** — 每台设备记录上次成功 Push 或 Pull 时的纳管路径集合。Push 仅从快照移除基线中本地已消失的文件；Pull 在备份后执行远端删除，同时将本地已删的基线路径保留为待 Push 删除项，避免“先 Pull 后 Push”把已删文件复活。首次运行以本地与现有快照的交集初始化基线，不回溯推断基线建立前的删除。
+- **定向删除与孤儿清理边界** — `/delete-session` 递归追踪父子会话链，不受文件名格式与 10 分钟修改时间限制，与孤儿清理共用跨平台大小写无关 basename 匹配及重名歧义保护；新实例在自动 Pull 启动前优先完成删除，若删除报错则自动暂停后台同步，待排障后重新启用或执行 `/reload`。`/sync-prune` 仅匹配父文件缺失的 `type#8hex` 会话并级联后代，跳过最近 10 分钟内修改的文件与当前活跃会话，遇到未提交改动的脏仓库拒绝执行，遵循“先提交快照删除、再删本地文件”；可选的 Push 前清理失败仅发出警告，不阻断正常 Push。
+- **Git 超时与非快进处理** — 远端网络 Git 操作超时为 10 分钟，本地 Git 命令超时为 60 秒；因超时或取消终止的子进程即使宿主返回退出码 `0` 也严格记为失败。Pull 优先快进（fast-forward），否则执行干净的三方合并；Push 遇非快进拒绝时自动 fetch、在不 rebase 且不 force 的前提下整合历史并重试一次。
+- **按需备份与跨平台换行保护** — Pull 与恢复仅备份本次将被覆盖或删除的本地文件（纯新增文件的 Pull 不生成备份；手动执行 **Create backup** 仍保存完整纳管快照）。Windows 环境优先调用系统原生 OpenSSH（`System32/OpenSSH/ssh.exe`）；Git 命令固定 `core.autocrlf=false` 与 `core.eol=lf`，并在快照仓库写入本地 `* -text` 属性，不自动改写历史混合换行。
+
+## 设置项与 Starline 界面
+
+- **设置菜单结构** — 包含 **View Status**、**Sync Mode**（`auto`、`manual`、`off`）、**Sync Paths**（增删安全的 agent 数据相对路径；排除某路径仅停止后续传输，不会自动删除快照中已有的副本）、**Prune before push**（默认 Off）、**Confirm session deletion**（默认 On，对应 `amox-pi-sync.json` 中的 `confirmSessionDelete`）、**Backups**（创建/列表/恢复）、**Diagnostics**（doctor/diff/log）与 **Cleanup**（Preview、Run、Delete Selected Backup、Retention）。
+- **启动网络边界** — `manual` 与 `off` 启动阶段零网络请求；`auto` 启动先计算本地指纹，随后启动定时器并异步发起后台拉取，不阻塞界面。`/sync-setup` 仅保存配置并停止定时器，若开启 `auto` 需执行 `/reload` 激活。
+- **Starline 胶囊与气泡锚定** — 安装 [Starline](https://github.com/Andy8647/pi-starline) 时，点击状态栏胶囊（保留 `pi-sync` 状态键以兼容既有布局，pill bridge 优先于旧 `extensionStatuses.commands`，无常驻三行 widget）可展开锚定在对应单元格的气泡菜单，设置、子菜单与确认框均沿用该锚点（`/sync-status` 复用最近一次点击锚点，首次点击前居中展示；文本输入仍调用 Pi 原生输入框）。
+- **主题配色与状态文案** — **Bubble colour**（配置字段 `bubbleColor`）默认 **Follow pill**（`pill`，首次点击前使用主题 `accent`），也可切换为当前主题的 `accent`、`success`、`warning` 或 `error` 边框与选中色，切换配色不触发网络传输；未安装 Starline 时自动隐藏该项并回退至 Pi 原生菜单。信息行统一采用冒号键值格式（如 `Paths: 2 configured`），Starline 可执行操作统一以粗体 `•` 开头并保留 Starline 原生选中对比度。传输中显示 `Push` / `Pull` 并单独列出当前模式（不拼接 `idle`）；会话删除完成后 State 恢复显示 `Manual`、`Auto` 或 `Off`，已完成动作归入 `Last action`。RPC 与无 Starline 环境保持纯文本输出。
+
+## 数据安全与职责边界
 
 > [!WARNING]
-> 会话、missions 及其他选中文件可能包含秘密。请使用**私有 SSH 仓库**，检查同步路径，并保护远端和本地备份。私有 Git 不提供加密或秘密清除。
+> 会话记录、`missions` 及其他选定路径可能包含 API 密钥、访问令牌或敏感业务代码。请务必使用**私有 SSH Git 仓库**，审慎检查纳入的同步路径，并妥善保护远端仓库与本地备份目录。私有 Git 仓库本身不提供端到端加密或敏感信息脱敏。
 
-- 路径相对于 Pi agent 数据目录，不是当前项目。可包含/排除任意安全的数据相对路径；扩展不改写工作目录。
-- 并发编辑不是语义合并，请协调多设备操作并查看诊断。同路径的不同内容以拉取数据为准，覆盖前备份；不得删除或覆盖活跃会话。恢复备份只处理当前纳管范围。
-- 备份位于 agent 数据目录下的 `amox-pi-sync-backups`。Cleanup 仅在手动预览/确认后删除本地备份，按完整备份目录计数，不按单个文件计数。默认数量上限 20 份、最长 180 天；超龄或超量的备份纳入清理候选，不自动删除，不清理 sessions 或 missions。
-- 新设置文件为 `amox-pi-sync.json`；不存在时可读取旧 `pi-sync-suite.json` 迁移。保存新设置前不改旧文件，保存时写入新文件。迁移使用独立的 `amox-pi-sync-repo` 目录，不复用旧快照。
+- **路径与并发安全** — 所有路径均相对于 Pi agent 数据目录解析，绝不修改当前项目工作目录。多设备并发修改同一文件不做 JSONL 语义合并，拉取不同内容前先自动备份再覆盖，且严禁覆盖或删除当前活跃会话；恢复备份仅作用于当前纳管路径。
+- **本地备份清理策略** — 备份存放于 agent 数据目录下的 `amox-pi-sync-backups`。**Cleanup** 仅在手动预览并确认后按“完整备份目录”粒度清理本地备份（默认将超过 20 份或早于 180 天的完整备份列为候选），绝不自动删除，也绝不清理 `sessions` 或 `missions`。
+- **配置文件与平滑迁移** — 配置保存在 `amox-pi-sync.json`；若尚不存在，可无损读取旧版 `pi-sync-suite.json` 完成迁移（保存新配置前不改动旧文件，保存后写入新文件，并使用独立的 `amox-pi-sync-repo` 快照目录，不复用旧版仓库目录）。
 
-不包含原版的配置同步/settings 合并、Markdown/JSON 归档、Environment Tools 和 Local Packages。环境部署和机器专属配置交给 `amox-agent-bootstrap` 等部署流程，阅读版导出使用 Pi 原生 `/export`；同步器保留原始数据选择、备份恢复和手动备份清理。各项原因与后续维护边界见[功能取舍](MAINTENANCE.md#功能取舍与维护边界)。这是选择性跟进上游的独立 fork，不是调用原版运行时的包装，也不是原版全功能替代品。每日审查上游正式发布，仅移植保留范围内有价值的改动；舍弃功能跳过，不能判断时由 ntfy 请维护者决定，不自动恢复原版模块。
+## 来源与维护说明
+
+`@gfgghgftgffg/amox-pi-sync` 是基于 [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync) 维护的独立选择性 fork，基线源自 MIT 协议的 `pi-sync-suite@0.1.1`（Copyright © 2026 Murat，来源 ref：`npm:pi-sync-suite@0.1.1`）。
+
+本包有意移除上游的配置同步/settings 合并、Markdown/JSON 聊天归档、Environment Tools 与 Local Packages：环境初始化与机器差异配置交由 `amox-agent-bootstrap` 等部署工具管理，可读归档导出交由 Pi 原生 `/export` 处理。日常维护持续跟踪上游正式 npm 发布，仅定向移植保留功能范围内的有价值改进，跳过已裁剪模块，遇到取舍存疑的变更通过 ntfy 交由维护者拍板，绝不自动恢复已移除模块。详细设计取舍与维护边界见 [MAINTENANCE.md](MAINTENANCE.md)（参见[功能取舍与维护边界](MAINTENANCE.md#功能取舍与维护边界)）。

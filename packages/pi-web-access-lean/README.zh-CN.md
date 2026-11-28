@@ -1,92 +1,90 @@
 # @gfgghgftgffg/pi-web-access-lean
 
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/pi-web-access-lean?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/pi-web-access-lean)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**面向 [`pi-web-access`](https://github.com/nicobailon/pi-web-access) 的单工具轻量封装，减少约 87% 的常驻工具声明文本。**
+
 [English](README.md)
 
-## 优点
+将联网搜索、事实核验、网页与本地 PDF 抓取以及缓存结果续取收敛为单一 `web_access` 工具，底层执行完全复用上游 `pi-web-access` 引擎。
 
-为 [`pi-web-access`](https://github.com/nicobailon/pi-web-access) 提供更轻量的封装。搜索、核验、抓取和续取收成一个 `web_access`，首轮就要带上的工具注册文本大约少 87%。
+## 核心特性
 
-## 功能
-
-- 一个工具覆盖 `search`、`check`、`fetch`、`get` 和 `help`。执行仍走上游引擎，不把上游那几个工具再注册一遍。
-- 本地 PDF 路径和 `file:///` 返回已保存的 Markdown 及路径。元数据含 Markdown 字符数，引擎提供时也含页数。这条路径只提取 Markdown，不是上游的结构化 extract。
-- 冷门参数留在 `help` 里，包括允许的搜索 Provider。调用时把它们写成 JSON 对象字符串放进 `input`；显式 Provider 选择沿用上游配置。
-- 远端图片和视频帧问答走上游 answer 模式，需要支持图片输入的模型。回复包含文字回答；续取存储结果返回原始来源内容。
-
-## 来源
-
-门面来自 [kunkun9527/pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean)。引擎是 [Nico Bailon 的 pi-web-access](https://github.com/nicobailon/pi-web-access)。本包跟随上游发布，不复制引擎。两者都是 MIT，本包保留原始 `LICENSE`。它属于 [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md)。
-
-## 使用方法
-
-调用 `web_access` 时显式传入 `op`，并将搜索词、待核验的说法、URL、本地 PDF 路径或响应 ID 放入 `input`。
-
-搜索：
-
-```json
-{ "op": "search", "input": "Pi coding agent extensions" }
-```
-
-核验一句话：
-
-```json
-{ "op": "check", "input": "The paper was published in 2024" }
-```
-
-抓取网页或本地 PDF：
-
-```json
-{ "op": "fetch", "input": "https://example.com/page" }
-```
-
-续取上次的结果。`input` 填之前返回的 response id：
-
-```json
-{ "op": "get", "input": "response-id" }
-```
-
-查看某个操作的全部参数：
-
-```json
-{ "op": "help", "input": "fetch" }
-```
-
-更多字段写进 `input` 字符串里的 JSON：
-
-```json
-{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
-```
-
-如果结果提示调用 `get_search_content`，请用返回的响应 ID 调用 `web_access` 的 `op: "get"`。其他续取字段放在 `input` 的 JSON 字符串里。页面正文不改写。
+- **单一 `web_access` 入口** — 统一调度 `search`、`check`、`fetch`、`get` 和 `help` 五类操作，避免重复注册上游的多套工具定义。
+- **低频参数按需展开** — 冷门选项与当前可用搜索 Provider 保留在 `help` 中，需要时以 JSON 对象字符串形式写入 `input` 透传，显式 Provider 选择完全遵循上游配置。
+- **本地 PDF 直读提取** — 支持本地 `.pdf` 路径与 `file:///` 地址直接提取并保存 Markdown，返回文件路径、正文内容、字符数及页数（引擎可解析时）。
+- **多模态页面问答** — 搭配支持图像输入的模型时，远端图片与视频帧提问自动走上游 `answer` 模式返回文字解答，同时保留通过 `get` 读取原始页面内容的能力。
 
 ## 安装
 
-这是公开的 npm 包，安装时不固定版本：
+推荐直接从 npm 安装（无需锁定版本号）：
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean
 pi update --extensions
 ```
 
-需要 Git 回退安装时，在仓库 checkout 根目录执行：
+如需从单仓本地 checkout 回退安装，在仓库根目录执行：
 
 ```bash
 node scripts/install-extension.mjs pi-web-access-lean
 ```
 
-本地 Git 安装通过拉取 checkout 并重跑安装脚本更新，`pi update` 不更新本地内容。只保留一种安装来源。迁移时先备份 settings，移除 `pi list` 显示的精确旧来源，再安装 npm 来源。
+> [!IMPORTANT]
+> 请勿与原版 `pi-web-access` 或其他同类封装同时加载，以免重复注册工具。本地 Git 安装需通过拉取仓库代码并重新运行 `install-extension.mjs` 更新（`pi update` 不会更新本地目录）。切换为 npm 安装前，请先备份配置，根据 `pi list` 移除精确的旧来源后再安装 npm 包。
 
-请勿与其它 `pi-web-access` 包装扩展同时加载，以防重复注册工具。
+## 使用方法
+
+调用 `web_access` 时显式指定 `op`，并将搜索词、待核验陈述、URL、本地 PDF 路径、响应 ID 或 JSON 参数串填入 `input`。
+
+**联网搜索：**
+
+```json
+{ "op": "search", "input": "Pi coding agent extensions" }
+```
+
+**核验事实陈述：**
+
+```json
+{ "op": "check", "input": "The paper was published in 2024" }
+```
+
+**抓取网页或读取本地 PDF：**
+
+```json
+{ "op": "fetch", "input": "https://example.com/page" }
+```
+
+**按响应 ID 续取已缓存结果：**
+
+```json
+{ "op": "get", "input": "response-id" }
+```
+
+**查询指定操作的完整参数与可用 Provider：**
+
+```json
+{ "op": "help", "input": "fetch" }
+```
+
+**通过 JSON 字符串传入高级参数：**
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
+```
+
+> [!TIP]
+> 当工具返回结果提示使用 `get_search_content` 翻页或读取缓存时，请改用 `web_access` 的 `op: "get"` 并传入对应的响应 ID（如需附加检索字段，可在 `input` 中传入 JSON 字符串）。抓取正文原样透传，不做正则改写。
 
 ## 配置与限制
 
-Provider、凭据、搜索路由和抓取选项沿用上游的 `web-search.json`，通常位于 `~/.pi/agent/`；
-配置路径、环境变量、支持的服务和计费规则见[上游文档](https://github.com/nicobailon/pi-web-access#configuration)。
-外部服务可能接收查询和页面内容并产生费用，使用前检查对应服务的配置。
-代理策略（包括可选 `lockProxy`）沿用上游；省略调用中的 `proxy` 以使用配置的路由。
-
-本地 PDF 直读仅提取 Markdown，不支持上游结构化 `extract` 模式；远端 PDF 由上游处理。
-`web_access` 始终直接注册，上游的动态工具加载设置不会延迟或移除这个入口。
+- **沿用上游配置** — 搜索服务商、API 密钥、路由策略与抓取参数均读取 `~/.pi/agent/web-search.json` 及上游环境变量；配置方式、支持的服务与计费规则详见[上游配置文档](https://github.com/nicobailon/pi-web-access#configuration)。
+- **外部服务调用与费用** — 搜索词和页面内容可能发往所配置的第三方服务并产生费用，启用前请核对服务配置。
+- **代理策略** — 代理配置（含可选 `lockProxy`）完全沿用上游；日常调用省略 `proxy` 字段即可走默认配置路由。
+- **本地与远端 PDF 差异** — 本地 PDF 直读仅提取 Markdown，不支持上游结构化 `extract` 字段提取；远端 PDF 仍走上游标准处理流程。
+- **常驻直接注册** — `web_access` 在启动时直接注册，上游的动态延迟暴露设置（`toolExposure` / `toolActivation`）不会隐藏或推迟该入口。
 
 ## 上下文占用（字符代理）
 
@@ -99,6 +97,8 @@ Provider、凭据、搜索路由和抓取选项沿用上游的 `web-search.json`
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## 开发
+## 来源与开发
 
-[开发检查与维护策略](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)；适配细节见 [MAINTENANCE.md](MAINTENANCE.md)。
+门面源自 [kunkun9527/pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean)，底层运行时依赖 [Nico Bailon 的 `pi-web-access`](https://github.com/nicobailon/pi-web-access)，在 [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.zh-CN.md) 中持续跟随上游发布，不复制引擎源码。两者均采用 MIT 许可证，保留原始 `LICENSE`。
+
+仓库校验流程与适配记录详见[开发检查与维护策略](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)及包内 [MAINTENANCE.md](MAINTENANCE.md)。

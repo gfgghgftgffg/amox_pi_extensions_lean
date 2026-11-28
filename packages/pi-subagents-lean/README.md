@@ -1,26 +1,50 @@
 # @gfgghgftgffg/pi-subagents-lean
 
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/pi-subagents-lean?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/pi-subagents-lean)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**A unified, ultra-lean facade for [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents) — cutting registered tool text by ~97%.**
+
 [简体中文](README.zh-CN.md)
 
-## Advantage
-
-A lighter wrapper for [`@tintinweb/pi-subagents`](https://github.com/tintinweb/pi-subagents). Agent, result, steer and workflow calls share one `subagent` tool, cutting the tool text sent on the first call by about 97%.
+Routes agent launches, result inspection, mid-flight steering, and scripted workflows through a single `subagent` tool while retaining upstream background execution, schedules, FleetView UI, and native result cards.
 
 ## Features
 
-- `run`, `result`, `steer`, `workflow` and `help` go through that one tool. Background tasks, workflows, schedules and the original result cards still use the upstream runtime.
-- Cold parameters go in `input` as a JSON object string. The wrapper checks them against the real upstream schema before the call. `help` returns that schema. Workflow help also returns the authoring reference; `workflowToolExposure: "skill"` replaces the reference with a path to the upstream bundled skill. The facade remains one tool in all exposure modes, so `"deferred"` does not defer its `workflow` operation.
-- `subagent_type` lists the agent types enabled at startup. Reload after changing agent files. If the upstream description cannot be parsed, call `help` with `input` set to `"run"`.
-- FleetView lists nested agents under their parent and shows each agent's own tokens. Its cursor is `❯`; `●` marks the open view. With `showModel` enabled, fleet rows also name the model and thinking level.
-- Adds a read-only child-session interface so `pi-goal-x-lean` can keep goal management in the parent Agent.
+- **Five operations in one tool** — `run`, `result`, `steer`, `workflow`, and `help` share a single `subagent` registration backed by the upstream published runtime.
+- **Validated JSON passthrough** — Uncommon fields stay out of the permanent schema; pass them as a JSON object string in `input` (validated against the real upstream TypeBox schema before execution) and inspect full schemas via `op: "help"`.
+- **Workflow authoring & exposure parity** — `help` for `workflow` includes the authoring guide, or points to the bundled upstream skill path when `workflowToolExposure: "skill"` is configured. Because the facade is always a single tool, `"deferred"` exposure does not split or defer its `workflow` operation.
+- **Dynamic startup agent roster** — `subagent_type` lists agent types enabled when the extension loads (reload after editing agent files, or run `op: "help"` with `input: "run"` if upstream's custom description cannot be parsed).
+- **Nested FleetView & Goal bridge** — FleetView nests child agents under their parent with per-agent token usage (`❯` marks the cursor, `●` marks the open view, and `showModel` adds model and thinking level). Also registers a read-only child-session context bridge so [`pi-goal-x-lean`](../pi-goal-x-lean/README.md) keeps goal ownership in the parent session.
 
-## Source
+## Installation
 
-The facade comes from [kunkun9527/pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean). The runtime is [tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
+Install from npm without pinning a version:
+
+```bash
+pi install npm:@gfgghgftgffg/pi-subagents-lean
+pi update --extensions
+```
+
+For optional persistent-goal coordination, install or update [`pi-goal-x-lean`](../pi-goal-x-lean/README.md) alongside it:
+
+```bash
+pi install npm:@gfgghgftgffg/pi-goal-x-lean
+```
+
+Or install from a local checkout of the monorepo:
+
+```bash
+node scripts/install-extension.mjs pi-subagents-lean
+```
+
+> [!IMPORTANT]
+> Do not load another `pi-subagents` wrapper alongside this package. Local Git installations are updated by pulling the checkout and re-running `install-extension.mjs` (`pi update` does not update local checkouts). When migrating to npm, back up settings, remove the exact old entry shown in `pi list`, and install the npm package.
 
 ## Usage
 
-Start an agent. Set `run_in_background: false` to request the result inline when the next step depends on it. The agent’s configuration can require background execution:
+**Launch a subagent (`run_in_background: false` waits inline when the next step depends on it, unless the agent's definition forces background execution):**
 
 ```json
 {
@@ -32,56 +56,45 @@ Start an agent. Set `run_in_background: false` to request the result inline when
 }
 ```
 
-Use the `agent_id` from `run`, or a saved handle after reload. `result` checks status or returns finished output without waiting by default. Prefer the completion notification for background work. If the next step needs an already running agent’s result, pass `input: '{"wait":true}'` to `result`. Saved results include their finish time and age when available:
+**Check status or read finished output (pass `agent_id` or a saved handle after reload):**
 
 ```json
 { "op": "result", "agent_id": "agent-id" }
 ```
 
-Send a new instruction to an agent that is still running:
+`result` returns immediately by default; prefer completion notifications for background tasks, or pass `input: "{\"wait\":true}"` when the next step is blocked on a running agent. Saved records include completion timestamp and relative age when available.
+
+**Steer a running subagent:**
 
 ```json
 { "op": "steer", "agent_id": "agent-id", "message": "Also check the tests." }
 ```
 
-Run a workflow when explicitly requested, or when the user names a saved workflow; asking for a number of agents uses parallel `run` calls. Put workflow parameters in `input` as JSON text:
+**Run an explicit or named saved workflow (for "use N agents", prefer parallel `run` calls instead):**
 
 ```json
 { "op": "workflow", "input": "{\"name\":\"review-panel\"}" }
 ```
 
-See the full parameter list for one operation:
+**Inspect every parameter for an operation:**
 
 ```json
 { "op": "help", "input": "run" }
 ```
 
-Print (`pi -p`) and JSON runs wait for background agents and workflows before exiting so the parent can respond to their results. Set `headlessWaitMinutes` in `subagents.json` to limit the wait (`0`, the default, means no limit). A subagent also waits for its own background children before finishing; their results remain available while their parent's record is retained.
+> [!TIP]
+> Headless runs (`pi -p` and JSON mode) automatically wait for background agents and workflows before exiting so the parent session can respond to their output. Set `headlessWaitMinutes` in `subagents.json` to bound that wait (`0`, the default, means unlimited). Subagents also wait for their own background children before finishing, and child results remain readable while the parent record is retained.
 
-## Installation
+## Agent Definitions and Operational Notes
 
-This is a public npm package. Install without a version pin:
+> [!WARNING]
+> Upstream discovers built-in and custom agents across global, workspace, and project directories (this package bundles no private agents, sessions, or memory). Review each agent's `model`, remove unwanted definitions, and avoid naming custom agents `general-purpose`, `Explore`, or `Plan`. Reload Pi after changing agent files, discovery scopes, or trust settings.
 
-```bash
-pi install npm:@gfgghgftgffg/pi-subagents-lean
-pi update --extensions
-```
-
-For a Git fallback, run from the repository checkout:
-
-```bash
-node scripts/install-extension.mjs pi-subagents-lean
-```
-
-Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `pi-subagents` wrapper alongside it.
-
-For optional goal integration, also install or update [`pi-goal-x-lean`](../pi-goal-x-lean/README.md) with `pi install npm:@gfgghgftgffg/pi-goal-x-lean`.
-
-## Important: review your agent definitions
-
-Upstream discovers built-in and custom agents in global, workspace and project directories. This package does not ship private agents, sessions or memory. After install, check each agent's `model`, remove types you do not want, and avoid names that collide with `general-purpose`, `Explore` and `Plan`. Built-in Explore inherits the session model unless the agent file sets one. Resuming an agent keeps the model and thinking level recorded by its session, even after cleanup or reload; editing those fields in its definition applies to new agents. See the [upstream changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md) for fallback behavior when that model is unavailable. Built-in `general-purpose` can delegate outside workflows, within the upstream depth and concurrency limits; a same-named custom file without `allowed_subagents` keeps delegation disabled. Settings saves globally unless the project already has `.pi/subagents.json`; Tab switches the target file. `cacheRetention` defaults to `inherit`; set it to `none`, `short` or `long`, or use an agent's `cache_retention` frontmatter, without changing the parent session's cache policy.
-
-A removed worktree that held changes cannot be reopened; a clean one reopens in the main checkout. Background tasks notify the parent when they finish. Agents with `allowed_subagents` share a default limit of 10 running nested children; excess nested spawns fail instead of queuing. Top-level and workflow agents are outside this limit. Configure it through `/agents → Settings → Max nested concurrency` (`0` means unlimited). Agent files, workflows, worktrees and `subagents.json` are documented [upstream](https://github.com/tintinweb/pi-subagents); integrations use its [events](https://github.com/tintinweb/pi-subagents#events) and [RPC](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md). Lifecycle events cover nested and workflow agents as well as top-level ones; RPC snapshots can report pending notifications and settling descendants, and workflow bus results are separate from the truncated notification text. RPC stop waits up to 5 seconds by default for the stopped agent and its descendants to settle. [workflow authoring and compatibility](https://github.com/tintinweb/pi-subagents/blob/master/docs/workflows.md) cover strict draft-07 `agent({ schema })` validation and failure diagnostics. Reload after changing agent definitions, discovery or trust settings. Behavior notes are in the [changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md).
+- **Model inheritance & session resume** — Built-in `Explore` inherits the parent session's model unless overridden in an agent file. Resuming an agent preserves the model and thinking level recorded in its saved session (even across reloads or cleanup); edits to an agent definition apply to newly launched agents. See the [upstream changelog](https://github.com/tintinweb/pi-subagents/blob/master/CHANGELOG.md) for unavailable-model fallback rules.
+- **Nested delegation & concurrency limits** — Built-in `general-purpose` can delegate outside workflows within upstream depth and concurrency limits (a custom `general-purpose` file without `allowed_subagents` keeps delegation disabled). Agents with `allowed_subagents` share a default cap of `10` concurrent nested children (`/agents → Settings → Max nested concurrency`, `0` = unlimited); excess nested spawns fail immediately rather than queuing. Top-level and workflow agents are exempt.
+- **Settings file & prompt cache policy** — Settings save globally unless `.pi/subagents.json` already exists in the project (`Tab` switches the target file). `cacheRetention` defaults to `inherit` and can be set to `none`, `short`, or `long` (or overridden per agent via `cache_retention` frontmatter) without affecting the parent session's cache policy.
+- **Worktrees** — A deleted worktree that contained uncommitted changes cannot be reopened; a clean removed worktree reopens in the main checkout.
+- **Events, RPC & workflow validation** — Upstream [agent docs](https://github.com/tintinweb/pi-subagents), [events](https://github.com/tintinweb/pi-subagents#events), and [RPC v2](https://github.com/tintinweb/pi-subagents/blob/master/docs/rpc.md) cover top-level, nested, and workflow lifecycles. RPC snapshots report pending notifications and settling descendants, workflow bus payloads stay untruncated separately from notification text, and RPC `stop` waits up to 5 seconds by default for descendants to settle. Strict draft-07 `agent({ schema })` checks and failure diagnostics are documented in [workflows.md](https://github.com/tintinweb/pi-subagents/blob/master/docs/workflows.md).
 
 ## Context footprint (character proxy)
 
@@ -94,6 +107,8 @@ A removed worktree that held changes cannot be reopened; a clean one reopens in 
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## Development
+## Source and Development
 
-See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.
+Adapted from [kunkun9527/pi-subagents-lean](https://github.com/kunkun9527/pi-subagents-lean) over [tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents), maintained in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md). The upstream published runtime is installed as an exact dependency without copying engine code; both projects are MIT-licensed (`LICENSE` preserved).
+
+See the [maintenance policy](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for `dist` entrypoint contracts and child-context bridge details.

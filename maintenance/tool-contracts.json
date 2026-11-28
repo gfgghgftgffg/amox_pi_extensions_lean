@@ -1313,7 +1313,7 @@
   "lean": {
     "@gfgghgftgffg/pi-goal-x-lean": {
       "package": "@gfgghgftgffg/pi-goal-x-lean",
-      "version": "0.1.7",
+      "version": "0.1.8",
       "entry": "packages/pi-goal-x-lean/index.ts",
       "registeredTools": [
         "get_goal",
@@ -1840,7 +1840,7 @@
     },
     "@gfgghgftgffg/pi-subagents-lean": {
       "package": "@gfgghgftgffg/pi-subagents-lean",
-      "version": "0.1.26",
+      "version": "0.1.27",
       "entry": "packages/pi-subagents-lean/index.ts",
       "registeredTools": [
         "subagent"
@@ -1924,7 +1924,7 @@
     },
     "@gfgghgftgffg/pi-web-access-lean": {
       "package": "@gfgghgftgffg/pi-web-access-lean",
-      "version": "0.1.20",
+      "version": "0.1.21",
       "entry": "packages/pi-web-access-lean/index.ts",
       "registeredTools": [
         "web_access"
@@ -1984,7 +1984,7 @@
     },
     "@gfgghgftgffg/rpiv-todo-lean": {
       "package": "@gfgghgftgffg/rpiv-todo-lean",
-      "version": "0.1.17",
+      "version": "0.1.18",
       "entry": "packages/rpiv-todo-lean/index.ts",
       "registeredTools": [
         "todo"

@@ -1,5 +1,7 @@
 # MAINTENANCE — rpiv-todo-lean
 
+导读：前文说明 `@juicesharp/rpiv-todo` 的基线来源、锁定版本与内部接口契约，中段保留历次上游与 lean 作者增量审计记录，文末列出升级步骤与已知限制。
+
 本文件记录本包与原 lean 基线的差异、锁定的上游版本、依赖的上游内部细节、升级步骤与已知限制。
 
 历史审查中的“未运行”“待 CI”或人工审批要求只记录当时阶段，不代表当前 CI/发布结果或现行审批要求。当前自动合并与 OIDC 发布规则见[维护者文档](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md)。

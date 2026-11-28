@@ -1,10 +1,13 @@
-# 维护者文档
+# 开发检查与维护策略
 
-本项目包含四个独立 lean 门面及 `amox-pi-sync` 独立 fork。后者基于 MIT `pi-sync-suite@0.1.1`（`npm:pi-sync-suite@0.1.1`，Copyright (c) 2026 Murat），在 manifest 中标记 `maintenanceMode: selective-fork`、`releaseVersioning: independent` 和 `toolContract: false`：每日监控 npm 正式发布，按功能边界审查后定向移植，不跟随整包覆盖、不添加上游运行时依赖，也不参与字符统计。舍弃功能跳过；有争议的新增、行为或兼容性问题通过 ntfy 请所有者决定，sync 暂不适配但不阻塞其它包。该包仍纳入受影响范围内的 CI 和独立安装验证；功能及 Starline 状态菜单见[包 README](../packages/amox-pi-sync/README.zh-CN.md)。
+本单仓维护两类独立发布的 Pi 扩展包：
 
-## 开发检查
+1. **四个轻量门面（Lean Facades）** — `pi-web-access-lean`、`rpiv-todo-lean`、`pi-subagents-lean` 与仓库原创门面 `pi-goal-x-lean`，均以精确 npm 依赖引入上游运行时。
+2. **独立维护衍生包** — `amox-pi-sync` 基于 MIT `pi-sync-suite@0.1.1`（`npm:pi-sync-suite@0.1.1`，Copyright (c) 2026 Murat），在 `maintenance/manifest.json` 中声明 `maintenanceMode: selective-fork`、`releaseVersioning: independent` 与 `toolContract: false`：每日监控上游 npm 稳定发布，对照包内功能边界只读审查后定向移植有价值的修复，不整包覆盖、不引入原版运行时依赖，也不计入工具字符对比；已裁剪模块直接跳过，遇到新增特性、取舍冲突或兼容性疑问则通过 ntfy 提请所有者拍板（期间仅暂缓 `sync`，不阻塞其他扩展更新），其功能与 Starline 状态菜单详见 [amox-pi-sync 文档](../packages/amox-pi-sync/README.zh-CN.md)。`amox-high-level` 声明为 `maintenanceMode: manual-fork`、`releaseVersioning: independent` 与 `toolContract: false`，由维护者手动审阅跟进。两包同样纳入受影响范围内的 CI 与独立生产安装验收。
 
-需要 Node >=22.19、npm 和 Git，在仓库根目录运行：
+## 本地开发验证命令
+
+需要 Node.js `>=22.19`、npm 与 Git，在仓库根目录依次执行：
 
 ```bash
 npm ci --ignore-scripts --no-audit --no-fund
@@ -15,42 +18,40 @@ node scripts/audit-dependencies.mjs
 node scripts/audit-dependencies.mjs --omit=dev
 ```
 
-工具契约变化后执行 `npm run contracts`，审查 `maintenance/tool-contracts.json`，同步中英文 README 的字符代理统计。字符代理不是计费 token。
+- **契约快照与字符代理刷新** — 当工具描述或 Schema 发生变化后，运行 `npm run contracts` 更新 `maintenance/tool-contracts.json`，人工核查差异并同步中英文 README 的字符代理统计（固定按 `ceil(字符数 / 4)` 估算，不是服务商计费 token）。
+- **职责解耦与纯净环境** — `npm run check` 专注于各工作区类型检查与单元/集成回归；契约校验与独立生产安装由上述专用命令各跑一次，不在普通单测内嵌套重跑。`verify:production` 在隔离的空 `HOME` 目录中模拟真实用户安装加载，不依赖本机个人 Pi 环境。
+- **依赖安全审计策略** — 本地门禁执行全量与 `--omit=dev` 两份审计；GitHub CI 与 Release 仅在 Ubuntu 节点执行这两份审计（避免在 macOS 与 Windows 重复请求注册表），且 `npm ci` 阶段统一关闭隐式 `--no-audit --no-fund`。按仓库策略，上游传递依赖漏洞作为警告记录在诊断报告中，不阻断日常维护、CI、自动合并或发布；但审计命令本身执行失败或无法获取报告仍会严格报错，绝不冒充“零漏洞”。类型、测试、契约与生产安装失败始终严格阻断。
 
-`npm run check` 只做类型与行为测试；契约捕获和独立生产安装各由上面的专用命令执行一次，不在普通测试中嵌套重跑。生产安装在空 HOME 中验证，不依赖个人 Pi 安装。
+## 上游审查与适配准则
 
-本地 gate 执行完整与 production 两份依赖审计；CI 和 Release 仅在 Linux 执行两份审计，不在 macOS、Windows 重复查询。安装阶段关闭隐式 audit/fund。上游漏洞只记录警告，不阻断维护、CI、自动合并或发布；审计报告获取／执行错误仍报错，不冒充零漏洞。功能、类型、契约和生产安装失败仍严格阻断。
+- **精确发布基线对比** — 始终对比 `maintenance/manifest.json` 中记录的当前版本与目标稳定版本的精确源码及 `CHANGELOG`；拥有外部 lean 作者仓库的包需逐项审阅作者提交，按需吸收而非直接覆盖本仓实现。
+- **`pi-goal-x-lean` 原创门面规则** — 标记为 `maintenanceMode: original-facade`，无外部 lean 作者仓库（不填 `leanRepository` / `leanCommit`），仅跟踪上游 `pi-goal-x`；`upstreamEntry: extensions/goal.ts` 指向 npm 包内真实入口，门面自身仍发布 `index.ts`。
+- **来源完整性证明（Git `gitHead` 与 npm Tarball）** — Git 审查链路严格要求 npm 发布元数据提供 `gitHead`，缺失时绝不回退猜测仓库 `HEAD` 或 Git tag。显式声明 `upstreamSource: npm` 的包以 `upstreamRef: npm:<包名>@<版本>` 记录基线，复用 selective fork 的归档解析器校验 registry 包名、版本与 SHA-512 完整性，仅将纯文本源码提取至 `before`/`after` 审查目录，绝不安装或执行生命周期脚本；任何校验不匹配立即阻断。（注：`pi-goal-x@0.34.1` 发布包不含 `gitHead`，其上游 tag `v0.34.1` 解引用提交 `27d9facf49e66ee677770a74e26198a8bdcada8a` 仅作历史 Git 参考，不作为 npm 发布来源证明。）
+- **最小改动与测试只增不删** — 坚持最小改动原则，不复制上游引擎实现，严禁修改 `node_modules`；完整保留既有基线测试断言（append-only），仅针对门面行为变更补充聚焦回归；所有运行时依赖固定精确版本号，Pi 开发 SDK、GitHub Actions SHA 与维护宿主脚本单独审查升级。
+- **文档职责分离** — 各级 **README 只描述当前**项目的功能定位、安装方式、核心用法、封装差异、必要限制与字符代理测量，保持中英文同步；运行时仅说明跟随上游稳定版演进，不手写具体依赖版本号、测试宿主快照或复制上游完整参数手册（详细参数通过 `help` 或上游文档查询，精确版本以 `package.json`、lockfile 与 `manifest.json` 为准）。技术审查细节沉淀在各包 `MAINTENANCE.md` 与 `maintenance/agent-review.md`，版本发布摘要写入 `maintenance/update-report.md`。
 
-## 适配规则
+### 自动化会话权限与操作系统沙箱
 
-- 对比 manifest 中当前版本与目标稳定版本的精确源码和 CHANGELOG；有外部 lean 作者来源的包逐项审查作者更新，不直接覆盖本仓库。
-- `pi-goal-x-lean` 为本仓库原创门面（`maintenanceMode: original-facade`），没有外部 lean 作者仓库，不填写 `leanRepository` / `leanCommit`，只监控上游。`upstreamEntry: extensions/goal.ts` 指定 npm 包的真实入口，门面自身仍发布 `index.ts`。
-- Git 审查路径继续要求 npm publication `gitHead`，缺失时不回退到仓库 HEAD 或 tag。`upstreamSource: npm` 显式选择精确 npm 发布来源，以 `upstreamRef: npm:<包名>@<版本>` 记录基线；复用 selective fork 的 tarball 收集器核对 registry／归档包名版本与 SHA-512，仅把文本写入 before/after 审查上下文，不安装或执行源码。校验失败仍阻断。`pi-goal-x@0.34.1` 没有 publication `gitHead`；其上游 tag `v0.34.1` peeled commit 为 `27d9facf49e66ee677770a74e26198a8bdcada8a`，仅作 Git 参考，不冒充 npm 来源证明。
-- 保持最小改动，不复制上游实现，不改 node_modules。保留既有测试断言，只补与门面变化有关的回归。
-- 依赖保持精确版本；Pi 开发 SDK、Action SHA 和维护宿主代码单独审查、更新及部署。
-- README 只描述当前项目的介绍、安装、基本用法、封装差异、必要限制与字符测量，中英文同步。运行时只写随上游更新，不重复依赖版本、测试快照或上游手册；参数查 help 和上游文档，精确版本查 package.json、lockfile 和 manifest。技术审查与适配历史保留在各包 `MAINTENANCE.md` 和 `maintenance/agent-review.md`，发布摘要写入 `maintenance/update-report.md`。
+[每日维护提示词](../maintenance/daily-update.md)由隔离的本地 Pi SDK 会话加载：
 
-[每日 prompt](../maintenance/daily-update.md) 由独立 Pi SDK 适配会话加载；只有 `list/read/write/edit/check` 工具；批准移植 sync 时另有 `ask_owner`，用于将适配中新发现的疑问持久记录、发 ntfy 并暂停同一候选，阻止后续推送／合并。sync 在暂存版本前另用只有 `list/read/submit_review` 的只读 SDK 会话审查，不加载个人扩展、MCP、AGENTS、task-routing 或历史会话。适配或验收失败后修复同一候选，不通过另起候选绕过检查或凭口头声明通过。仅可明确识别的服务器暂时性错误且尚未进入发布边界时，允许持久化排队两小时后重跑，最多额外三次；规则与通知见[延迟重试](local-scheduler.md#服务器错误延迟重试)。
+- **最小工具集** — 常规适配会话仅开放受控的 `list`、`read`、`write`、`edit`、`check` 五个工具（获批移植 `amox-pi-sync` 时额外提供 `ask_owner`，用于将编码阶段新发现的取舍疑问持久化保存、推送 ntfy 并原地暂停当前候选，阻止后续推送与合并）；`sync` 初审阶段则使用仅含 `list`、`read`、`submit_review` 的纯只读会话，全程不加载个人扩展、MCP、`AGENTS.md`、task-routing 或历史会话。
+- **同一候选闭环与 bubblewrap 隔离** — 适配或门禁报错必须在同一份候选目录中修复并通过真实 `check`，绝不允许另起炉灶绕过断言或凭模型口头声明放行；仅在进入发布写入边界前遇到明确的临时性服务器 5xx 错误时，才交由主机持久化队列在 2 小时后重试（最多额外 3 次），详见[延迟重试规则](local-scheduler.md#服务器错误延迟重试)。由于 **Pi 的工具权限不是操作系统级沙箱**，所有候选安装与检查均在 `bubblewrap` 容器内执行：隔离进程无权访问宿主机 `HOME`、SSH 密钥或发布凭据，候选源码挂载为只读，仅对依赖安装与契约输出开放最小必要写路径（宿主机固定调度脚本自身属于受信边界）。
 
-Pi 的工具权限不是操作系统级沙箱。候选执行另用 bubblewrap 隔离，检查进程没有主机 home、SSH 或凭据，候选源码只读；安装与契约捕获仅开放所需写入。主机固定代码仍属于信任边界。
+## 独立版本控制与精准验收范围
 
-## 独立版本与验收范围
+- **按包独立版本号与 Tag** — 每个工作区包独立递增版本，严格对齐自身 `package.json`、`package-lock.json` 工作区记录与 `maintenance/manifest.json`；发布 tag 格式固定为 `<包名>@<版本>`，根仓库 `private` 包版本恒为 `0.0.0`（不代表发布批次，也无需递增）。严禁为了发版让未变更的包陪跑升版。
+- **版本即发布契约** — 每日脚本仅暂存上游引擎、外部 lean 作者提交发生变动或已批准定向移植的包。当且仅当某包当前版本高于其上一个发布 tag 时才成为发布候选；任何已纳入 npm 发布的包内文件（含源码、`README*.md`、`MAINTENANCE.md` 等）只能在递增该包版本的同时修改，否则范围门禁直接拒绝，且版本号只增不减。
+- **共享的变更范围计算** — 本地门禁、PR CI 与 Release 共用 `scripts/check-changes.mjs` 的精确 SHA 差异计算（不采信模型自报的范围）：单包改动仅执行该包的类型/功能测试、契约检查与独立生产安装；涉及共享脚本、开发依赖或缺少不可变基准 SHA 时自动升级为全仓库全量检查；锁文件中共享运行时依赖变更则精准扩展至依赖闭包内的受影响包。依赖安全审计始终运行。**扩大验收范围绝不等于扩大 npm 发布范围。**
+- **Goal 与 Subagents 双向联合验收** — `pi-goal-x-lean` 与 `pi-subagents-lean` 绑定为双向联合验证对：任一包发生变更，都会同时跑通两包的类型/功能测试、契约校验与独立生产安装，持续守护 `subagents` 全局 v1 子会话上下文接口及原版 `dist` 结果/通知 ABI 兼容性。这只是测试门禁关系而非 npm 运行时兄弟依赖——未改动的一方不升版、不发布；若兼容性修复确实需要改动另一方代码，必须由人工显式递增另一方版本并纳入发布，严禁静默夹带未升版改动或放宽测试 append-only 保护。
+- **局部快照更新** — 单包更新时，契约捕获仅刷新受影响包的条目并保留其余包快照，测量文档也只改写本次升版的包；本地开发时既可跑全量命令，也可在单包命令后追加 `--packages <id>` 定向验证。
 
-- 每个 npm 包独立递增版本，只与自身 package.json、lockfile 工作区记录和 manifest 条目对应。发布 tag 是 `<包名>@<版本>`，与 npm 版本一一对应；根 private 包版本固定为 `0.0.0`，不标识发布，也不需要递增。精确版本查 package.json 和 manifest；不得为发布给其它包陪跑升版。
-- 每日脚本仅暂存上游引擎、lean 作者来源变化或已批准定向移植的 selective fork 包。发布候选由版本比较得出：当前包版本高于该包上一个发布 tag 时才会发布，不会因为其它包升版而发布。已发布文件只能随版本递增而改动，否则门禁拒绝；版本只增不减。
-- 本地 gate、PR CI 和 Release 共用变更范围判定：单包变化只跑该包类型/功能测试、契约与独立生产安装；共享源码、维护脚本、开发依赖或无法确定比较基准时全量检查，共享运行时依赖按锁文件扩展到实际使用它的包。依赖审计始终执行。扩大验收不等于扩大 npm 发布。
-- goal/subagents 固定双向联合验收：任一包变化均验证两包的类型/功能、契约与独立生产安装，保持 subagents 的 global v1 API 与原版 dist 的原生 result/notification ABI 兼容。这是验证关系，不是 npm runtime 兄弟依赖；未变更兄弟包不升版、不发布。失败阻断同一候选；修复若需改另一包，须人工递增该包版本，不能静默发布未升版的改动或放宽已有测试 append-only 保护。
-- 契约捕获仅更新本次受影响记录，保留其它包快照；测量文档只改本次升版的包。开发者仍可用上面的命令全量验收，或为单包命令附加 `--packages <id>`。受控 CI 通过 `scripts/check-changes.mjs` 与精确 SHA 自动计算范围，不接受模型提供的范围声明。
+## CI、固定主机自动合并与 OIDC 发布
 
-## CI、合并与发布
+1. **只读三平台 PR CI** — GitHub Actions 对精确的 PR head SHA 在 Linux、macOS、Windows 三平台并行执行完整验证，并汇总至必过门禁 `all-platforms-pass`（外部 Fork PR 可能需维护者点击 **Approve workflows to run**）。所有 Action 均固定 40 位完整 commit SHA，`checkout` 显式关闭凭据持久化，普通 CI 仅申请 `contents: read` 且零 Secrets 注入。
+2. **固定主机条件自动合并** — 维护主机仅针对本次维护会话亲手创建的同仓非草稿 PR 执行自动合并：发起合并前会再次核查精确 head SHA、`all-platforms-pass` 最新状态、PR 身份以及 `main` 基线未发生偏移，确认无误后**再按 head SHA 发送一次请求**。绝不合并非本轮 PR，绝不直接向 `main` 强推；一旦预检不符、主干前进或合并响应状态不明立即停机，绝不盲目重试（建议仓库分支保护开启 `all-platforms-pass` 与严格最新分支要求）。
+3. **主干推送分流与按包独立发布** — `main` 分支收到推送后先运行发布规划：无待发布包版本时执行常规三平台 CI；存在高于历史 tag 的待发布包版本时，普通 push CI 自动让渡给 Release，由 Release 对该合并 SHA 执行唯一一套三平台验收（规划步骤报错绝不会伪装成验收通过）。验收通过后，Release 仅为本次升版的每个包分别创建 `<包名>@<版本>` tag 与 GitHub Release、构建各自版本的归档与哈希清单，再交由隔离的 OIDC `npm` job 上传至公共注册表——未升版的包不打包、不查 registry、不重传。**CI 和 Release 不调用模型**；**Release notes 复用本地 Pi** 在门禁阶段生成并写入 `maintenance/update-report.md` 的绑定摘要（人工手动升版发包前也必须在该报告中补齐对应 `<包名>@<版本>` 的摘要块，否则 Release 会在建 tag 前拒绝）。已发布的 npm 版本不可覆盖或撤回，线上回归须通过更高版本号修复发布。
 
-CI 对精确 PR head 独立运行 Linux、macOS、Windows 检查，必须通过 `all-platforms-pass`。Fork PR 可能需要维护者 Approve workflows to run。Actions 固定完整 SHA，checkout 不保留凭据，普通 CI 只读且不注入 Secrets。
-
-固定主机自动合并当前维护会话创建的同仓非草稿 PR，合并前重新检查精确 head、最新 CI、PR 身份和 base/main，再按 head SHA 发送一次请求。不合并其它 PR，不直接推 main；检查失败、主干前进或写入结果不明就停止，不盲目重试。建议仓库规则要求 `all-platforms-pass` 和严格最新分支检查。
-
-main push 使用现有发布判定：没有待发布版本时运行 CI 三平台检查；存在没有对应 tag 的包版本时，普通 push CI 不再重复启动矩阵，由 Release 对同一个合并 SHA 执行唯一一套三平台验收。PR head 的三平台 CI 与 all-platforms-pass 仍独立必跑；发布判定失败不会跳过并冒充验收成功。
-
-Release 为每个待发布包分别创建 `<包名>@<版本>` tag 和 GitHub Release，只打包该包自身的版本并附带哈希清单，再由独立 OIDC job 发布这些归档。没有版本变化的包不打包、不查询 registry、不重新上传。日常成功路径无需人工合并或 npm 认证。已发布版本不可覆盖；出现回归须重新验证并发布更高的修复版本。Release notes 复用本地 Pi 提交并通过门禁验证的摘要；人工升版的包须在 `maintenance/update-report.md` 写入对应 `<包名>@<版本>` tag 的摘要，否则 Release 在创建 tag 前拒绝。CI 和 Release 不调用模型。
+## 延伸阅读
 
 - [维护主机部署与运行](local-scheduler.md)
-- [npm 发布配置与恢复](npm-publishing.zh-CN.md)
+- [npm 发布配置与故障恢复](npm-publishing.zh-CN.md)

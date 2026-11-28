@@ -1,4 +1,8 @@
-# amox-high-level
+# @gfgghgftgffg/amox-high-level
+
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/amox-high-level?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/amox-high-level)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.6.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
 
 [English](README.md)
 

@@ -1,5 +1,7 @@
 # Source review
 
+Reverse-chronological source-review log for upstream upgrades, lean-author deltas, and local fork adaptations across the monorepo (newest entries first).
+
 ## Goal 0.1.6 Pi 1.7-only facade
 
 - Removed the `VERSION` gate and pre-1.7 direct-tool branch from the Goal facade. The `goal` router and stage guidance are now always installed; the package peer floor is Pi 1.7.0.

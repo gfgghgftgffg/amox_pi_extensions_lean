@@ -1,95 +1,90 @@
 # @gfgghgftgffg/pi-web-access-lean
 
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/pi-web-access-lean?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/pi-web-access-lean)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**A single-tool, low-context facade for [`pi-web-access`](https://github.com/nicobailon/pi-web-access) — cutting registered tool text by ~87%.**
+
 [简体中文](README.zh-CN.md)
 
-## Advantage
-
-A lighter wrapper for [`pi-web-access`](https://github.com/nicobailon/pi-web-access). Search, checks, fetches and stored results share one `web_access` tool, cutting the tool text sent on the first call by about 87%.
+Consolidates web search, claim verification, URL/PDF fetching, and stored-result pagination behind one `web_access` tool while delegating all execution to the upstream `pi-web-access` engine.
 
 ## Features
 
-- One tool covers `search`, `check`, `fetch`, `get` and `help`. The upstream engine still runs, and this package does not register those upstream tools a second time.
-- Local PDF paths and `file:///` return the saved Markdown and its path. Metadata includes the Markdown character count and, when the engine provides it, the page count. This path extracts Markdown only, not the upstream structured extract mode.
-- Uncommon parameters stay in `help`, including the allowed search providers. Pass them as a JSON object string in `input`; explicit provider choices follow upstream configuration.
-- Remote image and video-frame questions use upstream answer mode with a model that accepts images. The reply contains the text answer; stored-result retrieval returns the original source content.
-
-## Source
-
-The facade comes from [kunkun9527/pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean). The engine is [Nico Bailon's pi-web-access](https://github.com/nicobailon/pi-web-access). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
-
-## Usage
-
-Call `web_access` with an explicit `op` and put the query, claim, URL, local PDF path or response ID in `input`.
-
-Search:
-
-```json
-{ "op": "search", "input": "Pi coding agent extensions" }
-```
-
-Check a claim:
-
-```json
-{ "op": "check", "input": "The paper was published in 2024" }
-```
-
-Fetch a page or a local PDF:
-
-```json
-{ "op": "fetch", "input": "https://example.com/page" }
-```
-
-Continue a saved result. `input` is the response id from an earlier call:
-
-```json
-{ "op": "get", "input": "response-id" }
-```
-
-See every parameter for one operation:
-
-```json
-{ "op": "help", "input": "fetch" }
-```
-
-Extra fields go inside the `input` string as JSON:
-
-```json
-{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
-```
-
-If a result names `get_search_content`, use `web_access` with `op: "get"` and the returned response ID. Additional retrieval fields go inside the JSON `input` string. Page text is left as returned.
+- **Unified `web_access` entrypoint** — Routes `search`, `check`, `fetch`, `get`, and `help` through a single tool without registering duplicate upstream tool definitions.
+- **On-demand parameter discovery** — Rare flags and currently allowed search providers stay out of the permanent schema; inspect them via `op: "help"` and pass extra fields as a JSON object string in `input`.
+- **Direct local PDF extraction** — Local `.pdf` paths and `file:///` URLs extract Markdown directly, returning the saved file path, Markdown content, character count, and page count (when provided by the engine).
+- **Multimodal page Q&A** — Remote image and video-frame questions run through upstream `answer` mode when paired with an image-capable model, returning a text answer while keeping original source content accessible via `get`.
 
 ## Installation
 
-This is a public npm package. Install without a version pin:
+Install from npm without pinning a version:
 
 ```bash
 pi install npm:@gfgghgftgffg/pi-web-access-lean
 pi update --extensions
 ```
 
-For a Git fallback, run from the repository checkout:
+Or install from a local checkout of the monorepo:
 
 ```bash
 node scripts/install-extension.mjs pi-web-access-lean
 ```
 
-Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source.
+> [!IMPORTANT]
+> Keep only one `pi-web-access` extension or wrapper active at a time to avoid duplicate tool registrations. Local checkout installations are updated by pulling the repository and re-running `install-extension.mjs` (`pi update` does not modify local checkouts). When migrating to npm, back up your settings, remove the exact old entry shown in `pi list`, and then install the npm package.
 
-Do not load this package alongside another `pi-web-access` wrapper, to avoid duplicate tool
-registrations.
+## Usage
 
-## Configuration and limits
+Pass an explicit `op` alongside `input` (a search query, claim, URL, local PDF path, response ID, or JSON object string).
 
-Providers, credentials, search routing and fetch options use upstream's `web-search.json`, normally
-under `~/.pi/agent/`. See the [upstream documentation](https://github.com/nicobailon/pi-web-access#configuration)
-for configuration paths, environment variables, supported services and billing rules. External services
-may receive queries and page content and incur charges; review their configuration before use. Proxy
-policy, including optional `lockProxy`, follows upstream; omit per-call `proxy` to use the configured route.
+**Search the web:**
 
-Direct local PDF access extracts Markdown only, not upstream's structured `extract` mode; remote PDFs
-use upstream handling. `web_access` stays registered directly: upstream dynamic tool-loading settings
-do not defer or remove this entrypoint.
+```json
+{ "op": "search", "input": "Pi coding agent extensions" }
+```
+
+**Verify a factual claim:**
+
+```json
+{ "op": "check", "input": "The paper was published in 2024" }
+```
+
+**Fetch a web page or read a local PDF:**
+
+```json
+{ "op": "fetch", "input": "https://example.com/page" }
+```
+
+**Continue reading a stored response:**
+
+```json
+{ "op": "get", "input": "response-id" }
+```
+
+**Inspect all parameters and allowed providers for an operation:**
+
+```json
+{ "op": "help", "input": "fetch" }
+```
+
+**Pass advanced options as a JSON string inside `input`:**
+
+```json
+{ "op": "fetch", "input": "{\"url\":\"https://example.com/page\",\"redirects\":\"same-origin\"}" }
+```
+
+> [!TIP]
+> Upstream hints may mention `get_search_content` when output is paginated or stored. Route those follow-up reads through `web_access` using `op: "get"` and put the response ID (or a JSON object string with extra retrieval fields) in `input`. Page bodies are returned unmodified.
+
+## Configuration and Boundaries
+
+- **Upstream configuration** — Search providers, API keys, routing rules, and fetch settings are read from `~/.pi/agent/web-search.json` (and upstream environment variables). See the [pi-web-access configuration guide](https://github.com/nicobailon/pi-web-access#configuration) for supported services and billing rules.
+- **External service privacy & cost** — Queries and fetched pages may be transmitted to configured third-party search or extraction APIs and incur usage charges; review your `web-search.json` before use.
+- **Proxy enforcement** — Upstream proxy settings (including `lockProxy`) apply unchanged; omit per-call `proxy` to use your configured route.
+- **Local vs. remote PDFs** — Local PDF reads extract Markdown only and do not support upstream's structured `extract` mode; remote PDFs follow upstream routing.
+- **Always-direct registration** — `web_access` registers directly on startup; upstream `toolExposure` / `toolActivation` deferral settings do not hide or defer this facade.
 
 ## Context footprint (character proxy)
 
@@ -102,6 +97,8 @@ do not defer or remove this entrypoint.
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## Development
+## Source and Development
 
-See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.
+Adapted from [kunkun9527/pi-web-access-lean](https://github.com/kunkun9527/pi-web-access-lean) over [Nico Bailon's `pi-web-access`](https://github.com/nicobailon/pi-web-access), maintained in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md). The upstream engine is installed as a dependency rather than copied; both projects are MIT-licensed (`LICENSE` preserved).
+
+For repository checks and adaptation details, see the [maintenance policy](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md).

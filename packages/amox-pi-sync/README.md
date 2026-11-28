@@ -1,102 +1,106 @@
-# amox-pi-sync
+# @gfgghgftgffg/amox-pi-sync
+
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/amox-pi-sync?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/amox-pi-sync)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**Private SSH Git synchronization for Pi agent data — with selectable paths, deletion propagation, targeted session-tree removal, and orphan subagent cleanup.**
 
 [简体中文](README.zh-CN.md)
 
-## Advantage
-
-Sync Pi sessions through a private Git repository, with paths you choose. Delete the current session and its descendants with `/delete-session`, or clean up orphan subagent sessions with `/sync-prune`, and propagate the deletion.
+Synchronizes raw Pi data across machines without registering any model tools, rewriting JSONL history, or merging host-specific configuration files.
 
 ## Features
 
-- Default paths are `sessions` and `missions`. You can include or exclude other agent-data paths. Files move as-is: no Markdown export and no JSONL merge. If both sides changed the same file, sync stops.
-- `/delete-session` previews the current session and its descendant tree by default, switches to a fresh session, then deletes the selected files and their snapshot copies. Recent and renamed descendants, including manual forks, are included; unrelated orphans are untouched.
-- `/sync-prune` finds subagent sessions whose parent is gone, including descendants, previews them, and syncs that deletion. It does not run before push unless you turn that on.
-- A pull backs up only the files it is about to replace or delete.
-- With [Starline](https://github.com/Andy8647/pi-starline), a status capsule opens the actions. Without it, the same actions stay on `/sync-*`.
+- **Raw, byte-preserving data sync** — Syncs `sessions` and `missions` by default (plus any safe relative agent-data paths you include or exclude). Files move verbatim with no Markdown export or semantic JSONL merge; conflicting edits on both sides stop safely for inspection.
+- **Per-device deletion propagation** — Tracks synced files via a local `syncedPaths` baseline so intentional deletions propagate cleanly on push and pull without deleting local-only or unpulled remote files.
+- **Targeted `/delete-session` tree removal** — Previews the active session and all recursively linked descendants (including renamed sessions and manual forks), switches to a fresh session, and commits snapshot + local deletion while leaving unrelated orphans untouched.
+- **Orphan subagent pruning (`/sync-prune`)** — Detects orphaned `type#8hex` subagent sessions and their descendants when a parent session is gone, previews count and size, and syncs the cleanup (manual by default, optional before push).
+- **Minimal-footprint backups & Starline UI** — Pull and restore back up only local files about to be replaced or deleted. Integrates with [Starline](https://github.com/Andy8647/pi-starline) via a clickable status capsule, with full `/sync-*` command parity when Starline is absent.
 
-## Source
+## Installation
 
-`@gfgghgftgffg/amox-pi-sync` is a selective fork of [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), based on MIT `pi-sync-suite@0.1.1` (Copyright © 2026 Murat). The source ref is `npm:pi-sync-suite@0.1.1`. Transport is SSH Git. See [MAINTENANCE.md](MAINTENANCE.md).
+Requires Pi `>=1.1.0`, Node.js `>=22.19.0`, npm, Git, and working SSH authentication.
 
-## Usage
-
-Point it at a private SSH Git repository. This does not transfer files yet:
-
-```text
-/sync-setup git@host:owner/private-repo.git
-```
-
-For GitHub, use `git@github.com:OWNER/REPO.git`. Configure network access through your system, Git and SSH outside this extension.
-
-Send local sessions, then bring remote sessions back:
-
-```text
-/sync-push
-/sync-pull
-```
-
-Delete the current session and all its descendants. Confirmation is on by default; disable **Confirm session deletion** in `/sync-settings` to delete without a dialog. Requires sync setup and `sessions` in managed paths:
-
-```text
-/delete-session
-```
-
-The command switches to a fresh session before deleting. Close other Pi processes using these sessions first. Snapshot removals are committed locally; manual/off mode needs `/sync-push` to publish them, while auto mode uses its normal sync loop. Git history, backups and `/tmp` files remain. If the tree gains new descendants before execution, deletion stops rather than widening the scanned selection.
-
-Preview orphan subagent sessions, then delete them and sync that deletion:
-
-```text
-/sync-prune
-/sync-prune --yes
-```
-
-`/sync-status` opens the same actions without [Starline](https://github.com/Andy8647/pi-starline). `/sync-settings` changes paths and whether prune runs before push.
-
-If a sync process was forcibly terminated, its lock can remain after Push, Pull, Prune or `/delete-session` stops. The next write operation recovers it only when the recorded PID has exited. `/sync-unlock` performs the same check manually and never removes a live or malformed lock. Manual/off mode uses the same write lock; no operation is removed just because it is old.
-
-## Install
-
-Requires Pi `>=1.1.0`, Node `>=22.19.0`, npm, Git and working SSH authentication.
-
-From this repository checkout:
-
-```sh
-node scripts/install-extension.mjs amox-pi-sync
-```
-
-Only this extension is installed. Do not load it alongside the original `pi-sync-suite`; inspect existing sources with `pi list` and remove the old source yourself. If the first npm publication is pending, use the checkout installer above. Once available, npm installation and updates use:
+Install from npm without pinning a version:
 
 ```sh
 pi install npm:@gfgghgftgffg/amox-pi-sync
 pi update --extensions
 ```
 
-## Details
+Or install from a local checkout of the monorepo (also useful if initial npm publication is pending):
 
-- A per-device `syncedPaths` baseline records paths present at the last successful push or pull. Push removes previously synced paths that are now missing locally. Pull applies remote deletions after a backup and keeps local missing baseline paths as pending deletions, so a pull before push does not resurrect them. Files that were never synced, and remote-only files not yet pulled, are not deleted. The first baseline is the intersection of local and snapshot paths; deletions from before that baseline are not inferred.
-- Targeted deletion follows parent links recursively without a name filter or a ten-minute age limit. It shares the portable basename lookup and duplicate-name ambiguity protection with orphan prune. The outgoing runtime must finish shutdown before deletion, and the replacement instance processes deletion before its automatic Pull. A deletion failure pauses automatic sync until the error is resolved and sync is restarted or the extension reloaded.
-- Orphan prune compares parent basenames without case sensitivity, accepts names matching `type#8hex`, and cascades to descendants. It skips files modified in the last 10 minutes and the active session, previews count, size and names, writes the snapshot deletion before deleting locally, and refuses a dirty repository. Prune before push is off by default. A prune failure warns and does not block the push.
-- Network Git operations time out after 10 minutes. Local Git operations time out after 60 seconds. A process ended by timeout or cancellation is a failure, even if Pi reports exit code 0. Pull fast-forwards when it can; otherwise it does a clean three-way merge. A rejected non-fast-forward push fetches, integrates without rebase or force, and retries once.
-- Pull and restore back up only the local files being replaced or deleted. A pull that only adds files creates no backup. Manual create-backup is still a full snapshot of managed data.
-- Windows prefers native OpenSSH (`System32/OpenSSH/ssh.exe`) when it is available. Git commands force `core.autocrlf=false` and `core.eol=lf`, and the snapshot repo uses a local `* -text` attribute. Existing mixed line endings are not rewritten.
+```sh
+node scripts/install-extension.mjs amox-pi-sync
+```
 
-## Settings and UI
+> [!IMPORTANT]
+> Only this standalone extension is installed — never load it alongside the upstream `pi-sync-suite`. Check `pi list` and remove any old sync source before enabling `amox-pi-sync`.
 
-- The settings menu contains **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths), **Prune before push** (default Off), **Confirm session deletion** (default On; stored as `confirmSessionDelete` in `amox-pi-sync.json`), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention). Excluding a path stops future transfers for it; existing snapshot copies are not removed by that setting alone.
-- Manual/off startup performs no network access. Auto startup computes a local fingerprint, starts timers and launches a background pull without awaiting network completion. `/sync-setup` only saves configuration and stops timers; reload to activate auto mode if enabled.
-- With [Starline](https://github.com/Andy8647/pi-starline), the clickable status capsule opens details and actions. The status key remains `pi-sync` for existing placement; the pill bridge takes precedence over legacy `extensionStatuses.commands`. There is no three-line widget.
-- Pill clicks anchor bubbles to the corresponding Starline cell, like Model; settings, submenus and confirmations retain that anchor. `/sync-status` uses the last clicked anchor, or a centered fallback before the first click. Text entry still uses Pi input dialogs.
-- **Bubble colour** defaults to **Follow pill**; alternatively choose the current theme’s accent, success, warning or error colour for borders and selection. Before a pill click, Follow pill uses theme accent. The optional `bubbleColor` setting stores `pill`, `accent`, `success`, `warning` or `error`; changing it performs no transfer. Without Starline this option is hidden and Pi renders its native dialogs.
-- Labels and values are separated by a colon (for example, `Paths: 2 configured`); Starline action rows start with `•`. Labels and values use Pi theme colours, while bold action rows keep Starline’s selection contrast. After deletion, State returns to Manual, Auto or Off instead of retaining Delete session; completed operations belong in Last action. Active transfers use Push/Pull, with the configured mode shown separately. RPC and no-Starline output stay plain text.
+## Usage
 
-## Data and safety
+**1. Connect a private SSH Git repository (saves configuration without transferring files yet):**
+
+```text
+/sync-setup git@host:owner/private-repo.git
+```
+
+For GitHub remotes, use `git@github.com:OWNER/REPO.git`. Network routing, proxies, and SSH keys are handled outside this extension by your OS, Git, and SSH config.
+
+**2. Push local data and pull remote updates:**
+
+```text
+/sync-push
+/sync-pull
+```
+
+**3. Delete the current session and its entire descendant tree:**
+
+```text
+/delete-session
+```
+
+Requires sync setup and `sessions` in managed paths. Confirmation is enabled by default (toggle **Confirm session deletion** in `/sync-settings` to skip the prompt). Close any other Pi processes using those sessions first: Pi switches to a fresh session, waits for the outgoing runtime to shut down, and commits the snapshot removal locally (published via `/sync-push` in manual/off mode, or by the auto-sync loop). Git history, backups, and `/tmp` files remain untouched. If new descendants appear after scanning, deletion aborts rather than widening the target set.
+
+**4. Preview and prune orphan subagent sessions:**
+
+```text
+/sync-prune
+/sync-prune --yes
+```
+
+**5. Inspect status, settings, and stale locks:**
+
+- `/sync-status` — Opens status details and actions (works with or without [Starline](https://github.com/Andy8647/pi-starline)).
+- `/sync-settings` — Configures sync mode, managed paths, pre-push pruning, backups, diagnostics, and cleanup.
+- `/sync-unlock` — Safely clears a leftover lock file after forced process termination once the recorded PID is no longer running (write operations in manual, auto, and off modes perform this same check automatically; live or malformed locks are never removed, and age alone never triggers takeover).
+
+## Sync Mechanics and Reliability
+
+- **`syncedPaths` baseline** — Records managed paths present at the last successful push or pull. Push removes baseline paths now missing locally; pull backs up and removes baseline paths deleted remotely while preserving locally deleted baseline paths as pending push removals (preventing a pull-before-push resurrection). Never-synced local files and unpulled remote files are untouched. On first run, the baseline seeds from the intersection of local and snapshot paths without inferring pre-baseline deletions.
+- **Session deletion vs. orphan prune** — `/delete-session` follows parent links recursively with no filename pattern or 10-minute age filter, sharing portable case-insensitive basename matching and duplicate-name ambiguity protection with `/sync-prune`; its replacement instance runs deletion before automatic pull, and any failure pauses auto-sync until resolved and reloaded. `/sync-prune` targets `type#8hex` subagent files whose parent is missing, skips active sessions and files modified within the last 10 minutes, refuses dirty snapshot repos, commits snapshot deletion before unlinking local files, and warns without blocking push if optional pre-push pruning fails.
+- **Git transport & conflict handling** — Network Git operations time out after 10 minutes; local Git commands time out after 60 seconds (any timed-out or cancelled child process fails even if exit code `0` is reported). Pull fast-forwards when possible or performs a clean three-way merge. Non-fast-forward push rejections fetch, integrate without rebase or force, and retry once.
+- **Targeted backups & cross-platform line endings** — Pull and restore back up only local files being overwritten or deleted (additive pulls create no backup; manual **Create backup** still snapshots all managed paths). Windows prefers native OpenSSH (`System32/OpenSSH/ssh.exe`) when available. Git runs with `core.autocrlf=false`, `core.eol=lf`, and local `* -text` attributes without rewriting existing mixed line endings.
+
+## Settings and Starline UI
+
+- **Settings menu** — Exposes **View Status**, **Sync Mode** (`auto`, `manual`, `off`), **Sync Paths** (include/exclude safe relative agent-data paths; excluding a path stops future transfers without deleting existing snapshot copies), **Prune before push** (default Off), **Confirm session deletion** (default On; stored as `confirmSessionDelete` in `amox-pi-sync.json`), **Backups** (create/list/restore), **Diagnostics** (doctor/diff/log), and **Cleanup** (Preview, Run, Delete Selected Backup, Retention).
+- **Startup behavior** — `manual` and `off` modes make zero network calls at startup. `auto` computes a local fingerprint, starts timers, and triggers a non-blocking background pull. `/sync-setup` saves config and stops timers; run `/reload` to start `auto` mode.
+- **Starline capsule & bubbles** — With [Starline](https://github.com/Andy8647/pi-starline), clicking the status capsule (key `pi-sync`, pill bridge prioritized over legacy `extensionStatuses.commands`; no three-line widget) opens cell-anchored bubbles for status, settings, submenus, and confirmations (`/sync-status` reuses the last clicked anchor or centers before the first click; text prompts still use Pi input dialogs).
+- **Theme & formatting** — **Bubble colour** (`bubbleColor` in config) defaults to **Follow pill** (`pill`, falling back to theme `accent` before the first click) or overrides borders and selection with `accent`, `success`, `warning`, or `error` without triggering transfers; hidden when Starline is absent. Rows format as `Label: value` (e.g., `Paths: 2 configured`) with `•` prefixes on bold Starline actions. Active transfers display `Push` / `Pull` alongside the configured mode; once deletion finishes, State returns to `Manual`, `Auto`, or `Off` while completed work appears in `Last action`. RPC and non-Starline hosts receive plain text.
+
+## Data Safety and Scope Boundaries
 
 > [!WARNING]
-> Sessions, missions and other selected files may contain secrets. Use a **private SSH repository**, review included paths, and secure both the remote and local backups. Private Git is not encryption or a secret scrubber.
+> Sessions, missions, and custom synced paths can contain credentials, tokens, and private code. Always use a **private SSH Git repository**, audit your included paths, and protect both remote repositories and local backups. Private Git hosting does not encrypt files at rest or scrub secrets.
 
-- Paths are relative to Pi's agent-data directory, not the current project. Arbitrary safe data paths can be included or excluded; the extension does not change the working directory.
-- Concurrent edits are not a semantic merge. Coordinate devices and inspect diagnostics. Incoming content replaces differing same-path files after backup; active sessions must not be deleted or overwritten. Restore applies only the currently managed paths.
-- Backups use `amox-pi-sync-backups` under the agent-data directory. Cleanup only deletes local backups after manual preview/confirmation, using complete backup directories rather than individual files. The default limits are 20 complete backups and a maximum age of 180 days; older or excess backups become cleanup candidates. There is no automatic deletion; sessions and missions are never cleanup targets.
-- Settings use `amox-pi-sync.json`. If absent, legacy `pi-sync-suite.json` can be read for migration. The old file is not changed before new settings are saved; saving writes the new file. Migration uses a separate `amox-pi-sync-repo` directory rather than reusing the old snapshot.
+- **Path & session safety** — Paths resolve relative to Pi's agent-data directory without mutating the current working directory. Concurrent edits across devices are not semantically merged; incoming pulls back up and replace differing files, while active sessions are never overwritten or deleted. Restoring a backup applies only currently managed paths.
+- **Backup retention** — Backups live in `amox-pi-sync-backups` under the agent-data directory. **Cleanup** deletes complete backup directories only after manual preview and confirmation (default candidates: older than 180 days or beyond the newest 20 backups) — never automatic, and never touching `sessions` or `missions`.
+- **Configuration & migration** — Settings persist in `amox-pi-sync.json`. When absent, legacy `pi-sync-suite.json` is read non-destructively for migration; saving writes `amox-pi-sync.json` and uses an isolated `amox-pi-sync-repo` snapshot directory rather than reusing the legacy repo folder.
 
-Configuration sync/settings merging, Markdown/JSON archives, Environment Tools and Local Packages from the original suite are not included. Deployment tools such as `amox-agent-bootstrap` own environment setup and machine-specific configuration; Pi's native `/export` handles readable exports. Raw data selection, backups and manual backup cleanup remain part of sync. See [feature decisions](MAINTENANCE.md#功能取舍与维护边界) for the reasons and maintenance boundaries. This is a selectively maintained fork, not a runtime wrapper or a full replacement of the upstream suite. Daily reviews track published upstream changes, port worthwhile retained behavior, skip removed features and ask the owner through ntfy when uncertain; removed modules are not restored automatically.
+## Source and Maintenance Model
+
+`@gfgghgftgffg/amox-pi-sync` is a selectively maintained standalone fork of [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), based on MIT-licensed `pi-sync-suite@0.1.1` (Copyright © 2026 Murat, source ref `npm:pi-sync-suite@0.1.1`).
+
+Settings merging, Markdown/JSON chat archives, Environment Tools, and Local Packages from the upstream suite are intentionally omitted: machine provisioning belongs in tools like `amox-agent-bootstrap`, and readable exports belong in Pi's native `/export`. Daily maintenance reviews published upstream releases, ports worthwhile fixes within retained boundaries, skips removed modules, and escalates ambiguous tradeoffs via ntfy without restoring omitted features. Full rationale and boundaries are documented in [MAINTENANCE.md](MAINTENANCE.md) (see [feature decisions](MAINTENANCE.md#功能取舍与维护边界)).

@@ -1,44 +1,61 @@
 # @gfgghgftgffg/rpiv-todo-lean
 
+[![npm](https://img.shields.io/npm/v/@gfgghgftgffg/rpiv-todo-lean?style=flat-square)](https://www.npmjs.com/package/@gfgghgftgffg/rpiv-todo-lean)
+[![Pi](https://img.shields.io/badge/Pi-%3E%3D1.1.0-4f46e5?style=flat-square)](https://npmjs.com/package/@earendil-works/pi-coding-agent)
+[![License](https://img.shields.io/badge/License-MIT-blue?style=flat-square)](LICENSE)
+
+**A compact facade for [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo) — keeping full task tracking and `/todos` with ~77% less registered tool text.**
+
 [简体中文](README.zh-CN.md)
 
-## Advantage
-
-A lighter wrapper for [`@juicesharp/rpiv-todo`](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo). Tasks, dependencies, batch creation and `/todos` remain, with about 77% less tool text sent on the first call.
+Strips verbose schema descriptions from `todo` while preserving task creation, batching, dependencies, per-session isolation, RPC overlays, and terminal UI controls on the upstream engine.
 
 ## Features
 
-- The model sees one `todo` tool: `create`, `update`, `list`, `get`, `delete`, `clear`.
-- If `action` is omitted, a `subject` means create, and an `id` plus a mutable field means update. Anything else is reported by upstream.
-- Fields, validation, persistence and per-session isolation stay on the upstream engine. Set `maxWidgetLines: 0` in the [todo config](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md) to hide the panel on the next repaint without disabling `todo` or `/todos`.
-- In Pi’s fullscreen TUI, left-click the panel heading to collapse or expand it, even with `collapseKey: "off"`. A child session starting work no longer hides the foreground session’s completed rows.
-- In Pi’s terminal UI, Todo hides while Autoresearch mode is active or while the current session owns an active Goal. Pausing the Goal or using `/autoresearch off` restores Todo once both workflows are inactive. Goal integration requires `pi-goal-x-lean` 0.1.7 or newer.
+- **Compact single-tool schema** — Exposes one `todo` tool (`create`, `update`, `list`, `get`, `delete`, `clear`) with concise instructions and identical structural validation.
+- **Smart shorthand inference** — When `action` is omitted, passing `subject` infers `create`, and passing `id` with a mutable field infers `update`; ambiguous inputs defer to upstream validation errors.
+- **Configurable TUI panel** — Set `maxWidgetLines: 0` in your [todo configuration](https://github.com/juicesharp/rpiv-mono/blob/main/packages/rpiv-todo/docs/configuration.md) to hide the widget on the next repaint while keeping `todo` and `/todos` active. In Pi's fullscreen TUI, left-clicking the panel heading collapses or expands it even when `collapseKey: "off"`.
+- **Clean multi-session & workflow coordination** — Child sessions starting work no longer hide completed rows in the foreground session's panel. In Pi's terminal UI, the Todo panel automatically hides while Autoresearch mode is active or while the current session owns an active Goal (requires `pi-goal-x-lean` `>=0.1.7`), and reappears once both workflows are paused or turned off.
 
-## Source
+## Installation
 
-The facade comes from [kunkun9527/rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean). The engine is [juicesharp/rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo). This package follows upstream releases and does not copy the engine. Both are MIT; the original `LICENSE` is kept. It lives in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md).
+Install from npm without pinning a version:
+
+```bash
+pi install npm:@gfgghgftgffg/rpiv-todo-lean
+pi update --extensions
+```
+
+Or install from a local checkout of the monorepo:
+
+```bash
+node scripts/install-extension.mjs rpiv-todo-lean
+```
+
+> [!IMPORTANT]
+> Do not load another `rpiv-todo` extension or wrapper at the same time. Local checkout installations are updated by pulling the repository and re-running `install-extension.mjs` (`pi update` does not update local checkouts). To migrate from a local source to npm, back up settings, remove the exact old entry listed in `pi list`, and install the npm package.
 
 ## Usage
 
-Create one task. A `subject` alone is enough:
+**Create a single task (`subject` alone infers `create`):**
 
 ```json
 { "subject": "Inspect the cache" }
 ```
 
-Create several:
+**Create multiple tasks atomically:**
 
 ```json
 { "action": "create", "tasks": [{ "subject": "Inspect" }, { "subject": "Test" }] }
 ```
 
-Mark one finished. An `id` plus a field is an update:
+**Update a task (`id` + mutable field infers `update`):**
 
 ```json
 { "id": "1", "status": "completed" }
 ```
 
-List, read, delete, or empty the list:
+**List, inspect, delete, or clear tasks:**
 
 ```json
 { "action": "list" }
@@ -56,24 +73,8 @@ List, read, delete, or empty the list:
 { "action": "clear" }
 ```
 
-New tasks start as `pending`. For several steps, keep one task `in_progress` and set it to `completed` when that step is done. `list` hides deleted tasks. `clear` empties the list and starts ids over. A dependency is `blockedBy`. Other fields are in the [upstream documentation](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo).
-
-## Installation
-
-This is a public npm package. Install without a version pin:
-
-```bash
-pi install npm:@gfgghgftgffg/rpiv-todo-lean
-pi update --extensions
-```
-
-For a Git fallback, run from the repository checkout:
-
-```bash
-node scripts/install-extension.mjs rpiv-todo-lean
-```
-
-Update a local Git installation by pulling the checkout and rerunning its installer; `pi update` does not update local contents. Keep one installation source. To migrate, back up settings, remove only the exact old source shown by `pi list`, then install the npm source. Do not load another `rpiv-todo` wrapper alongside it.
+> [!TIP]
+> New tasks start as `pending`. During multi-step work, keep one active step `in_progress` and mark it `completed` as soon as it finishes. `list` omits deleted tasks by default, `clear` empties the list and resets ID numbering, and task dependencies use `blockedBy`. Additional fields are documented [upstream](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo).
 
 ## Context footprint (character proxy)
 
@@ -86,6 +87,8 @@ Update a local Git installation by pulling the checkout and rerunning its instal
 Fixed ceil(characters / 4), not provider billing tokens.
 <!-- amox-measurement:end -->
 
-## Development
+## Source and Development
 
-See the [development and maintenance guide](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for adaptation details.
+Adapted from [kunkun9527/rpiv-todo-lean](https://github.com/kunkun9527/rpiv-todo-lean) over [juicesharp/rpiv-todo](https://github.com/juicesharp/rpiv-mono/tree/main/packages/rpiv-todo), maintained in [amox-pi-extensions-lean](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/README.md). Upstream logic stays in npm dependencies without copied engine code; both projects are MIT-licensed (`LICENSE` preserved).
+
+See the [maintenance policy](https://github.com/gfgghgftgffg/amox_pi_extensions_lean/blob/main/docs/maintenance.md) and [MAINTENANCE.md](MAINTENANCE.md) for RPC stale-context guards and adaptation notes.

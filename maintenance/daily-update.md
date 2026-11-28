@@ -1,5 +1,7 @@
 # 每日更新提示词
 
+供本地独立的 Pi SDK 维护会话执行每日上游跟进任务的标准提示词模板。
+
 原文来自用户指定的 [my-lean-pi-setup 维护指南](https://github.com/kunkun9527/my-lean-pi-setup/blob/main/docs/make-your-own-lean.zh-CN.md#上游更新了怎么跟)。“上游更新了，怎么跟”中的提示词如下，正文未改写。
 
 对本仓库四个包分别套用：

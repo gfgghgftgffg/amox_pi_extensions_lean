@@ -1,5 +1,7 @@
 # MAINTENANCE — amox-pi-sync
 
+定义上游审查与功能移植边界，并规范本包的本地安全与验证准则。
+
 ## Source and attribution
 
 - Upstream: [MuratAitov/pi-sync](https://github.com/MuratAitov/pi-sync), npm `pi-sync-suite@0.1.1`.
